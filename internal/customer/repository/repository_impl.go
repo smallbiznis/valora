@@ -1,0 +1,64 @@
+package repository
+
+import (
+	"context"
+
+	"github.com/bwmarrin/snowflake"
+	"github.com/smallbiznis/valora/internal/customer/domain"
+	"github.com/smallbiznis/valora/pkg/db/option"
+	"github.com/smallbiznis/valora/pkg/db/pagination"
+	"gorm.io/gorm"
+)
+
+type repo struct{}
+
+func Provide() domain.Repository {
+	return &repo{}
+}
+
+func (r *repo) Insert(ctx context.Context, db *gorm.DB, customer *domain.Customer) error {
+	return db.WithContext(ctx).Exec(
+		`INSERT INTO customers (id, org_id, name, email, currency, metadata, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		customer.ID,
+		customer.OrgID,
+		customer.Name,
+		customer.Email,
+		customer.Currency,
+		customer.Metadata,
+		customer.CreatedAt,
+		customer.UpdatedAt,
+	).Error
+}
+
+func (r *repo) FindByID(ctx context.Context, db *gorm.DB, orgID, id snowflake.ID) (*domain.Customer, error) {
+	var customer domain.Customer
+	err := db.WithContext(ctx).Raw(
+		`SELECT id, org_id, name, email, currency, metadata, created_at, updated_at
+		 FROM customers WHERE org_id = ? AND id = ?`,
+		orgID,
+		id,
+	).Scan(&customer).Error
+	if err != nil {
+		return nil, err
+	}
+	if customer.ID == 0 {
+		return nil, nil
+	}
+	return &customer, nil
+}
+
+func (r *repo) List(ctx context.Context, db *gorm.DB, orgID snowflake.ID, page pagination.Pagination) ([]*domain.Customer, error) {
+	var customers []*domain.Customer
+	stmt := db.WithContext(ctx).
+		Model(&domain.Customer{}).
+		Where("org_id = ?", orgID)
+	stmt = option.ApplyPagination(page).Apply(stmt)
+	err := stmt.
+		Order("created_at desc, id desc").
+		Find(&customers).Error
+	if err != nil {
+		return nil, err
+	}
+	return customers, nil
+}

@@ -1,0 +1,133 @@
+import { useEffect, useState } from "react"
+import { Navigate, Outlet, createBrowserRouter } from "react-router-dom"
+
+import DashboardLayout from "@/layouts/DashboardLayout"
+import LoginPage from "@/pages/login"
+import OnboardingPage from "@/pages/onboarding"
+import OrgDashboard from "@/pages/org/OrgDashboard"
+import OrgCustomersPage from "@/pages/org/OrgCustomersPage"
+import OrgInvoicesPage from "@/pages/org/OrgInvoicesPage"
+import OrgMeterPage from "@/pages/org/OrgMeterPage"
+import OrgMeterDetailPage from "@/pages/org/OrgMeterDetailPage"
+import OrgMeterCreatePage from "@/pages/org/OrgMeterCreatePage"
+import OrgProductDetailPage from "@/pages/org/OrgProductDetailPage"
+import OrgProductsPage from "@/pages/org/OrgProductsPage"
+import OrgSettings from "@/pages/org/OrgSettings"
+import OrgSubscriptionsPage from "@/pages/org/OrgSubscriptionsPage"
+import OrgResolverPage from "@/pages/orgs"
+import CreatePrice from "@/pages/products/CreatePrice"
+import CreateProduct from "@/pages/products/CreateProduct"
+import SignupPage from "@/pages/signup"
+import { useAuthStore } from "@/stores/authStore"
+
+// eslint-disable-next-line react-refresh/only-export-components
+function RequireAuth() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const [hasHydrated, setHasHydrated] = useState(
+    useAuthStore.persist.hasHydrated()
+  )
+  useEffect(() => {
+    const unsubscribe = useAuthStore.persist.onFinishHydration(() => {
+      setHasHydrated(true)
+    })
+    if (useAuthStore.persist.hasHydrated()) {
+      setHasHydrated(true)
+    }
+    return unsubscribe
+  }, [])
+  if (!hasHydrated) {
+    return <div className="flex min-h-screen items-center justify-center text-muted-foreground text-sm">Loading session...</div>
+  }
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+  return <Outlet />
+}
+
+export const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <Navigate to="/orgs" replace />,
+  },
+  {
+    path: "/login",
+    element: <LoginPage />,
+  },
+  {
+    path: "/signup",
+    element: <SignupPage />,
+  },
+  {
+    element: <RequireAuth />,
+    children: [
+      { path: "/orgs", element: <OrgResolverPage /> },
+      { path: "/onboarding", element: <OnboardingPage /> },
+      {
+        path: "/orgs/:orgId",
+        element: <DashboardLayout />,
+        children: [
+          { index: true, element: <Navigate to="dashboard" replace /> },
+          { path: "dashboard", element: <OrgDashboard /> },
+          {
+            path: "products",
+            element: <OrgProductsPage />,
+          },
+          {
+            path: "products/create",
+            element: <CreateProduct />,
+          },
+          {
+            path: "products/:productId/prices/create",
+            element: <CreatePrice />,
+          },
+          {
+            path: "products/:productId",
+            element: <OrgProductDetailPage />,
+          },
+          {
+            path: "prices",
+            element: <Navigate to="../products" replace />,
+          },
+          {
+            path: "pricings",
+            element: <Navigate to="../products" replace />,
+          },
+          {
+            path: "price-amounts",
+            element: <Navigate to="../products" replace />,
+          },
+          {
+            path: "price-tiers",
+            element: <Navigate to="../products" replace />,
+          },
+          {
+            path: "meter",
+            element: <OrgMeterPage />,
+          },
+          {
+            path: "meter/create",
+            element: <OrgMeterCreatePage />,
+          },
+          {
+            path: "meter/:meterId",
+            element: <OrgMeterDetailPage />,
+          },
+          {
+            path: "customers",
+            element: <OrgCustomersPage />,
+          },
+          {
+            path: "subscriptions",
+            element: <OrgSubscriptionsPage />,
+          },
+          {
+            path: "invoices",
+            element: <OrgInvoicesPage />,
+          },
+          { path: "settings", element: <OrgSettings /> },
+        ],
+      },
+    ],
+  },
+  { path: "*", element: <Navigate to="/orgs" replace /> },
+])

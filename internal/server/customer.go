@@ -1,0 +1,87 @@
+package server
+
+import (
+	"net/http"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+	customerdomain "github.com/smallbiznis/valora/internal/customer/domain"
+	"github.com/smallbiznis/valora/pkg/db/pagination"
+)
+
+type createCustomerRequest struct {
+	OrganizationID string `json:"organization_id"`
+	Name           string `json:"name"`
+	Email          string `json:"email"`
+}
+
+func (s *Server) CreateCustomer(c *gin.Context) {
+	var req createCustomerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		AbortWithError(c, invalidRequestError())
+		return
+	}
+
+	resp, err := s.customerSvc.Create(c.Request.Context(), customerdomain.CreateCustomerRequest{
+		OrganizationID: strings.TrimSpace(req.OrganizationID),
+		Name:           strings.TrimSpace(req.Name),
+		Email:          strings.TrimSpace(req.Email),
+	})
+	if err != nil {
+		AbortWithError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": resp})
+}
+
+func (s *Server) ListCustomers(c *gin.Context) {
+	var query struct {
+		OrganizationID string `form:"organization_id"`
+		pagination.Pagination
+	}
+	if err := c.ShouldBindQuery(&query); err != nil {
+		AbortWithError(c, invalidRequestError())
+		return
+	}
+
+	orgID := strings.TrimSpace(query.OrganizationID)
+	resp, err := s.customerSvc.List(c.Request.Context(), customerdomain.ListCustomerRequest{
+		OrgID:     orgID,
+		PageToken: query.PageToken,
+		PageSize:  int32(query.PageSize),
+	})
+	if err != nil {
+		AbortWithError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": resp})
+}
+
+func (s *Server) GetCustomerByID(c *gin.Context) {
+	orgID := strings.TrimSpace(c.Query("organization_id"))
+	id := strings.TrimSpace(c.Param("id"))
+	resp, err := s.customerSvc.GetByID(c.Request.Context(), customerdomain.GetCustomerRequest{
+		OrgID: orgID,
+		ID:    id,
+	})
+	if err != nil {
+		AbortWithError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": resp})
+}
+
+func isCustomerValidationError(err error) bool {
+	switch err {
+	case customerdomain.ErrInvalidOrganization,
+		customerdomain.ErrInvalidName,
+		customerdomain.ErrInvalidEmail,
+		customerdomain.ErrInvalidID:
+		return true
+	default:
+		return false
+	}
+}
