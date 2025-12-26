@@ -43,16 +43,16 @@ export default function OrgSettingsPage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-muted text-sm">
           Configure organization-level billing preferences.
         </p>
       </div>
       {isLoading && (
-        <div className="text-muted-foreground text-sm">Loading settings...</div>
+        <div className="text-text-muted text-sm">Loading settings...</div>
       )}
-      {error && <div className="text-destructive text-sm">{error}</div>}
+      {error && <div className="text-status-error text-sm">{error}</div>}
       {!isLoading && !error && (
-        <pre className="bg-muted overflow-auto rounded-md p-4 text-xs">
+        <pre className="bg-bg-subtle overflow-auto rounded-md p-4 text-xs">
           {JSON.stringify(settings, null, 2)}
         </pre>
       )}

@@ -15,7 +15,7 @@ describe("Customers page", () => {
 
     mockLogin(orgId)
     cy.visit(`/orgs/${orgId}/customers`)
-    cy.wait(["@getOrg", "@getOrgs", "@getCustomers"])
+    cy.wait(["@useOrg", "@getOrg", "@getOrgs", "@getCustomers"])
 
     cy.contains("No customers yet.").should("be.visible")
   })
@@ -36,7 +36,7 @@ describe("Customers page", () => {
 
     mockLogin(orgId)
     cy.visit(`/orgs/${orgId}/customers`)
-    cy.wait(["@getOrg", "@getOrgs", "@getCustomers"])
+    cy.wait(["@useOrg", "@getOrg", "@getOrgs", "@getCustomers"])
 
     cy.contains("Acme Co").should("be.visible")
     cy.contains("billing@acme.test").should("be.visible")
@@ -63,7 +63,7 @@ describe("Customers page", () => {
 
     mockLogin(orgId)
     cy.visit(`/orgs/${orgId}/customers`)
-    cy.wait(["@getOrg", "@getOrgs", "@getCustomers"])
+    cy.wait(["@useOrg", "@getOrg", "@getOrgs", "@getCustomers"])
 
     cy.contains("button", "Add customer").click()
     cy.get("#customer-name").type("Umbrella Corp")
@@ -88,7 +88,7 @@ describe("Customers page", () => {
 
     mockLogin(orgId)
     cy.visit(`/orgs/${orgId}/customers`)
-    cy.wait(["@getOrg", "@getOrgs", "@getCustomers"])
+    cy.wait(["@useOrg", "@getOrg", "@getOrgs", "@getCustomers"])
 
     cy.contains("button", "Add customer").click()
     cy.get("#customer-name").type("Bad Email")

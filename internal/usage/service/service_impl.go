@@ -10,6 +10,7 @@ import (
 	"github.com/bwmarrin/snowflake"
 	"github.com/smallbiznis/valora/internal/cloudmetrics"
 	meterdomain "github.com/smallbiznis/valora/internal/meter/domain"
+	"github.com/smallbiznis/valora/internal/orgcontext"
 	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
 	usagedomain "github.com/smallbiznis/valora/internal/usage/domain"
 	"github.com/smallbiznis/valora/pkg/db/option"
@@ -54,7 +55,7 @@ func NewService(p ServiceParam) usagedomain.Service {
 }
 
 func (s *Service) Ingest(ctx context.Context, req usagedomain.CreateIngestRequest) (*usagedomain.UsageRecord, error) {
-	orgID, err := s.parseID(req.OrganizationID, usagedomain.ErrInvalidOrganization)
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -69,28 +70,23 @@ func (s *Service) Ingest(ctx context.Context, req usagedomain.CreateIngestReques
 		return nil, usagedomain.ErrInvalidMeterCode
 	}
 
-	meter, err := s.metersvc.GetByCode(ctx, req.OrganizationID, meterCode)
+	meter, err := s.metersvc.GetByCode(ctx, meterCode)
 	if err != nil {
 		switch {
 		case errors.Is(err, meterdomain.ErrInvalidCode), errors.Is(err, meterdomain.ErrNotFound):
 			return nil, usagedomain.ErrInvalidMeterCode
-		case errors.Is(err, meterdomain.ErrInvalidOrganization):
-			return nil, usagedomain.ErrInvalidOrganization
 		default:
 			return nil, err
 		}
 	}
 
 	subscription, err := s.subSvc.GetActiveByCustomerID(ctx, subscriptiondomain.GetActiveByCustomerIDRequest{
-		OrgID:      req.OrganizationID,
 		CustomerID: req.CustomerID,
 	})
 	if err != nil {
 		switch {
 		case errors.Is(err, subscriptiondomain.ErrSubscriptionNotFound):
 			return nil, usagedomain.ErrInvalidSubscription
-		case errors.Is(err, subscriptiondomain.ErrInvalidOrganization):
-			return nil, usagedomain.ErrInvalidOrganization
 		case errors.Is(err, subscriptiondomain.ErrInvalidCustomer):
 			return nil, usagedomain.ErrInvalidCustomer
 		default:
@@ -99,7 +95,6 @@ func (s *Service) Ingest(ctx context.Context, req usagedomain.CreateIngestReques
 	}
 
 	subscriptionItem, err := s.subSvc.GetSubscriptionItem(ctx, subscriptiondomain.GetSubscriptionItemRequest{
-		OrgID:          req.OrganizationID,
 		SubscriptionID: subscription.ID.String(),
 		MeterID:        meter.ID,
 	})
@@ -111,8 +106,6 @@ func (s *Service) Ingest(ctx context.Context, req usagedomain.CreateIngestReques
 			return nil, usagedomain.ErrInvalidMeter
 		case errors.Is(err, subscriptiondomain.ErrInvalidMeterCode):
 			return nil, usagedomain.ErrInvalidMeterCode
-		case errors.Is(err, subscriptiondomain.ErrInvalidOrganization):
-			return nil, usagedomain.ErrInvalidOrganization
 		case errors.Is(err, subscriptiondomain.ErrInvalidSubscription):
 			return nil, usagedomain.ErrInvalidSubscription
 		default:
@@ -167,12 +160,12 @@ func (s *Service) Ingest(ctx context.Context, req usagedomain.CreateIngestReques
 		return nil, err
 	}
 
-	cloudmetrics.RecordUsageEvent(req.OrganizationID, meterCode)
+	cloudmetrics.RecordUsageEvent(orgID.String(), meterCode)
 	return record, nil
 }
 
 func (s *Service) List(ctx context.Context, req usagedomain.ListUsageRequest) (usagedomain.ListUsageResponse, error) {
-	orgID, err := s.parseID(req.OrganizationID, usagedomain.ErrInvalidOrganization)
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return usagedomain.ListUsageResponse{}, err
 	}
@@ -259,4 +252,12 @@ func (s *Service) parseID(value string, invalidErr error) (snowflake.ID, error) 
 		return 0, invalidErr
 	}
 	return id, nil
+}
+
+func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return 0, usagedomain.ErrInvalidOrganization
+	}
+	return snowflake.ID(orgID), nil
 }

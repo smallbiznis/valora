@@ -48,9 +48,8 @@ func (f *fakeAuthService) CreateUser(ctx context.Context, req authdomain.CreateU
 	f.createUserCalls++
 	_ = ctx
 	return &authdomain.User{
-		ID:       snowflake.ID(200),
-		Username: req.Username,
-		Email:    req.Email,
+		ID:    snowflake.ID(200),
+		Email: req.Email,
 	}, nil
 }
 
@@ -64,7 +63,8 @@ func (f *fakeAuthService) Login(ctx context.Context, req authdomain.LoginRequest
 				"user_id": "200",
 			},
 		},
-		RawToken: "session-token",
+		RawToken:  "session-token",
+		SessionID: snowflake.ID(300),
 	}, nil
 }
 
@@ -78,6 +78,14 @@ func (f *fakeAuthService) Authenticate(ctx context.Context, rawToken string) (*a
 	_ = ctx
 	_ = rawToken
 	return nil, nil
+}
+
+func (f *fakeAuthService) UpdateSessionOrgContext(ctx context.Context, sessionID snowflake.ID, activeOrgID *int64, orgIDs []int64) error {
+	_ = ctx
+	_ = sessionID
+	_ = activeOrgID
+	_ = orgIDs
+	return nil
 }
 
 func (f *fakeAuthService) ChangePassword(ctx context.Context, userID string, newPassword string) error {
@@ -129,6 +137,22 @@ func (f *fakeOrgService) GetByID(ctx context.Context, id string) (*orgdomain.Org
 	_ = ctx
 	_ = id
 	return f.org, nil
+}
+
+func (f *fakeOrgService) InviteMembers(ctx context.Context, userID snowflake.ID, orgID string, invites []orgdomain.InviteRequest) error {
+	_ = ctx
+	_ = userID
+	_ = orgID
+	_ = invites
+	return nil
+}
+
+func (f *fakeOrgService) SetBillingPreferences(ctx context.Context, userID snowflake.ID, orgID string, req orgdomain.BillingPreferencesRequest) error {
+	_ = ctx
+	_ = userID
+	_ = orgID
+	_ = req
+	return nil
 }
 
 func TestSignupHandlerOSSModeReturns404(t *testing.T) {

@@ -9,7 +9,6 @@ import (
 )
 
 type createMeterRequest struct {
-	OrganizationID  string  `json:"organization_id"`
 	Code            string  `json:"code"`
 	Name            string  `json:"name"`
 	AggregationType string  `json:"aggregation_type"`
@@ -33,12 +32,11 @@ func (s *Server) CreateMeter(c *gin.Context) {
 	}
 
 	resp, err := s.meterSvc.Create(c.Request.Context(), meterdomain.CreateRequest{
-		OrganizationID: strings.TrimSpace(req.OrganizationID),
-		Code:           strings.TrimSpace(req.Code),
-		Name:           strings.TrimSpace(req.Name),
-		Aggregation:    strings.TrimSpace(req.AggregationType),
-		Unit:           strings.TrimSpace(req.Unit),
-		Active:         req.Active,
+		Code:        strings.TrimSpace(req.Code),
+		Name:        strings.TrimSpace(req.Name),
+		Aggregation: strings.TrimSpace(req.AggregationType),
+		Unit:        strings.TrimSpace(req.Unit),
+		Active:      req.Active,
 	})
 	if err != nil {
 		AbortWithError(c, err)
@@ -49,8 +47,7 @@ func (s *Server) CreateMeter(c *gin.Context) {
 }
 
 func (s *Server) ListMeters(c *gin.Context) {
-	orgID := strings.TrimSpace(c.Query("organization_id"))
-	resp, err := s.meterSvc.List(c.Request.Context(), orgID)
+	resp, err := s.meterSvc.List(c.Request.Context())
 	if err != nil {
 		AbortWithError(c, err)
 		return
@@ -60,9 +57,8 @@ func (s *Server) ListMeters(c *gin.Context) {
 }
 
 func (s *Server) GetMeterByID(c *gin.Context) {
-	orgID := strings.TrimSpace(c.Query("organization_id"))
 	id := strings.TrimSpace(c.Param("id"))
-	resp, err := s.meterSvc.GetByID(c.Request.Context(), orgID, id)
+	resp, err := s.meterSvc.GetByID(c.Request.Context(), id)
 	if err != nil {
 		AbortWithError(c, err)
 		return
@@ -72,7 +68,6 @@ func (s *Server) GetMeterByID(c *gin.Context) {
 }
 
 func (s *Server) UpdateMeter(c *gin.Context) {
-	orgID := strings.TrimSpace(c.Query("organization_id"))
 	id := strings.TrimSpace(c.Param("id"))
 
 	var req updateMeterRequest
@@ -82,12 +77,11 @@ func (s *Server) UpdateMeter(c *gin.Context) {
 	}
 
 	resp, err := s.meterSvc.Update(c.Request.Context(), meterdomain.UpdateRequest{
-		OrganizationID: orgID,
-		ID:             id,
-		Name:           trimStringPtr(req.Name),
-		Aggregation:    trimStringPtr(req.AggregationType),
-		Unit:           trimStringPtr(req.Unit),
-		Active:         req.Active,
+		ID:          id,
+		Name:        trimStringPtr(req.Name),
+		Aggregation: trimStringPtr(req.AggregationType),
+		Unit:        trimStringPtr(req.Unit),
+		Active:      req.Active,
 	})
 	if err != nil {
 		AbortWithError(c, err)
@@ -98,10 +92,9 @@ func (s *Server) UpdateMeter(c *gin.Context) {
 }
 
 func (s *Server) DeleteMeter(c *gin.Context) {
-	orgID := strings.TrimSpace(c.Query("organization_id"))
 	id := strings.TrimSpace(c.Param("id"))
 
-	if err := s.meterSvc.Delete(c.Request.Context(), orgID, id); err != nil {
+	if err := s.meterSvc.Delete(c.Request.Context(), id); err != nil {
 		AbortWithError(c, err)
 		return
 	}

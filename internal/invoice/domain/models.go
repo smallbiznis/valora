@@ -14,6 +14,8 @@ type InvoiceStatus string
 const (
 	InvoiceStatusDraft         InvoiceStatus = "DRAFT"
 	InvoiceStatusOpen          InvoiceStatus = "OPEN"
+	InvoiceStatusPartiallyPaid InvoiceStatus = "PARTIALLY_PAID"
+	InvoiceStatuusOverdue      InvoiceStatus = "OVERDUE"
 	InvoiceStatusPaid          InvoiceStatus = "PAID"
 	InvoiceStatusVoid          InvoiceStatus = "VOID"
 	InvoiceStatusUncollectible InvoiceStatus = "UNCOLLECTIBLE"
@@ -31,6 +33,7 @@ type Invoice struct {
 	Currency       string            `gorm:"type:text;not null"`
 	IssuedAt       *time.Time        `gorm:""`
 	DueAt          *time.Time        `gorm:""`
+	VoidedAt       *time.Time        `gorm:""`
 	PaidAt         *time.Time        `gorm:""`
 	Metadata       datatypes.JSONMap `gorm:"type:jsonb;not null;default:'{}'"`
 	CreatedAt      time.Time         `gorm:"not null;default:CURRENT_TIMESTAMP"`
@@ -39,6 +42,42 @@ type Invoice struct {
 
 // TableName sets the database table name.
 func (Invoice) TableName() string { return "invoices" }
+
+// RecalculateState updates the invoice status based on the total paid amount and current time.
+func (i *Invoice) RecalculateState(now time.Time, totalPaid int64) {
+	// VOID is terminal
+	if i.VoidedAt != nil {
+		i.Status = InvoiceStatusVoid
+		return
+	}
+
+	// Fully paid
+	if totalPaid >= i.TotalAmount {
+		i.Status = InvoiceStatusPaid
+		if i.PaidAt == nil {
+			i.PaidAt = &now
+		}
+		return
+	}
+
+	// Partial payment
+	if totalPaid > 0 {
+		if i.DueAt != nil && now.After(*i.DueAt) {
+			i.Status = InvoiceStatuusOverdue
+		} else {
+			i.Status = InvoiceStatusPartiallyPaid
+		}
+		return
+	}
+
+	// No payment yet
+	if i.DueAt != nil && now.After(*i.DueAt) {
+		i.Status = InvoiceStatuusOverdue
+		return
+	}
+
+	i.Status = InvoiceStatusOpen
+}
 
 // InvoiceItem represents a line on an invoice.
 type InvoiceItem struct {

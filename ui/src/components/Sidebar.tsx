@@ -4,7 +4,7 @@ export default function Sidebar({ orgId }: { orgId: string }) {
   const base = `/orgs/${orgId}`;
 
   return (
-    <aside className="w-64 bg-slate-900 text-white">
+    <aside className="w-64 bg-bg-surface text-text-primary">
       <div className="p-4 font-bold text-xl">Valora</div>
       <nav className="flex flex-col gap-1 p-2">
         <NavLink to={`${base}/dashboard`}>Dashboard</NavLink>

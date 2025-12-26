@@ -2,9 +2,9 @@ package server
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
+	authdomain "github.com/smallbiznis/valora/internal/auth/domain"
 	signupdomain "github.com/smallbiznis/valora/internal/signup/domain"
 )
 
@@ -41,12 +41,34 @@ func (s *Server) Signup(c *gin.Context) {
 	}
 
 	if result.Session != nil && result.RawToken != "" {
-		maxAge := int(time.Until(result.ExpiresAt).Seconds())
-		if maxAge < 0 {
-			maxAge = 0
-		}
-		s.setSessionCookie(c, result.RawToken, maxAge)
+		s.sessions.Set(c, result.RawToken, result.ExpiresAt)
+		s.enrichSessionFromToken(c, result.Session, result.RawToken)
 	}
 
 	c.JSON(http.StatusOK, result.Session)
+}
+
+func (s *Server) enrichSessionFromToken(c *gin.Context, view *authdomain.SessionView, rawToken string) {
+	if view == nil || rawToken == "" {
+		return
+	}
+
+	session, err := s.authsvc.Authenticate(c.Request.Context(), rawToken)
+	if err != nil || session == nil {
+		return
+	}
+
+	orgIDs, err := s.loadUserOrgIDs(c.Request.Context(), session.UserID)
+	if err != nil {
+		return
+	}
+
+	if err := s.authsvc.UpdateSessionOrgContext(c.Request.Context(), session.ID, nil, orgIDs); err != nil {
+		return
+	}
+
+	if view.Metadata == nil {
+		view.Metadata = map[string]any{}
+	}
+	view.Metadata["org_ids"] = toOrgIDStrings(orgIDs)
 }

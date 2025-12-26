@@ -61,3 +61,37 @@ func (r *repository) ListOrganizationsByUser(ctx context.Context, userID snowfla
 
 	return items, nil
 }
+
+func (r *repository) IsMember(ctx context.Context, orgID snowflake.ID, userID snowflake.ID) (bool, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).
+		Model(&domain.OrganizationMember{}).
+		Where("org_id = ? AND user_id = ?", orgID, userID).
+		Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (r *repository) CreateInvites(ctx context.Context, invites []domain.OrganizationInvite) error {
+	if len(invites) == 0 {
+		return nil
+	}
+	return r.db.WithContext(ctx).Create(&invites).Error
+}
+
+func (r *repository) UpsertBillingPreferences(ctx context.Context, prefs domain.OrganizationBillingPreferences) error {
+	return r.db.WithContext(ctx).Exec(
+		`INSERT INTO organization_billing_preferences (org_id, currency, timezone, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?)
+		 ON CONFLICT (org_id)
+		 DO UPDATE SET currency = EXCLUDED.currency,
+		               timezone = EXCLUDED.timezone,
+		               updated_at = EXCLUDED.updated_at`,
+		prefs.OrgID,
+		prefs.Currency,
+		prefs.Timezone,
+		prefs.CreatedAt,
+		prefs.UpdatedAt,
+	).Error
+}

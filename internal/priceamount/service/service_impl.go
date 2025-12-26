@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
+	"github.com/smallbiznis/valora/internal/orgcontext"
 	pricedomain "github.com/smallbiznis/valora/internal/price/domain"
 	priceamountdomain "github.com/smallbiznis/valora/internal/priceamount/domain"
 	"go.uber.org/fx"
@@ -43,7 +44,7 @@ func New(p Params) priceamountdomain.Service {
 }
 
 func (s *Service) Create(ctx context.Context, req priceamountdomain.CreateRequest) (*priceamountdomain.Response, error) {
-	orgID, err := s.parseOrganizationID(req.OrganizationID)
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -115,13 +116,25 @@ func (s *Service) Create(ctx context.Context, req priceamountdomain.CreateReques
 	return s.toResponse(entity), nil
 }
 
-func (s *Service) List(ctx context.Context, organizationID string) ([]priceamountdomain.Response, error) {
-	orgID, err := s.parseOrganizationID(organizationID)
+func (s *Service) List(ctx context.Context, req priceamountdomain.ListPriceAmountRequest) ([]priceamountdomain.Response, error) {
+	filter := priceamountdomain.PriceAmount{}
+
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
+	filter.OrgID = orgID
 
-	items, err := s.repo.List(ctx, s.db, orgID)
+	var priceID snowflake.ID
+	if req.PriceID != "" {
+		priceID, err = parseID(req.PriceID)
+		if err != nil {
+			return nil, priceamountdomain.ErrInvalidPrice
+		}
+		filter.PriceID = priceID
+	}
+
+	items, err := s.repo.List(ctx, s.db, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -134,13 +147,13 @@ func (s *Service) List(ctx context.Context, organizationID string) ([]priceamoun
 	return resp, nil
 }
 
-func (s *Service) Get(ctx context.Context, organizationID string, id string) (*priceamountdomain.Response, error) {
-	orgID, err := s.parseOrganizationID(organizationID)
+func (s *Service) Get(ctx context.Context, req priceamountdomain.GetPriceAmountByID) (*priceamountdomain.Response, error) {
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	amountID, err := parseID(id)
+	amountID, err := parseID(req.ID)
 	if err != nil {
 		return nil, priceamountdomain.ErrInvalidID
 	}
@@ -156,12 +169,12 @@ func (s *Service) Get(ctx context.Context, organizationID string, id string) (*p
 	return s.toResponse(entity), nil
 }
 
-func (s *Service) parseOrganizationID(value string) (snowflake.ID, error) {
-	orgID, err := snowflake.ParseString(strings.TrimSpace(value))
-	if err != nil || orgID == 0 {
+func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
 		return 0, priceamountdomain.ErrInvalidOrganization
 	}
-	return orgID, nil
+	return snowflake.ID(orgID), nil
 }
 
 func (s *Service) priceExists(ctx context.Context, orgID, priceID snowflake.ID) (bool, error) {

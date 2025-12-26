@@ -21,20 +21,20 @@ import {
 import { Input } from "@/components/ui/input"
 
 type LoginFormProps = {
-  onSubmit: (payload: { username: string; password: string }) => Promise<void>
+  onSubmit: (payload: { email: string; password: string }) => Promise<void>
   isLoading?: boolean
   error?: string | null
   showSignup?: boolean
 } & Omit<ComponentPropsWithoutRef<"div">, "onSubmit">
 
 export function LoginForm({ className, onSubmit, isLoading, error, showSignup, ...props }: LoginFormProps) {
-  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const canSignup = showSignup ?? true
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
-    await onSubmit({ username, password })
+    await onSubmit({ email, password })
   }
 
   return (
@@ -50,19 +50,20 @@ export function LoginForm({ className, onSubmit, isLoading, error, showSignup, .
           <form onSubmit={handleSubmit} className="space-y-4">
             <FieldGroup>
               {error && <Alert variant="destructive">{error}</Alert>}
-              <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
-                Continue with username
+              <FieldSeparator className="*:data-[slot=field-separator-content]:bg-bg-surface">
+                Continue with email
               </FieldSeparator>
               <Field>
-                <FieldLabel htmlFor="username">Username</FieldLabel>
+                <FieldLabel htmlFor="email">Email</FieldLabel>
                 <Input
-                  id="username"
-                  data-testid="login-username"
-                  type="text"
-                  placeholder="admin"
+                  id="email"
+                  data-testid="login-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="admin@valora.cloud"
                   required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </Field>
               <Field>
@@ -90,7 +91,7 @@ export function LoginForm({ className, onSubmit, isLoading, error, showSignup, .
                 </Button>
                 <FieldDescription className="text-center" hidden={!canSignup}>
                   Don&apos;t have an account?{" "}
-                  <Link to="/signup" className="text-primary hover:underline">
+                  <Link to="/signup" className="text-accent-primary hover:underline">
                     Sign up
                   </Link>
                 </FieldDescription>

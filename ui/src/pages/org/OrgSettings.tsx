@@ -14,7 +14,7 @@ export default function OrgSettings() {
         <CardContent className="space-y-2">
           <div className="text-sm">
             <div className="font-medium">{org?.name}</div>
-            <div className="text-muted-foreground">ID: {org?.id}</div>
+            <div className="text-text-muted">ID: {org?.id}</div>
           </div>
         </CardContent>
       </Card>

@@ -8,12 +8,11 @@ import (
 
 type Service interface {
 	Create(ctx context.Context, req CreateRequest) (*Response, error)
-	List(ctx context.Context, organizationID string) ([]Response, error)
-	Get(ctx context.Context, organizationID string, id string) (*Response, error)
+	List(ctx context.Context) ([]Response, error)
+	Get(ctx context.Context, id string) (*Response, error)
 }
 
 type CreateRequest struct {
-	OrganizationID  string         `json:"organization_id"`
 	PriceID         string         `json:"price_id"`
 	TierMode        int16          `json:"tier_mode"`
 	StartQuantity   float64        `json:"start_quantity"`

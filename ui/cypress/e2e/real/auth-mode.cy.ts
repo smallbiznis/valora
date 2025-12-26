@@ -15,8 +15,8 @@ describe("OSS mode login and signup", () => {
 
   it("redirects direct signup visits to login", () => {
     cy.visit("/signup")
-    const username = `e2e-oss-${Date.now()}`
-    cy.get('input[id="username"]').type(username)
+    const email = `e2e-oss-${Date.now()}@example.test`
+    cy.get('input[id="email"]').type(email)
     cy.get('input[id="password"]').type("password123")
     cy.contains("button", "Create Account").click()
 
@@ -42,8 +42,8 @@ describe("Cloud mode login and signup", () => {
   it("allows signup and redirects to organizations", () => {
     cy.visit("/signup")
 
-    const username = `e2e-${Date.now()}`
-    cy.get('input[id="username"]').type(username)
+    const email = `e2e-${Date.now()}@example.test`
+    cy.get('input[id="email"]').type(email)
     cy.get('input[id="password"]').type("password123")
     cy.contains("button", "Create Account").click()
 

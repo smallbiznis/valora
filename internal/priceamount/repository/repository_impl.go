@@ -52,14 +52,9 @@ func (r *repo) FindByID(ctx context.Context, db *gorm.DB, orgID, id snowflake.ID
 	return &amount, nil
 }
 
-func (r *repo) List(ctx context.Context, db *gorm.DB, orgID snowflake.ID) ([]priceamountdomain.PriceAmount, error) {
+func (r *repo) List(ctx context.Context, db *gorm.DB, f priceamountdomain.PriceAmount) ([]priceamountdomain.PriceAmount, error) {
 	var items []priceamountdomain.PriceAmount
-	err := db.WithContext(ctx).Raw(
-		`SELECT id, org_id, price_id, meter_id, currency, unit_amount_cents, minimum_amount_cents, maximum_amount_cents,
-		 metadata, created_at, updated_at
-		 FROM price_amounts WHERE org_id = ? ORDER BY created_at ASC`,
-		orgID,
-	).Scan(&items).Error
+	err := db.WithContext(ctx).Model(&priceamountdomain.PriceAmount{}).Where(f).Find(&items).Error
 	if err != nil {
 		return nil, err
 	}

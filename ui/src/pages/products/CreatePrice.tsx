@@ -168,7 +168,7 @@ export default function CreatePrice() {
     setProductError(null)
 
     api
-      .get(`/products/${productId}`, { params: { organization_id: orgId } })
+      .get(`/products/${productId}`)
       .then((response) => {
         if (!isMounted) return
         setProduct(response.data?.data ?? null)
@@ -200,7 +200,7 @@ export default function CreatePrice() {
     setMetersError(null)
 
     api
-      .get("/meters", { params: { organization_id: orgId } })
+      .get("/meters")
       .then((response) => {
         if (!isMounted) return
         setMeters(response.data?.data ?? [])
@@ -392,7 +392,7 @@ export default function CreatePrice() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">Add price</h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-text-muted text-sm">
             Attach another price to {productLabel}.
           </p>
         </div>
@@ -404,12 +404,12 @@ export default function CreatePrice() {
       </div>
 
       {productLoading && (
-        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+        <div className="flex items-center gap-2 text-text-muted text-sm">
           <Spinner className="size-4" />
           Loading product...
         </div>
       )}
-      {productError && <div className="text-destructive text-sm">{productError}</div>}
+      {productError && <div className="text-status-error text-sm">{productError}</div>}
 
       {orchestrationError && (
         <Alert variant="destructive">
@@ -541,9 +541,9 @@ export default function CreatePrice() {
                 />
               </div>
 
-              <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+              <div className="rounded-lg border bg-bg-subtle/30 p-3 text-xs text-text-muted">
                 Price code preview:{" "}
-                <span className="font-medium text-foreground">{priceCodePreview}</span>
+                <span className="font-medium text-text-primary">{priceCodePreview}</span>
               </div>
 
               <div className="space-y-4 rounded-lg border p-4">
@@ -552,7 +552,7 @@ export default function CreatePrice() {
                     <p className="text-sm font-medium">
                       {isUsageBased ? "Usage rates" : "Unit price"}
                     </p>
-                    <p className="text-muted-foreground text-xs">
+                    <p className="text-text-muted text-xs">
                       {isUsageBased
                         ? "This price is charged based on usage measured by a meter."
                         : "Set the amount charged per billing interval."}
@@ -563,16 +563,16 @@ export default function CreatePrice() {
                 {isUsageBased ? (
                   <div className="space-y-4">
                     {metersLoading && (
-                      <p className="text-muted-foreground text-sm">Loading meters...</p>
+                      <p className="text-text-muted text-sm">Loading meters...</p>
                     )}
                     {metersError && <Alert variant="destructive">{metersError}</Alert>}
                     {!metersLoading && !metersError && meters.length === 0 && (
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-text-muted text-sm">
                         No meters found. Create a meter first.
                       </p>
                     )}
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-muted-foreground text-xs">
+                      <p className="text-text-muted text-xs">
                         Add one or more meter rates for usage-based pricing.
                       </p>
                       <Button
@@ -595,7 +595,7 @@ export default function CreatePrice() {
                     </div>
                     {form.formState.errors.usage?.rates &&
                       !Array.isArray(form.formState.errors.usage.rates) && (
-                        <p className="text-destructive text-sm">
+                        <p className="text-status-error text-sm">
                           {(form.formState.errors.usage.rates as { message?: string })
                             ?.message ?? "Check the meter rates."}
                         </p>
@@ -775,7 +775,7 @@ export default function CreatePrice() {
             <Button type="submit" disabled={submitDisabled}>
               {isSubmitting ? "Creating..." : "Create price"}
             </Button>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-text-muted text-xs">
               Price and amount are created in sequence.
             </p>
           </div>

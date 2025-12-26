@@ -8,7 +8,6 @@ import (
 )
 
 type ListCustomerRequest struct {
-	OrgID     string
 	PageToken string
 	PageSize  int32
 }
@@ -19,14 +18,12 @@ type ListCustomerResponse struct {
 }
 
 type CreateCustomerRequest struct {
-	OrganizationID string
-	Name           string
-	Email          string
+	Name  string
+	Email string
 }
 
 type GetCustomerRequest struct {
-	ID    string
-	OrgID string
+	ID string
 }
 
 type Service interface {

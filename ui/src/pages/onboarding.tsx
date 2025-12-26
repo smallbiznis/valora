@@ -245,7 +245,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-bg-subtle/40 px-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -263,7 +263,7 @@ export default function OnboardingPage() {
                 {currentStep === 4 && "You can adjust settings anytime in the console."}
               </CardDescription>
             </div>
-            <div className="text-sm text-muted-foreground">Step {currentStep} of 4</div>
+            <div className="text-sm text-text-muted">Step {currentStep} of 4</div>
           </div>
           <Separator className="mt-4" />
           <Progress value={progress} />

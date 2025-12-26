@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom"
 
+import { api } from "@/api/client"
 import { useAuthStore } from "@/stores/authStore"
 import { useOrgStore } from "@/stores/orgStore"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -21,6 +22,16 @@ export function SiteHeader() {
   const logout = useAuthStore((s) => s.logout)
   const orgName = currentOrg?.name ?? "Workspace"
   const userInitial = orgName.slice(0, 1).toUpperCase()
+
+  const handleOrgSwitch = async (org: { id: string; name: string }) => {
+    try {
+      await api.post(`/user/using/${org.id}`)
+      setCurrentOrg(org)
+      navigate(`/orgs/${org.id}/dashboard`)
+    } catch (err) {
+      console.error("Failed to switch org", err)
+    }
+  }
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -44,8 +55,7 @@ export function SiteHeader() {
                 <DropdownMenuItem
                   key={org.id}
                   onSelect={() => {
-                    setCurrentOrg(org)
-                    navigate(`/orgs/${org.id}/dashboard`)
+                    void handleOrgSwitch(org)
                   }}
                 >
                   {org.name}

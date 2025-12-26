@@ -3,12 +3,10 @@ package server
 import (
 	"context"
 	"net/http"
-	"os"
-	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"github.com/smallbiznis/valora/internal/auth"
 	authdomain "github.com/smallbiznis/valora/internal/auth/domain"
+	"github.com/smallbiznis/valora/internal/auth/session"
 	"github.com/smallbiznis/valora/internal/billingprovisioning"
 	"github.com/smallbiznis/valora/internal/cloudmetrics"
 	"github.com/smallbiznis/valora/internal/config"
@@ -30,7 +28,6 @@ import (
 	productdomain "github.com/smallbiznis/valora/internal/product/domain"
 	"github.com/smallbiznis/valora/internal/reference"
 	referencedomain "github.com/smallbiznis/valora/internal/reference/domain"
-	"github.com/smallbiznis/valora/internal/signup"
 	signupdomain "github.com/smallbiznis/valora/internal/signup/domain"
 	"github.com/smallbiznis/valora/internal/subscription"
 	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
@@ -44,7 +41,6 @@ var Module = fx.Module("http.server",
 	config.Module,
 	cloudmetrics.Module,
 	fx.Provide(registerGin),
-	auth.Module,
 	billingprovisioning.Module,
 	customer.Module,
 	invoice.Module,
@@ -55,7 +51,6 @@ var Module = fx.Module("http.server",
 	pricetier.Module,
 	product.Module,
 	reference.Module,
-	signup.Module,
 	subscription.Module,
 	usage.Module,
 	fx.Invoke(NewServer),
@@ -95,6 +90,7 @@ type Server struct {
 	cfg             config.Config
 	db              *gorm.DB
 	authsvc         authdomain.Service
+	sessions        *session.Manager
 	invoiceSvc      invoicedomain.Service
 	meterSvc        meterdomain.Service
 	organizationSvc organizationdomain.Service
@@ -106,7 +102,7 @@ type Server struct {
 	refrepo         referencedomain.Repository
 	signupsvc       signupdomain.Service
 	subscriptionSvc subscriptiondomain.Service
-	usagesvc usagedomain.Service
+	usagesvc        usagedomain.Service
 }
 
 type ServerParams struct {
@@ -115,7 +111,6 @@ type ServerParams struct {
 	Gin             *gin.Engine
 	Cfg             config.Config
 	DB              *gorm.DB
-	Authsvc         authdomain.Service
 	InvoiceSvc      invoicedomain.Service
 	MeterSvc        meterdomain.Service
 	OrganizationSvc organizationdomain.Service
@@ -125,9 +120,8 @@ type ServerParams struct {
 	PriceTierSvc    pricetierdomain.Service
 	ProductSvc      productdomain.Service
 	Refrepo         referencedomain.Repository
-	Signupsvc       signupdomain.Service
 	SubscriptionSvc subscriptiondomain.Service
-	Usagesvc usagedomain.Service
+	Usagesvc        usagedomain.Service
 }
 
 func NewServer(p ServerParams) *Server {
@@ -135,7 +129,6 @@ func NewServer(p ServerParams) *Server {
 		engine:          p.Gin,
 		cfg:             p.Cfg,
 		db:              p.DB,
-		authsvc:         p.Authsvc,
 		invoiceSvc:      p.InvoiceSvc,
 		meterSvc:        p.MeterSvc,
 		organizationSvc: p.OrganizationSvc,
@@ -145,27 +138,13 @@ func NewServer(p ServerParams) *Server {
 		priceTierSvc:    p.PriceTierSvc,
 		productSvc:      p.ProductSvc,
 		refrepo:         p.Refrepo,
-		signupsvc:       p.Signupsvc,
 		subscriptionSvc: p.SubscriptionSvc,
-		usagesvc: p.Usagesvc,
+		usagesvc:        p.Usagesvc,
 	}
 
-	svc.registerAuthRoutes()
 	svc.registerAPIRoutes()
-	svc.registerUIRoutes()
-	svc.registerFallback()
 
 	return svc
-}
-
-func (s *Server) registerAuthRoutes() {
-	auth := s.engine.Group("/auth")
-	{
-		auth.POST("/login", s.Login)
-		auth.POST("/signup", s.Signup)
-		auth.POST("/logout", s.Logout)
-		auth.POST("/forgot-password", s.Forgot)
-	}
 }
 
 func (s *Server) registerAPIRoutes() {
@@ -176,7 +155,7 @@ func (s *Server) registerAPIRoutes() {
 	// --- global middlewares ---
 	secured.Use(RequestID())
 	secured.Use(s.AuthRequired())
-	secured.Use(OrgContext())
+	secured.Use(s.OrgContext())
 
 	secured.GET("/countries", s.ListCountries)
 	secured.GET("/timezones", s.ListTimezones)
@@ -221,18 +200,12 @@ func (s *Server) registerAPIRoutes() {
 	secured.POST("/subscriptions/:id/cancel", s.CancelSubscription)
 
 	// -------- Usage / Rating --------
-	api.POST("/usage", s.IngestUsage)
+	secured.POST("/usage", s.IngestUsage)
 	secured.POST("/rating/run", s.RunRatingJob)
 
 	// -------- Invoices --------
 	secured.GET("/invoices", s.ListInvoices)
 	secured.GET("/invoices/:id", s.GetInvoiceByID)
-
-	// -------- Organizations --------
-	secured.POST("/organizations", s.CreateOrganization)
-	secured.GET("/organizations", s.ListOrganizations)
-	secured.GET("/orgs/:id", s.GetOrg)
-	secured.GET("/me/orgs", s.MeOrg)
 
 	// -------- Customers --------
 	secured.GET("/customers", s.ListCustomers)
@@ -242,97 +215,4 @@ func (s *Server) registerAPIRoutes() {
 	if s.cfg.Environment != "production" {
 		secured.POST("/test/cleanup", s.TestCleanup)
 	}
-}
-
-func (s *Server) registerUIRoutes() {
-	r := s.engine.Group("/")
-
-	// --- middlewares ---
-	r.Use(RequestID())
-
-	// ---- SPA entry points ----
-	r.GET("/", serveIndex)
-	r.GET("/login", serveIndex)
-
-	r.GET("/logout", serveIndex)
-
-	r.GET("/login/:name", serveIndex)
-	r.GET("/invite/:code", serveIndex)
-	r.POST("/invite/:code", func(c *gin.Context) {})
-
-	me := r.Group("/me", s.AuthRequired())
-	{
-		me.GET("/orgs", serveIndex)
-	}
-
-	orgs := r.Group("/orgs", s.AuthRequired())
-	{
-		// orgs.Use(AuthRequired()) // login required
-		// orgs.Use(OrgContext())   // inject org to context
-		orgs.GET("", serveIndex)
-
-		org := orgs.Group("/:id")
-		{
-			products := org.Group("/products")
-			{
-				products.GET("", serveIndex)
-			}
-
-			customers := org.Group("/customers")
-			{
-				customers.GET("", serveIndex)
-			}
-
-			prices := org.Group("/prices")
-			{
-				prices.GET("", serveIndex)
-			}
-
-			subscriptions := org.Group("/subscriptions")
-			{
-				subscriptions.GET("", serveIndex)
-			}
-
-			invoices := org.Group("/invoices")
-			{
-				invoices.GET("", serveIndex)
-			}
-
-			settings := org.Group("/settings", RequireRole("org_admin"))
-			{
-				settings.GET("/", serveIndex)
-			}
-		}
-	}
-}
-
-func (s *Server) registerFallback() {
-	s.engine.NoRoute(func(c *gin.Context) {
-		// static assets (vite)
-		if fileExists("./public", c.Request.URL.Path) {
-			c.File("./public" + c.Request.URL.Path)
-			return
-		}
-
-		// SPA fallback
-		c.File("./public/index.html")
-	})
-}
-
-func fileExists(publicDir, reqPath string) bool {
-	clean := filepath.Clean(reqPath)
-
-	// prevent path traversal
-	if clean == "." || clean == "/" || clean == ".." {
-		return false
-	}
-
-	fullPath := filepath.Join(publicDir, clean)
-
-	info, err := os.Stat(fullPath)
-	if err != nil {
-		return false
-	}
-
-	return !info.IsDir()
 }

@@ -9,7 +9,6 @@ import (
 )
 
 type ListSubscriptionRequest struct {
-	OrgID     string
 	Status    string
 	PageToken string
 	PageSize  int32
@@ -26,19 +25,18 @@ type CreateSubscriptionItemRequest struct {
 }
 
 type CreateSubscriptionRequest struct {
-	OrganizationID string                          `json:"organization_id"`
 	CustomerID     string                          `json:"customer_id"`
+	CollectionMode SubscriptionCollectionMode      `json:"collection_mode"`
 	Items          []CreateSubscriptionItemRequest `json:"items"`
+	TrialDays      *int                            `json:"trial_days,omitempty"`
 	Metadata       map[string]any                  `json:"metadata,omitempty"`
 }
 
 type GetActiveByCustomerIDRequest struct {
-	OrgID      string
 	CustomerID string
 }
 
 type GetSubscriptionItemRequest struct {
-	OrgID          string
 	SubscriptionID string
 	MeterID        string
 	MeterCode      string
@@ -80,8 +78,10 @@ type CreateSubscriptionResponse struct {
 var (
 	ErrInvalidOrganization      = errors.New("invalid_organization")
 	ErrInvalidCustomer          = errors.New("invalid_customer")
+	ErrInvalidTrialDays         = errors.New("invalid_trial_days")
 	ErrInvalidSubscription      = errors.New("invalid_subscription")
 	ErrInvalidMeterID           = errors.New("invalid_meter_id")
+	ErrUnsupportedPricingModel  = errors.New("unsupported_pricing_model")
 	ErrInvalidMeterCode         = errors.New("invalid_meter_code")
 	ErrInvalidStatus            = errors.New("invalid_status")
 	ErrInvalidCollectionMode    = errors.New("invalid_collection_mode")

@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"net/mail"
 	"strings"
 	"time"
 
@@ -72,12 +74,12 @@ func (s *service) Create(ctx context.Context, userID snowflake.ID, req domain.Cr
 	now := time.Now().UTC()
 	orgID := s.genID.Generate()
 	org := domain.Organization{
-		ID:              orgID,
-		Name:            name,
-		Slug: slug.Make(name),
-		CountryCode:     countryCode,
-		TimezoneName:    timezoneName,
-		CreatedAt:       now,
+		ID:           orgID,
+		Name:         name,
+		Slug:         slug.Make(name),
+		CountryCode:  countryCode,
+		TimezoneName: timezoneName,
+		CreatedAt:    now,
 	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -162,6 +164,122 @@ func (s *service) GetByID(ctx context.Context, id string) (*domain.OrganizationR
 	}, nil
 }
 
+func (s *service) InviteMembers(ctx context.Context, userID snowflake.ID, orgID string, invites []domain.InviteRequest) error {
+	if userID == 0 {
+		return domain.ErrInvalidUser
+	}
+	if len(invites) == 0 {
+		return nil
+	}
+
+	rawOrgID := strings.TrimSpace(orgID)
+	if rawOrgID == "" {
+		return domain.ErrInvalidOrganization
+	}
+	parsedOrgID, err := snowflake.ParseString(rawOrgID)
+	if err != nil {
+		return domain.ErrInvalidOrganization
+	}
+
+	org, err := s.getOrganization(ctx, parsedOrgID)
+	if err != nil {
+		return err
+	}
+
+	isMember, err := s.repo.IsMember(ctx, parsedOrgID, userID)
+	if err != nil {
+		return err
+	}
+	if !isMember {
+		return domain.ErrForbidden
+	}
+
+	now := time.Now().UTC()
+	rows := make([]domain.OrganizationInvite, 0, len(invites))
+	for _, invite := range invites {
+		email, err := normalizeEmail(invite.Email)
+		if err != nil {
+			return domain.ErrInvalidEmail
+		}
+		role := normalizeRole(invite.Role)
+		if !isValidRole(role) {
+			return domain.ErrInvalidRole
+		}
+		rows = append(rows, domain.OrganizationInvite{
+			ID:        s.genID.Generate(),
+			OrgID:     org.ID,
+			Email:     email,
+			Role:      role,
+			Status:    "pending",
+			InvitedBy: userID,
+			CreatedAt: now,
+		})
+	}
+
+	return s.repo.CreateInvites(ctx, rows)
+}
+
+func (s *service) SetBillingPreferences(ctx context.Context, userID snowflake.ID, orgID string, req domain.BillingPreferencesRequest) error {
+	if userID == 0 {
+		return domain.ErrInvalidUser
+	}
+
+	rawOrgID := strings.TrimSpace(orgID)
+	if rawOrgID == "" {
+		return domain.ErrInvalidOrganization
+	}
+	parsedOrgID, err := snowflake.ParseString(rawOrgID)
+	if err != nil {
+		return domain.ErrInvalidOrganization
+	}
+
+	org, err := s.getOrganization(ctx, parsedOrgID)
+	if err != nil {
+		return err
+	}
+
+	isMember, err := s.repo.IsMember(ctx, parsedOrgID, userID)
+	if err != nil {
+		return err
+	}
+	if !isMember {
+		return domain.ErrForbidden
+	}
+
+	currency := strings.ToUpper(strings.TrimSpace(req.Currency))
+	if currency == "" {
+		return domain.ErrInvalidCurrency
+	}
+	currencyOK, err := s.currencyExists(ctx, currency)
+	if err != nil {
+		return err
+	}
+	if !currencyOK {
+		return domain.ErrInvalidCurrency
+	}
+
+	timezone := strings.TrimSpace(req.Timezone)
+	if timezone == "" {
+		return domain.ErrInvalidTimezone
+	}
+	timezoneOK, err := s.timezoneAllowed(ctx, org.CountryCode, timezone)
+	if err != nil {
+		return err
+	}
+	if !timezoneOK {
+		return domain.ErrInvalidTimezone
+	}
+
+	now := time.Now().UTC()
+	return s.repo.UpsertBillingPreferences(ctx, domain.OrganizationBillingPreferences{
+		OrgID:     org.ID,
+		Currency:  currency,
+		Timezone:  timezone,
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
+}
+
 func (s *service) countryExists(ctx context.Context, code string) (bool, error) {
 	countries, err := s.ref.ListCountries(ctx)
 	if err != nil {
@@ -207,11 +325,11 @@ func (s *service) emitOrganizationCreated(ctx context.Context, org domain.Organi
 	}
 
 	payload := map[string]string{
-		"organization_id":  org.ID.String(),
-		"owner_user_id":    ownerUserID.String(),
-		"country_code":     org.CountryCode,
-		"timezone_name":    org.TimezoneName,
-		"created_at":       org.CreatedAt.Format(time.RFC3339),
+		"organization_id": org.ID.String(),
+		"owner_user_id":   ownerUserID.String(),
+		"country_code":    org.CountryCode,
+		"timezone_name":   org.TimezoneName,
+		"created_at":      org.CreatedAt.Format(time.RFC3339),
 	}
 
 	data, err := json.Marshal(payload)
@@ -222,5 +340,37 @@ func (s *service) emitOrganizationCreated(ctx context.Context, org domain.Organi
 
 	if err := s.publisher.Publish(ctx, event.OrganizationCreatedTopic, data); err != nil {
 		zap.L().Warn("failed to publish organization.created", zap.Error(err))
+	}
+}
+
+func (s *service) getOrganization(ctx context.Context, orgID snowflake.ID) (*domain.Organization, error) {
+	var org domain.Organization
+	if err := s.db.WithContext(ctx).First(&org, "id = ?", orgID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrInvalidOrganization
+		}
+		return nil, err
+	}
+	return &org, nil
+}
+
+func normalizeEmail(raw string) (string, error) {
+	addr, err := mail.ParseAddress(strings.TrimSpace(raw))
+	if err != nil {
+		return "", err
+	}
+	return strings.ToLower(strings.TrimSpace(addr.Address)), nil
+}
+
+func normalizeRole(raw string) string {
+	return strings.ToUpper(strings.TrimSpace(raw))
+}
+
+func isValidRole(role string) bool {
+	switch role {
+	case domain.RoleOwner, domain.RoleAdmin, domain.RoleMember:
+		return true
+	default:
+		return false
 	}
 }

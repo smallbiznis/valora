@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -10,10 +11,13 @@ import (
 
 // Config holds application configuration.
 type Config struct {
-	AppName      string
-	AppVersion   string
-	Mode         string
-	Environment  string
+	AppName          string
+	AppVersion       string
+	Mode             string
+	Environment      string
+	AuthCookieSecure bool
+	DefaultOrgID     int64
+	AuthJWTSecret    string
 
 	OTLPEndpoint string
 
@@ -30,12 +34,15 @@ type Config struct {
 	DBMaxOpenConn     int
 	DBConnMaxLifetime int
 	DBConnMaxIdleTime int
+
+	OAuth2ClientID     string
+	OAuth2ClientSecret string
 }
 
 type CloudConfig struct {
-	OrganizationID string
+	OrganizationID   string
 	OrganizationName string
-	Metrics        CloudMetricsConfig
+	Metrics          CloudMetricsConfig
 }
 
 type CloudMetricsConfig struct {
@@ -50,14 +57,23 @@ func Load() Config {
 	_ = godotenv.Load()
 
 	mode := normalizeMode(getenv("APP_MODE", ModeOSS))
+	environment := getenv("ENVIRONMENT", "development")
+	authCookieSecure := environment == "production"
+	if !authCookieSecure {
+		authCookieSecure = getenvBool("AUTH_COOKIE_SECURE", false)
+	}
+
 	cfg := Config{
-		AppName:      getenv("APP_SERVICE", "valora"),
-		AppVersion:   getenv("APP_VERSION", "0.1.0"),
-		Mode:         mode,
-		Environment:  getenv("ENVIRONMENT", "development"),
-		OTLPEndpoint: getenv("OTLP_ENDPOINT", "localhost:4317"),
+		AppName:          getenv("APP_SERVICE", "valora"),
+		AppVersion:       getenv("APP_VERSION", "0.1.0"),
+		Mode:             mode,
+		Environment:      environment,
+		AuthCookieSecure: authCookieSecure,
+		DefaultOrgID:     getenvInt64("DEFAULT_ORG", 0),
+		AuthJWTSecret:    strings.TrimSpace(getenv("AUTH_JWT_SECRET", "")),
+		OTLPEndpoint:     getenv("OTLP_ENDPOINT", "localhost:4317"),
 		Cloud: CloudConfig{
-			OrganizationID: strings.TrimSpace(getenv("CLOUD_ORGANIZATION_ID", "")),
+			OrganizationID:   strings.TrimSpace(getenv("CLOUD_ORGANIZATION_ID", "")),
 			OrganizationName: getenv("CLOUD_ORGANIZATION_NAME", ""),
 			Metrics: CloudMetricsConfig{
 				Enabled:   getenvBool("CLOUD_METRICS_ENABLED", true),
@@ -66,21 +82,23 @@ func Load() Config {
 				AuthToken: strings.TrimSpace(getenv("CLOUD_METRICS_AUTH_TOKEN", "")),
 			},
 		},
-		DBType:       getenv("DATABASE_TYPE", "postgres"),
-		DBHost:       getenv("DATABASE_HOST", "localhost"),
-		DBPort:       getenv("DATABASE_PORT", "5433"),
-		DBName:       getenv("DATABASE_NAME", "postgres"),
-		DBUser:       getenv("DATABASE_USER", "postgres"),
-		DBPassword:   getenv("DATABASE_PASSWORD", "35411231"),
-		DBSSLMode:    getenv("DATABASE_SSLMODE", "disable"),
+		DBType:             getenv("DATABASE_TYPE", "postgres"),
+		DBHost:             getenv("DATABASE_HOST", "localhost"),
+		DBPort:             getenv("DATABASE_PORT", "5433"),
+		DBName:             getenv("DATABASE_NAME", "postgres"),
+		DBUser:             getenv("DATABASE_USER", "postgres"),
+		DBPassword:         getenv("DATABASE_PASSWORD", "35411231"),
+		DBSSLMode:          getenv("DATABASE_SSLMODE", "disable"),
+		OAuth2ClientID:     strings.TrimSpace(getenv("OAUTH2_CLIENT_ID", "")),
+		OAuth2ClientSecret: strings.TrimSpace(getenv("OAUTH2_CLIENT_SECRET", "")),
 	}
 
 	return cfg
 }
 
 const (
-	ModeOSS   = "oss"
-	ModeCloud = "cloud"
+	ModeOSS        = "oss"
+	ModeCloud      = "cloud"
 	ModeStandalone = "standalone"
 )
 
@@ -120,6 +138,18 @@ func getenvBool(key string, def bool) bool {
 	default:
 		return def
 	}
+}
+
+func getenvInt64(key string, def int64) int64 {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return def
+	}
+	parsed, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return def
+	}
+	return parsed
 }
 
 func parseServices(raw string) []string {

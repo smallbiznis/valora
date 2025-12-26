@@ -19,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input"
 
 type SignupFormProps = {
-  onSubmit: (payload: { username: string; password: string }) => Promise<void>
+  onSubmit: (payload: { email: string; password: string; displayName?: string }) => Promise<void>
   isLoading?: boolean
   error?: string | null
 } & Omit<ComponentPropsWithoutRef<typeof Card>, "onSubmit">
@@ -30,12 +30,17 @@ export function SignupForm({
   error,
   ...props
 }: SignupFormProps) {
-  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
+  const [displayName, setDisplayName] = useState("")
   const [password, setPassword] = useState("")
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
-    await onSubmit({ username, password })
+    await onSubmit({
+      email,
+      password,
+      displayName: displayName.trim() ? displayName : undefined,
+    })
   }
 
   return (
@@ -51,17 +56,31 @@ export function SignupForm({
           <FieldGroup>
             {error && <Alert variant="destructive">{error}</Alert>}
             <Field>
-              <FieldLabel htmlFor="username">Username</FieldLabel>
+              <FieldLabel htmlFor="email">Email</FieldLabel>
               <Input
-                id="username"
-                type="text"
-                placeholder="admin"
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="admin@valora.cloud"
                 required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
               <FieldDescription>
-                Use a unique username for your account.
+                Use a work email you can access.
+              </FieldDescription>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="display-name">Display name</FieldLabel>
+              <Input
+                id="display-name"
+                type="text"
+                placeholder="Admin"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+              />
+              <FieldDescription>
+                Optional. This will be shown in your workspace.
               </FieldDescription>
             </Field>
             <Field>
@@ -82,7 +101,7 @@ export function SignupForm({
                 </Button>
                 <FieldDescription className="px-6 text-center">
                   Already have an account?{" "}
-                  <Link to="/login" className="text-primary hover:underline">
+                  <Link to="/login" className="text-accent-primary hover:underline">
                     Sign in
                   </Link>
                 </FieldDescription>

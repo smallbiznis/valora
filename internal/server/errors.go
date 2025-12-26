@@ -8,7 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 	authdomain "github.com/smallbiznis/valora/internal/auth/domain"
 	customerdomain "github.com/smallbiznis/valora/internal/customer/domain"
+	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
 	meterdomain "github.com/smallbiznis/valora/internal/meter/domain"
+	organizationdomain "github.com/smallbiznis/valora/internal/organization/domain"
 	pricedomain "github.com/smallbiznis/valora/internal/price/domain"
 	priceamountdomain "github.com/smallbiznis/valora/internal/priceamount/domain"
 	pricetierdomain "github.com/smallbiznis/valora/internal/pricetier/domain"
@@ -50,6 +52,7 @@ var (
 	ErrNotFound           = errors.New("not_found")
 	ErrInvalidRequest     = errors.New("invalid_request")
 	ErrServiceUnavailable = errors.New("service_unavailable")
+	ErrOrgRequired        = errors.New("org_required")
 )
 
 func ErrorHandlingMiddleware() gin.HandlerFunc {
@@ -141,6 +144,11 @@ func mapError(err error) (int, errorPayload) {
 			Type:    "forbidden",
 			Message: "forbidden",
 		}
+	case errors.Is(err, organizationdomain.ErrForbidden):
+		return http.StatusForbidden, errorPayload{
+			Type:    "forbidden",
+			Message: "forbidden",
+		}
 	case errors.Is(err, ErrConflict),
 		errors.Is(err, authdomain.ErrUserExists):
 		return http.StatusConflict, errorPayload{
@@ -156,6 +164,11 @@ func mapError(err error) (int, errorPayload) {
 		return http.StatusServiceUnavailable, errorPayload{
 			Type:    "service_unavailable",
 			Message: "service unavailable",
+		}
+	case errors.Is(err, ErrOrgRequired):
+		return http.StatusPreconditionRequired, errorPayload{
+			Type:    "precondition_required",
+			Message: "organization required",
 		}
 	case errors.Is(err, ErrInternal):
 		return http.StatusInternalServerError, errorPayload{
@@ -185,6 +198,7 @@ func isValidationError(err error) bool {
 		return true
 	case isOrganizationValidationError(err),
 		isCustomerValidationError(err),
+		isInvoiceValidationError(err),
 		isProductValidationError(err),
 		isPriceValidationError(err),
 		isPricingValidationError(err),
@@ -210,6 +224,15 @@ func isNotFoundError(err error) bool {
 		errors.Is(err, subscriptiondomain.ErrSubscriptionNotFound),
 		errors.Is(err, subscriptiondomain.ErrSubscriptionItemNotFound),
 		errors.Is(err, gorm.ErrRecordNotFound):
+		return true
+	default:
+		return false
+	}
+}
+
+func isInvoiceValidationError(err error) bool {
+	switch err {
+	case invoicedomain.ErrInvalidOrganization:
 		return true
 	default:
 		return false

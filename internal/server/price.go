@@ -10,7 +10,6 @@ import (
 )
 
 type createPriceRequest struct {
-	OrganizationID       string                      `json:"organization_id"`
 	ProductID            string                      `json:"product_id"`
 	Code                 string                      `json:"code"`
 	LookupKey            string                      `json:"lookup_key"`
@@ -40,7 +39,6 @@ func (s *Server) CreatePrice(c *gin.Context) {
 	}
 
 	resp, err := s.priceSvc.Create(c.Request.Context(), pricedomain.CreateRequest{
-		OrganizationID:       strings.TrimSpace(req.OrganizationID),
 		ProductID:            strings.TrimSpace(req.ProductID),
 		Code:                 strings.TrimSpace(req.Code),
 		LookupKey:            req.LookupKey,
@@ -70,8 +68,7 @@ func (s *Server) CreatePrice(c *gin.Context) {
 }
 
 func (s *Server) ListPrices(c *gin.Context) {
-	orgID := strings.TrimSpace(c.Query("organization_id"))
-	resp, err := s.priceSvc.List(c.Request.Context(), orgID)
+	resp, err := s.priceSvc.List(c.Request.Context())
 	if err != nil {
 		AbortWithError(c, err)
 		return
@@ -81,9 +78,8 @@ func (s *Server) ListPrices(c *gin.Context) {
 }
 
 func (s *Server) GetPriceByID(c *gin.Context) {
-	orgID := strings.TrimSpace(c.Query("organization_id"))
 	id := strings.TrimSpace(c.Param("id"))
-	resp, err := s.priceSvc.Get(c.Request.Context(), orgID, id)
+	resp, err := s.priceSvc.Get(c.Request.Context(), id)
 	if err != nil {
 		AbortWithError(c, err)
 		return

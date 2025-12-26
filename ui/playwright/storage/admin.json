@@ -1,0 +1,25 @@
+{
+  "cookies": [
+    {
+      "name": "_sid",
+      "value": "xyFFzYSxpISBcplcmkebLdEa1zfX4EcasXAjtebG45c",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1766769696.693,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:8080",
+      "localStorage": [
+        {
+          "name": "valora-auth",
+          "value": "{\"state\":{\"user\":{\"id\":\"1000000000001\",\"username\":\"admin\",\"email\":\"admin@example.com\"},\"isAuthenticated\":true},\"version\":0}"
+        }
+      ]
+    }
+  ]
+}

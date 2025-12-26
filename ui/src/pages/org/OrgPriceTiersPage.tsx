@@ -20,7 +20,7 @@ export default function OrgPriceTiersPage() {
     setError(null)
 
     api
-      .get("/price_tiers", { params: { organization_id: orgId } })
+      .get("/price_tiers")
       .then((response) => {
         if (!isMounted) return
         setPriceTiers(response.data?.data ?? [])
@@ -43,18 +43,18 @@ export default function OrgPriceTiersPage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Price Tiers</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-muted text-sm">
           Inspect tiered pricing rules for this organization.
         </p>
       </div>
       {isLoading && (
-        <div className="text-muted-foreground text-sm">
+        <div className="text-text-muted text-sm">
           Loading price tiers...
         </div>
       )}
-      {error && <div className="text-destructive text-sm">{error}</div>}
+      {error && <div className="text-status-error text-sm">{error}</div>}
       {!isLoading && !error && (
-        <pre className="bg-muted overflow-auto rounded-md p-4 text-xs">
+        <pre className="bg-bg-subtle overflow-auto rounded-md p-4 text-xs">
           {JSON.stringify(priceTiers, null, 2)}
         </pre>
       )}

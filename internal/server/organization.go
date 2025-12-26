@@ -82,7 +82,9 @@ func isOrganizationValidationError(err error) bool {
 		organizationdomain.ErrInvalidCountry,
 		organizationdomain.ErrInvalidTimezone,
 		organizationdomain.ErrInvalidCurrency,
-		organizationdomain.ErrInvalidUser:
+		organizationdomain.ErrInvalidUser,
+		organizationdomain.ErrInvalidEmail,
+		organizationdomain.ErrInvalidRole:
 		return true
 	default:
 		return false

@@ -2,18 +2,16 @@ package server
 
 import (
 	"net/http"
-	"time"
 
+	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
 	authdomain "github.com/smallbiznis/valora/internal/auth/domain"
 )
 
 type LoginRequest struct {
-	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
-
-const sessionCookieName = "_sid"
 
 func (s *Server) Login(c *gin.Context) {
 
@@ -24,7 +22,7 @@ func (s *Server) Login(c *gin.Context) {
 	}
 
 	result, err := s.authsvc.Login(c.Request.Context(), authdomain.LoginRequest{
-		Username:  req.Username,
+		Email:     req.Email,
 		Password:  req.Password,
 		UserAgent: c.Request.UserAgent(),
 		IPAddress: c.ClientIP(),
@@ -34,19 +32,16 @@ func (s *Server) Login(c *gin.Context) {
 		return
 	}
 
-	maxAge := int(time.Until(result.ExpiresAt).Seconds())
-	if maxAge < 0 {
-		maxAge = 0
-	}
+	s.sessions.Set(c, result.RawToken, result.ExpiresAt)
 
-	s.setSessionCookie(c, result.RawToken, maxAge)
+	s.enrichSessionMetadata(c, result)
 
 	c.JSON(http.StatusOK, result.Session)
 }
 
 func (s *Server) Logout(c *gin.Context) {
-	token, err := c.Cookie(sessionCookieName)
-	if err != nil {
+	token, ok := s.sessions.ReadToken(c)
+	if !ok {
 		AbortWithError(c, ErrUnauthorized)
 		return
 	}
@@ -56,7 +51,7 @@ func (s *Server) Logout(c *gin.Context) {
 		return
 	}
 
-	s.setSessionCookie(c, "", -1)
+	s.sessions.Clear(c)
 	c.Status(http.StatusNoContent)
 }
 
@@ -68,8 +63,29 @@ func (s *Server) Forgot(c *gin.Context) {
 	AbortWithError(c, ErrServiceUnavailable)
 }
 
-func (s *Server) setSessionCookie(c *gin.Context, value string, maxAge int) {
-	secure := s.cfg.Environment == "production"
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie(sessionCookieName, value, maxAge, "/", "", secure, true)
+func (s *Server) enrichSessionMetadata(c *gin.Context, result *authdomain.LoginResult) {
+	if result == nil || result.Session == nil {
+		return
+	}
+
+	rawUserID, ok := result.Session.Metadata["user_id"].(string)
+	if !ok {
+		return
+	}
+
+	parsedUserID, err := snowflake.ParseString(rawUserID)
+	if err != nil {
+		return
+	}
+
+	orgIDs, err := s.loadUserOrgIDs(c.Request.Context(), parsedUserID)
+	if err != nil {
+		return
+	}
+
+	if err := s.authsvc.UpdateSessionOrgContext(c.Request.Context(), result.SessionID, nil, orgIDs); err != nil {
+		return
+	}
+
+	result.Session.Metadata["org_ids"] = toOrgIDStrings(orgIDs)
 }

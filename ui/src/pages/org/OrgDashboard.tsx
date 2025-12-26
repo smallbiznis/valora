@@ -15,14 +15,14 @@ export default function OrgDashboard() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Welcome</h1>
-        <p className="text-muted-foreground">Working in {org.name}</p>
+        <p className="text-text-muted">Working in {org.name}</p>
       </div>
       <Card>
         <CardHeader>
           <CardTitle>Get started</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-text-muted">
             Use the sidebar to manage products, meters, customers, subscriptions, invoices, and settings. Pricing lives inside each product.
           </p>
           <Separator />

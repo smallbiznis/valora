@@ -8,6 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	snowflake "github.com/bwmarrin/snowflake"
 	gomock "github.com/golang/mock/gomock"
 	domain "github.com/smallbiznis/valora/internal/auth/domain"
 )
@@ -106,4 +107,18 @@ func (m *MockService) Authenticate(ctx context.Context, rawToken string) (*domai
 func (mr *MockServiceMockRecorder) Authenticate(ctx, rawToken interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Authenticate", reflect.TypeOf((*MockService)(nil).Authenticate), ctx, rawToken)
+}
+
+// UpdateSessionOrgContext mocks base method.
+func (m *MockService) UpdateSessionOrgContext(ctx context.Context, sessionID snowflake.ID, activeOrgID *int64, orgIDs []int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateSessionOrgContext", ctx, sessionID, activeOrgID, orgIDs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSessionOrgContext indicates an expected call of UpdateSessionOrgContext.
+func (mr *MockServiceMockRecorder) UpdateSessionOrgContext(ctx, sessionID, activeOrgID, orgIDs interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSessionOrgContext", reflect.TypeOf((*MockService)(nil).UpdateSessionOrgContext), ctx, sessionID, activeOrgID, orgIDs)
 }

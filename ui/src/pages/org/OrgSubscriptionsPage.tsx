@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { useParams } from "react-router-dom"
+import { Link, useParams } from "react-router-dom"
 
 import { api } from "@/api/client"
 import { Badge } from "@/components/ui/badge"
@@ -46,7 +46,6 @@ type PageInfo = {
 
 const statusTabs = [
   { value: "ACTIVE", label: "Active" },
-  { value: "TRIALING", label: "Trialing" },
   { value: "PAST_DUE", label: "Past due" },
   { value: "CANCELED", label: "Canceled" },
   { value: "ALL", label: "All" },
@@ -85,8 +84,6 @@ const formatStatus = (value?: string) => {
   switch (value) {
     case "ACTIVE":
       return "Active"
-    case "TRIALING":
-      return "Trialing"
     case "PAST_DUE":
       return "Past due"
     case "CANCELED":
@@ -106,7 +103,6 @@ const statusVariant = (value?: string) => {
       return "destructive"
     case "ACTIVE":
       return "secondary"
-    case "TRIALING":
     case "CANCELED":
     case "ENDED":
     case "DRAFT":
@@ -133,6 +129,7 @@ export default function OrgSubscriptionsPage() {
   const [pageTokens, setPageTokens] = useState<string[]>([""])
   const [pageIndex, setPageIndex] = useState(0)
   const [statusFilter, setStatusFilter] = useState(statusTabs[0].value)
+  const createPath = orgId ? `/orgs/${orgId}/subscriptions/create` : "/orgs"
 
   const pageToken = pageTokens[pageIndex] ?? ""
   const activeTabLabel = useMemo(() => {
@@ -164,7 +161,6 @@ export default function OrgSubscriptionsPage() {
     api
       .get("/subscriptions", {
         params: {
-          organization_id: orgId,
           status: statusFilter === "ALL" ? undefined : statusFilter,
           page_token: pageToken || undefined,
           page_size: PAGE_SIZE,
@@ -197,7 +193,7 @@ export default function OrgSubscriptionsPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">Subscriptions</h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-text-muted text-sm">
             Monitor recurring revenue, lifecycle states, and customer plans.
           </p>
         </div>
@@ -208,7 +204,9 @@ export default function OrgSubscriptionsPage() {
           <Button variant="outline" size="sm">
             Analyze
           </Button>
-          <Button size="sm">Create subscription</Button>
+          <Button size="sm" asChild>
+            <Link to={createPath}>Create subscription</Link>
+          </Button>
         </div>
       </div>
 
@@ -245,11 +243,11 @@ export default function OrgSubscriptionsPage() {
       </div>
 
       {isLoading && (
-        <div className="text-muted-foreground text-sm">
+        <div className="text-text-muted text-sm">
           Loading subscriptions...
         </div>
       )}
-      {error && <div className="text-destructive text-sm">{error}</div>}
+      {error && <div className="text-status-error text-sm">{error}</div>}
       {!isLoading && !error && subscriptions.length === 0 && (
         <Empty>
           <EmptyHeader>
@@ -259,7 +257,9 @@ export default function OrgSubscriptionsPage() {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button>Create subscription</Button>
+            <Button asChild>
+              <Link to={createPath}>Create subscription</Link>
+            </Button>
           </EmptyContent>
         </Empty>
       )}
@@ -305,13 +305,13 @@ export default function OrgSubscriptionsPage() {
                     <TableCell className="font-medium">
                       <div className="flex flex-col gap-1">
                         <span className="text-sm">Subscription</span>
-                        <span className="text-muted-foreground text-xs">{displayID}</span>
+                        <span className="text-text-muted text-xs">{displayID}</span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         <span className="text-sm">{customerID}</span>
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-text-muted text-xs">
                           Customer
                         </span>
                       </div>
@@ -342,7 +342,7 @@ export default function OrgSubscriptionsPage() {
       )}
       {!isLoading && !error && subscriptions.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-muted-foreground text-xs">
+          <div className="text-text-muted text-xs">
             Showing {subscriptions.length} subscriptions
           </div>
           <div className="flex items-center gap-2">

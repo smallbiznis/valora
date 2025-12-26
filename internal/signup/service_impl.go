@@ -43,9 +43,10 @@ func (s *service) Signup(ctx context.Context, req domain.Request) (*domain.Resul
 	}
 
 	user, err := s.authsvc.CreateUser(ctx, authdomain.CreateUserRequest{
-		Username: req.Username,
-		Email:    req.Email,
-		Password: req.Password,
+		Username:    req.Username,
+		Email:       req.Email,
+		Password:    req.Password,
+		DisplayName: req.Username,
 	})
 	if err != nil {
 		return nil, err
@@ -66,7 +67,7 @@ func (s *service) Signup(ctx context.Context, req domain.Request) (*domain.Resul
 	}
 
 	session, err := s.authsvc.Login(ctx, authdomain.LoginRequest{
-		Username:  req.Username,
+		Email:     req.Email,
 		Password:  req.Password,
 		UserAgent: req.UserAgent,
 		IPAddress: req.IPAddress,

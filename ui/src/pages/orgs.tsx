@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import {api} from "@/api/client"
@@ -19,12 +19,25 @@ export default function OrgResolverPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  const activateOrg = useCallback(async (org: OrgResponse) => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      await api.post(`/user/using/${org.id}`)
+      setCurrentOrg(org)
+      navigate(`/orgs/${org.id}/dashboard`, { replace: true })
+    } catch (err: any) {
+      setError(err?.message ?? "Unable to switch organizations.")
+      setIsLoading(false)
+    }
+  }, [navigate, setCurrentOrg])
+
   useEffect(() => {
     let isMounted = true
     setIsLoading(true)
     setError(null)
     api
-      .get("/me/orgs")
+      .get("/user/orgs")
       .then((res) => {
         if (!isMounted) return
         const orgList: OrgResponse[] = res.data?.orgs ?? []
@@ -36,8 +49,7 @@ export default function OrgResolverPage() {
         }
 
         if (orgList.length === 1) {
-          setCurrentOrg(orgList[0])
-          navigate(`/orgs/${orgList[0].id}`, { replace: true })
+          void activateOrg(orgList[0])
           return
         }
 
@@ -51,7 +63,7 @@ export default function OrgResolverPage() {
     return () => {
       isMounted = false
     }
-  }, [navigate, setCurrentOrg, setOrgs])
+  }, [activateOrg, navigate, setOrgs])
 
   if (isLoading) {
     return (
@@ -70,7 +82,7 @@ export default function OrgResolverPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-bg-subtle/40 px-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Select a workspace</CardTitle>
@@ -84,8 +96,7 @@ export default function OrgResolverPage() {
               variant="outline"
               className="w-full justify-start"
               onClick={() => {
-                setCurrentOrg(org)
-                navigate(`/orgs/${org.id}/dashboard`)
+                void activateOrg(org)
               }}
             >
               {org.name}

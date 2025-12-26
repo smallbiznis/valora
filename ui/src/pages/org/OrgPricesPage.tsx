@@ -20,7 +20,7 @@ export default function OrgPricesPage() {
     setError(null)
 
     api
-      .get("/prices", { params: { organization_id: orgId } })
+      .get("/prices")
       .then((response) => {
         if (!isMounted) return
         setPrices(response.data?.data ?? [])
@@ -43,16 +43,16 @@ export default function OrgPricesPage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Prices</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-muted text-sm">
           Review and manage price points for your products.
         </p>
       </div>
       {isLoading && (
-        <div className="text-muted-foreground text-sm">Loading prices...</div>
+        <div className="text-text-muted text-sm">Loading prices...</div>
       )}
-      {error && <div className="text-destructive text-sm">{error}</div>}
+      {error && <div className="text-status-error text-sm">{error}</div>}
       {!isLoading && !error && (
-        <pre className="bg-muted overflow-auto rounded-md p-4 text-xs">
+        <pre className="bg-bg-subtle overflow-auto rounded-md p-4 text-xs">
           {JSON.stringify(prices, null, 2)}
         </pre>
       )}

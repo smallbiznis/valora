@@ -17,16 +17,15 @@ func Provide() pricedomain.Repository {
 func (r *repo) Insert(ctx context.Context, db *gorm.DB, p *pricedomain.Price) error {
 	return db.WithContext(ctx).Exec(
 		`INSERT INTO prices (
-			id, org_id, product_id, code, lookup_key, name, description,
+			id, org_id, product_id, code, name, description,
 			pricing_model, billing_mode, billing_interval, billing_interval_count,
 			aggregate_usage, billing_unit, billing_threshold, tax_behavior, tax_code,
 			version, is_default, active, retired_at, metadata, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.ID,
 		p.OrgID,
 		p.ProductID,
 		p.Code,
-		p.LookupKey,
 		p.Name,
 		p.Description,
 		p.PricingModel,
@@ -51,7 +50,7 @@ func (r *repo) Insert(ctx context.Context, db *gorm.DB, p *pricedomain.Price) er
 func (r *repo) FindByID(ctx context.Context, db *gorm.DB, orgID, id snowflake.ID) (*pricedomain.Price, error) {
 	var p pricedomain.Price
 	err := db.WithContext(ctx).Raw(
-		`SELECT id, org_id, product_id, code, lookup_key, name, description,
+		`SELECT id, org_id, product_id, code, name, description,
 		 pricing_model, billing_mode, billing_interval, billing_interval_count,
 		 aggregate_usage, billing_unit, billing_threshold, tax_behavior, tax_code,
 		 version, is_default, active, retired_at, metadata, created_at, updated_at
@@ -71,7 +70,7 @@ func (r *repo) FindByID(ctx context.Context, db *gorm.DB, orgID, id snowflake.ID
 func (r *repo) List(ctx context.Context, db *gorm.DB, orgID snowflake.ID) ([]pricedomain.Price, error) {
 	var items []pricedomain.Price
 	err := db.WithContext(ctx).Raw(
-		`SELECT id, org_id, product_id, code, lookup_key, name, description,
+		`SELECT id, org_id, product_id, code, name, description,
 		 pricing_model, billing_mode, billing_interval, billing_interval_count,
 		 aggregate_usage, billing_unit, billing_threshold, tax_behavior, tax_code,
 		 version, is_default, active, retired_at, metadata, created_at, updated_at

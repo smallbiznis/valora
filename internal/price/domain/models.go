@@ -76,7 +76,6 @@ type Price struct {
 	OrgID                snowflake.ID      `json:"organization_id" gorm:"column:org_id;not null;index"`
 	ProductID            snowflake.ID      `json:"product_id" gorm:"column:product_id;not null;index"`
 	Code                 string            `json:"code" gorm:"type:text;not null"`
-	LookupKey            *string           `json:"lookup_key,omitempty" gorm:"type:text"`
 	Name                 string           `json:"name,omitempty" gorm:"type:text"`
 	Description          string           `json:"description,omitempty" gorm:"type:text"`
 	PricingModel         PricingModel      `json:"pricing_model" gorm:"type:text;not null;default:0"`

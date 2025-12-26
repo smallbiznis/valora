@@ -79,13 +79,14 @@ func (r *repo) InsertItems(ctx context.Context, db *gorm.DB, items []subscriptio
 	return nil
 }
 
-func (r *repo) FindByID(ctx context.Context, db *gorm.DB, id snowflake.ID) (*subscriptiondomain.Subscription, error) {
+func (r *repo) FindByID(ctx context.Context, db *gorm.DB, orgID, id snowflake.ID) (*subscriptiondomain.Subscription, error) {
 	var subscription subscriptiondomain.Subscription
 	err := db.WithContext(ctx).Raw(
 		`SELECT id, org_id, customer_id, status, collection_mode, start_at, end_at, cancel_at,
 		 cancel_at_period_end, canceled_at, billing_anchor_day, billing_cycle_type,
 		 default_payment_term_days, default_currency, default_tax_behavior, metadata, created_at, updated_at
-		 FROM subscriptions WHERE id = ?`,
+		 FROM subscriptions WHERE org_id = ? AND id = ?`,
+		orgID,
 		id,
 	).Scan(&subscription).Error
 	if err != nil {
@@ -97,13 +98,14 @@ func (r *repo) FindByID(ctx context.Context, db *gorm.DB, id snowflake.ID) (*sub
 	return &subscription, nil
 }
 
-func (r *repo) List(ctx context.Context, db *gorm.DB) ([]subscriptiondomain.Subscription, error) {
+func (r *repo) List(ctx context.Context, db *gorm.DB, orgID snowflake.ID) ([]subscriptiondomain.Subscription, error) {
 	var subscriptions []subscriptiondomain.Subscription
 	err := db.WithContext(ctx).Raw(
 		`SELECT id, org_id, customer_id, status, collection_mode, start_at, end_at, cancel_at,
 		 cancel_at_period_end, canceled_at, billing_anchor_day, billing_cycle_type,
 		 default_payment_term_days, default_currency, default_tax_behavior, metadata, created_at, updated_at
-		 FROM subscriptions ORDER BY created_at ASC`,
+		 FROM subscriptions WHERE org_id = ? ORDER BY created_at ASC`,
+		orgID,
 	).Scan(&subscriptions).Error
 	if err != nil {
 		return nil, err

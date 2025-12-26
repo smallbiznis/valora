@@ -9,12 +9,11 @@ import (
 )
 
 type createProductRequest struct {
-	OrganizationID string         `json:"organization_id"`
-	Code           string         `json:"code"`
-	Name           string         `json:"name"`
-	Description    *string        `json:"description"`
-	Active         *bool          `json:"active"`
-	Metadata       map[string]any `json:"metadata"`
+	Code        string         `json:"code"`
+	Name        string         `json:"name"`
+	Description *string        `json:"description"`
+	Active      *bool          `json:"active"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 func (s *Server) CreateProduct(c *gin.Context) {
@@ -25,12 +24,11 @@ func (s *Server) CreateProduct(c *gin.Context) {
 	}
 
 	resp, err := s.productSvc.Create(c.Request.Context(), productdomain.CreateRequest{
-		OrganizationID: strings.TrimSpace(req.OrganizationID),
-		Code:           strings.TrimSpace(req.Code),
-		Name:           strings.TrimSpace(req.Name),
-		Description:    req.Description,
-		Active:         req.Active,
-		Metadata:       req.Metadata,
+		Code:        strings.TrimSpace(req.Code),
+		Name:        strings.TrimSpace(req.Name),
+		Description: req.Description,
+		Active:      req.Active,
+		Metadata:    req.Metadata,
 	})
 	if err != nil {
 		AbortWithError(c, err)
@@ -41,8 +39,7 @@ func (s *Server) CreateProduct(c *gin.Context) {
 }
 
 func (s *Server) ListProducts(c *gin.Context) {
-	orgID := strings.TrimSpace(c.Query("organization_id"))
-	resp, err := s.productSvc.List(c.Request.Context(), orgID)
+	resp, err := s.productSvc.List(c.Request.Context())
 	if err != nil {
 		AbortWithError(c, err)
 		return
@@ -52,9 +49,8 @@ func (s *Server) ListProducts(c *gin.Context) {
 }
 
 func (s *Server) GetProductByID(c *gin.Context) {
-	orgID := strings.TrimSpace(c.Query("organization_id"))
 	id := strings.TrimSpace(c.Param("id"))
-	resp, err := s.productSvc.Get(c.Request.Context(), orgID, id)
+	resp, err := s.productSvc.Get(c.Request.Context(), id)
 	if err != nil {
 		AbortWithError(c, err)
 		return

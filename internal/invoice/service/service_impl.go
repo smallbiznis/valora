@@ -6,6 +6,7 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
+	"github.com/smallbiznis/valora/internal/orgcontext"
 	"github.com/smallbiznis/valora/pkg/db/option"
 	"github.com/smallbiznis/valora/pkg/repository"
 	"go.uber.org/fx"
@@ -37,7 +38,12 @@ func NewService(p ServiceParam) invoicedomain.Service {
 
 func (s *Service) List(ctx context.Context, req invoicedomain.ListInvoiceRequest) (invoicedomain.ListInvoiceResponse, error) {
 	_ = req
-	items, err := s.invoicerepo.Find(ctx, &invoicedomain.Invoice{},
+	orgID, err := s.orgIDFromContext(ctx)
+	if err != nil {
+		return invoicedomain.ListInvoiceResponse{}, err
+	}
+
+	items, err := s.invoicerepo.Find(ctx, &invoicedomain.Invoice{OrgID: orgID},
 		option.WithSortBy(option.QuerySortBy{Allow: map[string]bool{"created_at": true}}),
 	)
 	if err != nil {
@@ -56,12 +62,17 @@ func (s *Service) List(ctx context.Context, req invoicedomain.ListInvoiceRequest
 }
 
 func (s *Service) GetByID(ctx context.Context, id string) (invoicedomain.Invoice, error) {
+	orgID, err := s.orgIDFromContext(ctx)
+	if err != nil {
+		return invoicedomain.Invoice{}, err
+	}
+
 	invoiceID, err := snowflake.ParseString(strings.TrimSpace(id))
 	if err != nil {
 		return invoicedomain.Invoice{}, err
 	}
 
-	item, err := s.invoicerepo.FindOne(ctx, &invoicedomain.Invoice{ID: invoiceID})
+	item, err := s.invoicerepo.FindOne(ctx, &invoicedomain.Invoice{ID: invoiceID, OrgID: orgID})
 	if err != nil {
 		return invoicedomain.Invoice{}, err
 	}
@@ -70,4 +81,12 @@ func (s *Service) GetByID(ctx context.Context, id string) (invoicedomain.Invoice
 	}
 
 	return *item, nil
+}
+
+func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return 0, invoicedomain.ErrInvalidOrganization
+	}
+	return snowflake.ID(orgID), nil
 }

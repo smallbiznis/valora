@@ -39,7 +39,8 @@ export function AppShell() {
     if (!orgId) return
     setIsLoading(true)
     api
-      .get(`/orgs/${orgId}`)
+      .post(`/user/using/${orgId}`)
+      .then(() => api.get(`/orgs/${orgId}`))
       .then((res) => {
         if (!isMounted) return
         const org = res.data?.org ?? { id: orgId, name: `Org ${orgId}` }
@@ -49,11 +50,12 @@ export function AppShell() {
       .catch(() => {
         if (!isMounted) return
         setIsLoading(false)
+        setCurrentOrg(null)
         navigate("/orgs", { replace: true })
       })
 
     api
-      .get("/me/orgs")
+      .get("/user/orgs")
       .then((res) => {
         if (!isMounted) return
         setOrgs(res.data?.orgs ?? [])
@@ -77,7 +79,7 @@ export function AppShell() {
 
   if (isLoading || !currentOrg) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/40">
+      <div className="flex min-h-screen items-center justify-center bg-bg-subtle/40">
         <div className="space-y-3">
           <Skeleton className="h-10 w-72" />
           <Skeleton className="h-4 w-52" />
@@ -87,11 +89,11 @@ export function AppShell() {
   }
 
   return (
-    <div className="grid min-h-screen grid-cols-[260px_1fr] bg-muted/20">
-      <aside className="border-r bg-white">
+    <div className="grid min-h-screen grid-cols-[260px_1fr] bg-bg-subtle/20">
+      <aside className="border-r border-border-subtle bg-bg-surface">
         <div className="px-4 py-5">
           <div className="text-lg font-semibold">Valora</div>
-          <div className="text-sm text-muted-foreground">{currentOrg.name}</div>
+          <div className="text-sm text-text-muted">{currentOrg.name}</div>
         </div>
         <Separator />
         <nav className="flex flex-col gap-1 p-3">
@@ -101,8 +103,8 @@ export function AppShell() {
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  "rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted",
-                  isActive && "bg-muted text-primary"
+                  "rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-bg-subtle",
+                  isActive && "bg-bg-subtle text-accent-primary"
                 )
               }
             >
@@ -127,9 +129,18 @@ function Topbar() {
   const logout = useAuthStore((s) => s.logout)
 
   const initial = currentOrg?.name?.[0]?.toUpperCase() ?? "O"
+  const handleOrgSwitch = async (org: { id: string; name: string }) => {
+    try {
+      await api.post(`/user/using/${org.id}`)
+      setCurrentOrg(org)
+      navigate(`/orgs/${org.id}/dashboard`)
+    } catch (err) {
+      console.error("Failed to switch org", err)
+    }
+  }
 
   return (
-    <header className="flex items-center justify-between border-b bg-white px-6 py-4">
+    <header className="flex items-center justify-between border-b border-border-subtle bg-bg-surface px-6 py-4">
       <div className="flex items-center gap-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -144,8 +155,7 @@ function Topbar() {
               <DropdownMenuItem
                 key={org.id}
                 onSelect={() => {
-                  setCurrentOrg(org)
-                  navigate(`/orgs/${org.id}/dashboard`)
+                  void handleOrgSwitch(org)
                 }}
               >
                 {org.name}

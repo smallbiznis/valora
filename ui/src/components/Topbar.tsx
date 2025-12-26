@@ -11,17 +11,17 @@ export default function Topbar() {
   }
 
   return (
-    <header className="h-14 border-b flex items-center justify-between px-6 bg-white">
+    <header className="h-14 border-b border-border-subtle flex items-center justify-between px-6 bg-bg-surface">
       {/* Left */}
       <div className="flex items-center gap-4">
         <span className="font-semibold text-lg">Valora</span>
-        <span className="text-sm text-gray-500">Org: {orgId}</span>
+        <span className="text-sm text-text-muted">Org: {orgId}</span>
       </div>
 
       {/* Right */}
       <div className="flex items-center gap-4">
         <button
-          className="text-sm text-gray-600 hover:text-black"
+          className="text-sm text-text-secondary hover:text-text-primary"
           onClick={() => navigate("/orgs")}
         >
           Switch Org
@@ -34,7 +34,7 @@ export default function Topbar() {
 
         <button
           onClick={logout}
-          className="text-sm text-red-600 hover:text-red-800"
+          className="text-sm text-status-error hover:text-status-error/80"
         >
           Logout
         </button>

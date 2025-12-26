@@ -19,10 +19,9 @@ func (s *Server) CreateSubscription(c *gin.Context) {
 	}
 
 	resp, err := s.subscriptionSvc.Create(c.Request.Context(), subscriptiondomain.CreateSubscriptionRequest{
-		OrganizationID: strings.TrimSpace(req.OrganizationID),
-		CustomerID:     strings.TrimSpace(req.CustomerID),
-		Items:          normalizeSubscriptionItems(req.Items),
-		Metadata:       req.Metadata,
+		CustomerID: strings.TrimSpace(req.CustomerID),
+		Items:      normalizeSubscriptionItems(req.Items),
+		Metadata:   req.Metadata,
 	})
 	if err != nil {
 		AbortWithError(c, err)
@@ -33,7 +32,6 @@ func (s *Server) CreateSubscription(c *gin.Context) {
 }
 
 func (s *Server) ListSubscriptions(c *gin.Context) {
-	orgID := strings.TrimSpace(c.Query("organization_id"))
 	status := strings.TrimSpace(c.Query("status"))
 	pageToken := strings.TrimSpace(c.Query("page_token"))
 	pageSize := int32(0)
@@ -47,7 +45,6 @@ func (s *Server) ListSubscriptions(c *gin.Context) {
 	}
 
 	resp, err := s.subscriptionSvc.List(c.Request.Context(), subscriptiondomain.ListSubscriptionRequest{
-		OrgID:     orgID,
 		Status:    status,
 		PageToken: pageToken,
 		PageSize:  pageSize,

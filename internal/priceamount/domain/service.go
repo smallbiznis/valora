@@ -6,14 +6,21 @@ import (
 	"time"
 )
 
+type ListPriceAmountRequest struct {
+	PriceID string `url:"price_id"`
+}
+
+type GetPriceAmountByID struct {
+	ID string
+}
+
 type Service interface {
 	Create(ctx context.Context, req CreateRequest) (*Response, error)
-	List(ctx context.Context, organizationID string) ([]Response, error)
-	Get(ctx context.Context, organizationID string, id string) (*Response, error)
+	List(ctx context.Context, req ListPriceAmountRequest) ([]Response, error)
+	Get(ctx context.Context, req GetPriceAmountByID) (*Response, error)
 }
 
 type CreateRequest struct {
-	OrganizationID     string         `json:"organization_id"`
 	PriceID            string         `json:"price_id"`
 	MeterID            *string        `json:"meter_id"`
 	Currency           string         `json:"currency"`

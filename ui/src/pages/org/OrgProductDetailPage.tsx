@@ -1,25 +1,43 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
+import { Box, MoreHorizontal, Pencil, Plus } from "lucide-react"
+
 import { api } from "@/api/client"
+import { Badge } from "@/components/ui/badge"
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+
+type Product = {
+  id: string
+  name?: string
+  code?: string
+  description?: string | null
+  active?: boolean
+  metadata?: Record<string, unknown> | null
+}
 
 type Price = {
   id: string
   product_id: string
   name?: string
   code?: string
+  description?: string | null
   pricing_model: string
   billing_interval: string
   billing_interval_count: number
+  is_default?: boolean
+  created_at?: string
 }
 
 type PriceAmount = {
@@ -39,15 +57,13 @@ type Meter = {
 }
 
 const formatInterval = (interval: string, count: number) => {
-  const base = interval.toLowerCase()
+  const base = interval?.toLowerCase() ?? ""
+  if (!base) return "-"
   if (!count || count === 1) {
-    return `Every ${base}`
+    return `Per ${base}`
   }
   return `Every ${count} ${base}${count === 1 ? "" : "s"}`
 }
-
-const formatPricingModel = (model: string) =>
-  model === "FLAT" ? "Flat" : "Usage-based"
 
 const formatAmount = (amountCents: number, currency: string) => {
   const safeCurrency = currency?.toUpperCase() || "USD"
@@ -61,9 +77,43 @@ const formatAmount = (amountCents: number, currency: string) => {
   }
 }
 
+const formatDateShort = (value?: string) => {
+  if (!value) return "-"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "-"
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(date)
+}
+
+const readMetadataValue = (metadata: Product["metadata"], key: string) => {
+  if (!metadata || typeof metadata !== "object") return "-"
+  const value = (metadata as Record<string, unknown>)[key]
+  if (typeof value === "string") {
+    const trimmed = value.trim()
+    return trimmed.length ? trimmed : "-"
+  }
+  if (Array.isArray(value)) {
+    const items = value.filter((item) => typeof item === "string" && item.trim().length > 0)
+    return items.length ? items.join(", ") : "-"
+  }
+  if (value && typeof value === "object") {
+    const keys = Object.keys(value as Record<string, unknown>)
+    return keys.length ? keys.join(", ") : "-"
+  }
+  return "-"
+}
+
+const formatUnitLabel = (pricingModel: string) => {
+  const normalized = pricingModel?.toUpperCase()
+  if (normalized === "FLAT") return "per interval"
+  return "per unit"
+}
+
 export default function OrgProductDetailPage() {
   const { orgId, productId } = useParams()
-  const [product, setProduct] = useState<unknown | null>(null)
+  const [product, setProduct] = useState<Product | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [prices, setPrices] = useState<Price[]>([])
@@ -83,7 +133,7 @@ export default function OrgProductDetailPage() {
     setError(null)
 
     api
-      .get(`/products/${productId}`, { params: { organization_id: orgId } })
+      .get(`/products/${productId}`)
       .then((response) => {
         if (!isMounted) return
         setProduct(response.data?.data ?? null)
@@ -113,9 +163,9 @@ export default function OrgProductDetailPage() {
     setPricingError(null)
 
     Promise.all([
-      api.get("/prices", { params: { organization_id: orgId } }),
-      api.get("/price_amounts", { params: { organization_id: orgId } }),
-      api.get("/meters", { params: { organization_id: orgId } }),
+      api.get("/prices"),
+      api.get("/price_amounts"),
+      api.get("/meters"),
     ])
       .then(([priceRes, amountRes, meterRes]) => {
         if (!isMounted) return
@@ -141,6 +191,17 @@ export default function OrgProductDetailPage() {
     }
   }, [orgId, productId])
 
+  const priceAmountsByPriceId = useMemo(() => {
+    const map = new Map<string, PriceAmount[]>()
+    priceAmounts.forEach((amount) => {
+      const key = String(amount.price_id)
+      const list = map.get(key) ?? []
+      list.push(amount)
+      map.set(key, list)
+    })
+    return map
+  }, [priceAmounts])
+
   const metersById = useMemo(() => {
     const map = new Map<string, Meter>()
     meters.forEach((meter) => {
@@ -149,246 +210,270 @@ export default function OrgProductDetailPage() {
     return map
   }, [meters])
 
-  const productRecord =
-    product && typeof product === "object" ? (product as Record<string, unknown>) : null
-  const productName =
-    productRecord && typeof productRecord.name === "string"
-      ? productRecord.name
-      : "Product detail"
-  const productCode =
-    productRecord && typeof productRecord.code === "string"
-      ? productRecord.code
-      : "-"
-  const productStatus =
-    productRecord && typeof productRecord.active === "boolean"
-      ? productRecord.active
-        ? "Active"
-        : "Archived"
-      : "Unknown"
+  const defaultPrice = useMemo(() => {
+    if (!prices.length) return null
+    return prices.find((price) => price.is_default) ?? prices[0]
+  }, [prices])
+
+  const summaryLine = useMemo(() => {
+    if (!defaultPrice) return "No pricing configured yet."
+    const amounts = priceAmountsByPriceId.get(String(defaultPrice.id)) ?? []
+    if (!amounts.length) return "No pricing configured yet."
+    const amount = amounts[0]
+    const currency = amount.currency?.toUpperCase() || "USD"
+    const amountLabel = formatAmount(amount.unit_amount_cents, currency)
+    const unitLabel = formatUnitLabel(defaultPrice.pricing_model)
+    const intervalLabel = formatInterval(
+      defaultPrice.billing_interval,
+      defaultPrice.billing_interval_count
+    )
+    return `${amountLabel} ${currency} ${unitLabel} | ${intervalLabel}`
+  }, [defaultPrice, priceAmountsByPriceId])
+
+  if (isLoading) {
+    return <div className="text-text-muted text-sm">Loading product...</div>
+  }
+
+  if (error) {
+    return <div className="text-status-error text-sm">{error}</div>
+  }
+
+  if (!product) {
+    return <div className="text-text-muted text-sm">Product not found.</div>
+  }
+
+  const productName = product.name || "Product detail"
+  const productCode = product.code || "-"
+  const productDescription = product.description || "-"
+  const isActive = product.active === true
+  const isStatusKnown = product.active !== undefined
+  const productStatus = isStatusKnown ? (isActive ? "Active" : "Archived") : "Unknown"
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">{productName}</h1>
-          <p className="text-muted-foreground text-sm">
-            Configure pricing, usage, and advanced settings for this product.
-          </p>
-        </div>
-        {orgId && (
-          <Button asChild variant="outline">
-            <Link to={`/orgs/${orgId}/products`}>Back to products</Link>
-          </Button>
-        )}
-      </div>
-      {isLoading && (
-        <div className="text-muted-foreground text-sm">Loading product...</div>
+      {orgId && (
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to={`/orgs/${orgId}/products`}>Products</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{productName}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
       )}
-      {error && <div className="text-destructive text-sm">{error}</div>}
-      {!isLoading && !error && (
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="flex w-full flex-wrap justify-start">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="pricing">Pricing</TabsTrigger>
-            <TabsTrigger value="usage">Usage & Meters</TabsTrigger>
-            <TabsTrigger value="advanced">Advanced</TabsTrigger>
-          </TabsList>
 
-          {/* Pricing stays in product detail so the sidebar remains intent-driven, not table-driven. */}
-          <TabsContent value="overview" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Summary</CardTitle>
-                  <CardDescription>Core details for this product.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Code</span>
-                    <span>{productCode}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Status</span>
-                    <span>{productStatus}</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Customer view</CardTitle>
-                  <CardDescription>What customers see when selecting this plan.</CardDescription>
-                </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
-                  Add a name, description, and highlights to make the plan easy to understand.
-                </CardContent>
-              </Card>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="flex size-12 items-center justify-center rounded-lg bg-bg-subtle">
+            <Box className="size-6 text-text-muted" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-semibold">{productName}</h1>
+              <Badge
+                variant={isActive ? "secondary" : "outline"}
+                className={
+                  isActive
+                    ? "border-status-success/30 bg-status-success/10 text-status-success"
+                    : "text-text-muted"
+                }
+              >
+                {productStatus}
+              </Badge>
             </div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Raw product data</CardTitle>
-                <CardDescription>Reference payload for support and debugging.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <pre className="bg-muted overflow-auto rounded-md p-4 text-xs">
-                  {JSON.stringify(product, null, 2)}
-                </pre>
-              </CardContent>
-            </Card>
-          </TabsContent>
+            <div className="text-text-muted text-sm">{summaryLine}</div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline">Edit product</Button>
+          <Button variant="outline" size="icon-sm" aria-label="Product actions">
+            <MoreHorizontal className="size-4" />
+          </Button>
+        </div>
+      </div>
 
-          <TabsContent value="pricing" className="space-y-4">
-            {pricingLoading && (
-              <div className="text-muted-foreground text-sm">Loading pricing...</div>
-            )}
-            {pricingError && <div className="text-destructive text-sm">{pricingError}</div>}
-            {!pricingLoading && !pricingError && prices.length === 0 && (
-              <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground text-sm">
-                No prices configured yet.
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Pricing</CardTitle>
+                <CardDescription>Manage all prices attached to this product.</CardDescription>
               </div>
-            )}
-            {!pricingLoading && !pricingError && prices.length > 0 && (
-              <div className="space-y-4">
-                {prices.map((price) => {
-                  const amounts = priceAmounts.filter(
-                    (amount) => String(amount.price_id) === String(price.id)
-                  )
-                  const currencyList = Array.from(
-                    new Set(amounts.map((amount) => amount.currency))
-                  )
-                  const currencySummary =
-                    currencyList.length > 0 ? currencyList.join(", ") : ""
-                  const intervalLabel = formatInterval(
-                    price.billing_interval,
-                    price.billing_interval_count
-                  )
-                  const modelLabel = formatPricingModel(price.pricing_model)
-
-                  return (
-                    <Card key={price.id}>
-                      <CardHeader>
-                        <CardTitle>{price.name || price.code || "Price"}</CardTitle>
-                        <CardDescription>
-                          {modelLabel} | {intervalLabel}
-                          {currencySummary ? ` | ${currencySummary}` : ""}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="text-sm text-muted-foreground">Rates</div>
-                        {amounts.length === 0 && (
-                          <div className="text-muted-foreground text-sm">
-                            No rates yet.
-                          </div>
-                        )}
-                        {amounts.length > 0 && (
-                          <div className="space-y-2">
-                            {amounts.map((amount) => {
-                              const meter = amount.meter_id
-                                ? metersById.get(String(amount.meter_id))
-                                : null
-                              const meterLabel = meter
-                                ? meter.name || meter.code || meter.id
-                                : null
-                              const minLabel =
-                                amount.minimum_amount_cents != null
-                                  ? ` | Min ${formatAmount(
-                                      amount.minimum_amount_cents,
-                                      amount.currency
-                                    )}`
-                                  : ""
-                              const maxLabel =
-                                amount.maximum_amount_cents != null
-                                  ? ` | Max ${formatAmount(
-                                      amount.maximum_amount_cents,
-                                      amount.currency
-                                    )}`
-                                  : ""
-
-                              return (
-                                <div
-                                  key={amount.id}
-                                  className="rounded-md border px-4 py-3 text-sm"
-                                >
-                                  <div className="font-medium">
-                                    {formatAmount(amount.unit_amount_cents, amount.currency)}
-                                  </div>
-                                  <div className="text-muted-foreground text-xs">
-                                    {meterLabel
-                                      ? `Meter: ${meterLabel}`
-                                      : "Flat rate"}
-                                    {minLabel}
-                                    {maxLabel}
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="usage" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Usage meters</CardTitle>
-                <CardDescription>Attach meters that drive usage-based billing.</CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                {orgId ? (
-                  <Link className="text-primary hover:underline" to={`/orgs/${orgId}/meter`}>
-                    Manage meters
+              {orgId && productId && (
+                <Button asChild variant="outline" size="icon" aria-label="Add price">
+                  <Link to={`/orgs/${orgId}/products/${productId}/prices/create`}>
+                    <Plus className="size-4" />
                   </Link>
-                ) : (
-                  "Select meters to track usage for this product."
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Usage settings</CardTitle>
-                <CardDescription>Align reporting windows and aggregation.</CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                Configure how usage is summarized and displayed on invoices.
-              </CardContent>
-            </Card>
-          </TabsContent>
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {pricingLoading && (
+                <div className="text-text-muted text-sm">Loading pricing...</div>
+              )}
+              {pricingError && <div className="text-status-error text-sm">{pricingError}</div>}
+              {!pricingLoading && !pricingError && prices.length === 0 && (
+                <div className="rounded-lg border border-dashed p-6 text-center text-text-muted text-sm">
+                  No prices configured yet.
+                </div>
+              )}
+              {!pricingLoading && !pricingError && prices.length > 0 && (
+                <div className="rounded-lg border">
+                  <Table className="min-w-[720px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Subscriptions</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {prices.map((price) => {
+                        const amounts =
+                          priceAmountsByPriceId.get(String(price.id)) ?? []
+                        const mainAmount = amounts[0]
+                        const currency = mainAmount?.currency?.toUpperCase() || "USD"
+                        const amountLabel = mainAmount
+                          ? `${formatAmount(mainAmount.unit_amount_cents, currency)} ${currency} ${formatUnitLabel(price.pricing_model)}`
+                          : "No amount"
+                        const intervalLabel = formatInterval(
+                          price.billing_interval,
+                          price.billing_interval_count
+                        )
+                        const meter = mainAmount?.meter_id
+                          ? metersById.get(String(mainAmount.meter_id))
+                          : null
+                        const meterLabel = meter
+                          ? meter.name || meter.code || meter.id
+                          : null
 
-          <TabsContent value="advanced" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Price tiers</CardTitle>
-                <CardDescription>Define tiered pricing behavior.</CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                Set volume tiers, overage behavior, and pricing curves.
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Limits</CardTitle>
-                <CardDescription>Guardrails for usage and billing.</CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                Add soft or hard limits to protect customers and systems.
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Internal flags</CardTitle>
-                <CardDescription>Operational settings for admins.</CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                Toggle internal states without exposing them to customers.
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      )}
+                        return (
+                          <TableRow key={price.id}>
+                            <TableCell className="font-medium">
+                              <div className="flex flex-col gap-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span>{price.name || price.code || "Price"}</span>
+                                  {price.is_default && (
+                                    <Badge
+                                      variant="outline"
+                                      className="border-accent-primary/30 bg-accent-primary/10 text-accent-primary"
+                                    >
+                                      Default
+                                    </Badge>
+                                  )}
+                                </div>
+                                <span className="text-text-muted text-xs">
+                                  {amountLabel} | {intervalLabel}
+                                  {meterLabel ? ` | Meter: ${meterLabel}` : ""}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-text-muted text-sm">
+                              {price.description || "-"}
+                            </TableCell>
+                            <TableCell className="text-text-muted text-sm">
+                              0 active
+                            </TableCell>
+                            <TableCell className="text-text-muted text-sm">
+                              {formatDateShort(price.created_at)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="icon-sm" aria-label="Price actions">
+                                <MoreHorizontal className="size-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Cross-sells</CardTitle>
+              <CardDescription>
+                Suggest a related product for customers to add to their order.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="text-sm text-text-muted">
+                Cross-sell products appear inside Checkout alongside this product.
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="cross-sell-search">
+                  Cross-sells to
+                </label>
+                <Input id="cross-sell-search" placeholder="Find a product..." />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Features</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-lg border border-dashed p-6 text-center text-text-muted text-sm">
+                No features added yet.
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Details</CardTitle>
+            <Button variant="outline" size="icon-sm" aria-label="Edit product details">
+              <Pencil className="size-4" />
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div>
+              <div className="text-text-muted">Product ID</div>
+              <div className="font-medium">{product.id}</div>
+            </div>
+            <div>
+              <div className="text-text-muted">Product code</div>
+              <div className="font-medium">{productCode}</div>
+            </div>
+            <div>
+              <div className="text-text-muted">Product tax code</div>
+              <div className="font-medium">{readMetadataValue(product.metadata, "tax_code")}</div>
+            </div>
+            <div>
+              <div className="text-text-muted">Marketing feature list</div>
+              <div className="font-medium">
+                {readMetadataValue(product.metadata, "marketing_features")}
+              </div>
+            </div>
+            <div>
+              <div className="text-text-muted">Description</div>
+              <div className="font-medium">{productDescription}</div>
+            </div>
+            <div>
+              <div className="text-text-muted">Attributes</div>
+              <div className="font-medium">
+                {readMetadataValue(product.metadata, "attributes")}
+              </div>
+              <Button variant="link" size="sm" className="h-auto px-0">
+                View more
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

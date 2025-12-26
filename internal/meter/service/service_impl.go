@@ -7,6 +7,7 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	meterdomain "github.com/smallbiznis/valora/internal/meter/domain"
+	"github.com/smallbiznis/valora/internal/orgcontext"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -38,7 +39,7 @@ func New(p Params) meterdomain.Service {
 }
 
 func (s *Service) Create(ctx context.Context, req meterdomain.CreateRequest) (*meterdomain.Response, error) {
-	orgID, err := s.parseOrganizationID(req.OrganizationID)
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +89,8 @@ func (s *Service) Create(ctx context.Context, req meterdomain.CreateRequest) (*m
 	return s.toResponse(m), nil
 }
 
-func (s *Service) List(ctx context.Context, organizationID string) ([]meterdomain.Response, error) {
-	orgID, err := s.parseOrganizationID(organizationID)
+func (s *Service) List(ctx context.Context) ([]meterdomain.Response, error) {
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +109,7 @@ func (s *Service) List(ctx context.Context, organizationID string) ([]meterdomai
 }
 
 func (s *Service) Update(ctx context.Context, req meterdomain.UpdateRequest) (*meterdomain.Response, error) {
-	orgID, err := s.parseOrganizationID(req.OrganizationID)
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -162,8 +163,8 @@ func (s *Service) Update(ctx context.Context, req meterdomain.UpdateRequest) (*m
 	return s.toResponse(item), nil
 }
 
-func (s *Service) Delete(ctx context.Context, organizationID string, id string) error {
-	orgID, err := s.parseOrganizationID(organizationID)
+func (s *Service) Delete(ctx context.Context, id string) error {
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return err
 	}
@@ -184,8 +185,8 @@ func (s *Service) Delete(ctx context.Context, organizationID string, id string) 
 	return s.repo.Delete(ctx, s.db, orgID, meterID)
 }
 
-func (s *Service) GetByCode(ctx context.Context, organizationID string, code string) (*meterdomain.Response, error) {
-	orgID, err := s.parseOrganizationID(organizationID)
+func (s *Service) GetByCode(ctx context.Context, code string) (*meterdomain.Response, error) {
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -201,8 +202,8 @@ func (s *Service) GetByCode(ctx context.Context, organizationID string, code str
 	return s.toResponse(item), nil
 }
 
-func (s *Service) GetByID(ctx context.Context, organizationID string, id string) (*meterdomain.Response, error) {
-	orgID, err := s.parseOrganizationID(organizationID)
+func (s *Service) GetByID(ctx context.Context, id string) (*meterdomain.Response, error) {
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -223,12 +224,12 @@ func (s *Service) GetByID(ctx context.Context, organizationID string, id string)
 	return s.toResponse(item), nil
 }
 
-func (s *Service) parseOrganizationID(value string) (snowflake.ID, error) {
-	orgID, err := meterdomain.ParseID(strings.TrimSpace(value))
-	if err != nil || orgID == 0 {
+func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
 		return 0, meterdomain.ErrInvalidOrganization
 	}
-	return orgID, nil
+	return snowflake.ID(orgID), nil
 }
 
 func (s *Service) toResponse(m *meterdomain.Meter) *meterdomain.Response {

@@ -73,7 +73,7 @@ export default function OrgProductsPage() {
     setError(null)
 
     api
-      .get("/products", { params: { organization_id: orgId } })
+      .get("/products")
       .then((response) => {
         if (!isMounted) return
         setProducts(response.data?.data ?? [])
@@ -97,7 +97,7 @@ export default function OrgProductsPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">Products</h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-text-muted text-sm">
             Create digital plans and usage-based services. Configure pricing and meters inside each product.
           </p>
         </div>
@@ -126,19 +126,19 @@ export default function OrgProductsPage() {
       <div className="grid gap-3 md:grid-cols-3">
         <Card>
           <CardContent className="flex flex-col gap-1">
-            <span className="text-muted-foreground text-sm">All</span>
+            <span className="text-text-muted text-sm">All</span>
             <span className="text-2xl font-semibold">{totalCount}</span>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="flex flex-col gap-1">
-            <span className="text-muted-foreground text-sm">Active</span>
+            <span className="text-text-muted text-sm">Active</span>
             <span className="text-2xl font-semibold">{activeCount}</span>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="flex flex-col gap-1">
-            <span className="text-muted-foreground text-sm">Archived</span>
+            <span className="text-text-muted text-sm">Archived</span>
             <span className="text-2xl font-semibold">{archivedCount}</span>
           </CardContent>
         </Card>
@@ -167,9 +167,9 @@ export default function OrgProductsPage() {
       </div>
 
       {isLoading && (
-        <div className="text-muted-foreground text-sm">Loading products...</div>
+        <div className="text-text-muted text-sm">Loading products...</div>
       )}
-      {error && <div className="text-destructive text-sm">{error}</div>}
+      {error && <div className="text-status-error text-sm">{error}</div>}
       {!isLoading && !error && products.length === 0 && (
         <Empty>
           <EmptyHeader>
@@ -217,7 +217,7 @@ export default function OrgProductsPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           <Link
                             to={`/orgs/${orgId}/products/${product.id}`}
-                            className="hover:text-primary"
+                            className="hover:text-accent-primary"
                           >
                             {product.name ?? "Untitled product"}
                           </Link>
@@ -225,7 +225,7 @@ export default function OrgProductsPage() {
                             {product.active ? "Active" : "Archived"}
                           </Badge>
                         </div>
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-text-muted text-xs">
                           {product.code ?? "-"}
                         </span>
                       </div>

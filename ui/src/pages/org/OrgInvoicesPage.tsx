@@ -46,9 +46,9 @@ export default function OrgInvoicesPage() {
     setError(null)
 
     Promise.allSettled([
-      api.get("/invoices", { params: { organization_id: orgId } }),
+      api.get("/invoices"),
       api.get("/customers", {
-        params: { organization_id: orgId, page_size: 200 },
+        params: { page_size: 200 },
       }),
     ])
       .then(([invoiceResult, customerResult]) => {
@@ -121,14 +121,21 @@ export default function OrgInvoicesPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">Invoices</h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-text-muted text-sm">
             Review invoices, due dates, and payment status for this organization.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {orgId && (
+            <Button asChild variant="outline" size="sm">
+              <Link to={`/orgs/${orgId}/invoice-templates`}>
+                Manage templates
+              </Link>
+            </Button>
+          )}
           <Button size="sm">
             <IconPlus />
-            Create test invoice
+            Create invoice
           </Button>
           <Button variant="outline" size="icon-sm" aria-label="Invoice actions">
             <IconDotsVertical />
@@ -178,25 +185,25 @@ export default function OrgInvoicesPage() {
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
         />
-        <div className="text-muted-foreground text-sm">{countLabel}</div>
+        <div className="text-text-muted text-sm">{countLabel}</div>
       </div>
 
       {isLoading && (
-        <div className="text-muted-foreground text-sm">Loading invoices...</div>
+        <div className="text-text-muted text-sm">Loading invoices...</div>
       )}
-      {error && <div className="text-destructive text-sm">{error}</div>}
+      {error && <div className="text-status-error text-sm">{error}</div>}
       {!isLoading && !error && filteredInvoices.length === 0 && (
         <Empty>
           <EmptyHeader>
             <EmptyTitle>No invoices yet</EmptyTitle>
             <EmptyDescription>
-              Generate invoices from subscriptions or create a test invoice to preview billing.
+              Generate invoices from subscriptions or create an invoice to preview billing.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button size="sm">
               <IconPlus />
-              Create test invoice
+              Create invoice
             </Button>
           </EmptyContent>
         </Empty>
@@ -251,7 +258,7 @@ export default function OrgInvoicesPage() {
                       {orgId ? (
                         <Link
                           to={`/orgs/${orgId}/invoices/${invoiceId}`}
-                          className="hover:text-primary"
+                          className="hover:text-accent-primary"
                         >
                           {invoiceNumber}
                         </Link>
@@ -260,7 +267,7 @@ export default function OrgInvoicesPage() {
                       )}
                     </TableCell>
                     <TableCell>{customerName}</TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-text-muted">
                       {customerEmail}
                     </TableCell>
                     <TableCell>{formatDateTime(dueDate)}</TableCell>

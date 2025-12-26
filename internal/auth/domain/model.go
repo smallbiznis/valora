@@ -11,7 +11,9 @@ import (
 // User represents a system user account.
 type User struct {
 	ID                  snowflake.ID      `gorm:"primaryKey"`
-	Username            string            `gorm:"type:text;not null;uniqueIndex"`
+	ExternalID          string            `gorm:"column:external_id;type:text;uniqueIndex"`
+	Provider            string            `gorm:"column:provider;type:text"` // e.g., "local", "google", "github", "usevalora_com"
+	DisplayName         string            `gorm:"column:display_name;type:text"`
 	Email               string            `gorm:"column:email;uniqueIndex"`
 	PasswordHash        *string           `gorm:"type:text"`
 	IsDefault           bool              `gorm:"column:is_default"`
@@ -31,6 +33,8 @@ type Session struct {
 	SessionTokenHash string       `gorm:"column:session_token_hash;type:text;not null;uniqueIndex"`
 	UserAgent        string       `gorm:"column:user_agent;type:text"`
 	IPAddress        string       `gorm:"column:ip_address;type:text"`
+	ActiveOrgID      *int64       `gorm:"column:active_org_id;index"`
+	OrgIDs           []int64      `gorm:"column:org_ids;type:jsonb;serializer:json"`
 	ExpiresAt        time.Time    `gorm:"column:expires_at;not null;index"`
 	RevokedAt        *time.Time   `gorm:"column:revoked_at"`
 	CreatedAt        time.Time    `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP"`

@@ -21,6 +21,11 @@ export default defineConfig({
     },
     specPattern,
     supportFile: "cypress/support/e2e.ts",
+    screenshotOnRunFailure: false,
+    screenshotsFolder: "cypress/screenshots",
     video: false,
+    videosFolder: "cypress/videos",
+    viewportWidth: 1440,
+    viewportHeight: 900,
   },
 })

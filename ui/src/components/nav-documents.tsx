@@ -53,7 +53,7 @@ export function NavDocuments({
               <DropdownMenuTrigger asChild>
                 <SidebarMenuAction
                   showOnHover
-                  className="data-[state=open]:bg-accent rounded-sm"
+                  className="data-[state=open]:bg-bg-subtle rounded-sm"
                 >
                   <IconDots />
                   <span className="sr-only">More</span>
@@ -82,8 +82,8 @@ export function NavDocuments({
           </SidebarMenuItem>
         ))}
         <SidebarMenuItem>
-          <SidebarMenuButton className="text-sidebar-foreground/70">
-            <IconDots className="text-sidebar-foreground/70" />
+          <SidebarMenuButton className="text-text-muted">
+            <IconDots className="text-text-muted" />
             <span>More</span>
           </SidebarMenuButton>
         </SidebarMenuItem>

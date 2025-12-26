@@ -7,7 +7,7 @@ export function PlaceholderPage({ title, description }: Props) {
   return (
     <div className="space-y-2">
       <h1 className="text-2xl font-semibold">{title}</h1>
-      {description && <p className="text-muted-foreground">{description}</p>}
+      {description && <p className="text-text-muted">{description}</p>}
     </div>
   )
 }

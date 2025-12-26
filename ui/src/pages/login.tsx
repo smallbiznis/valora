@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleSubmit = async (payload: { username: string; password: string }) => {
+  const handleSubmit = async (payload: { email: string; password: string }) => {
     setError(null)
     setIsLoading(true)
     try {
@@ -29,7 +29,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-bg-subtle/40 px-4 py-12">
       <LoginForm onSubmit={handleSubmit} isLoading={isLoading} error={error} showSignup={mode === "cloud"} />
     </div>
   )

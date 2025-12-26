@@ -9,11 +9,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/mail"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/bwmarrin/snowflake"
+	"github.com/google/uuid"
 	"github.com/smallbiznis/valora/internal/auth/domain"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/argon2"
@@ -27,7 +29,9 @@ const (
 	argonSaltLen        = 16
 
 	sessionTokenBytes = 32
-	sessionTTL        = 24 * time.Hour
+	sessionTTL        = 7 * 24 * time.Hour
+
+	minPasswordLength = 8
 )
 
 type Service struct {
@@ -47,11 +51,17 @@ func New(log *zap.Logger, repo domain.Repository, sessionRepo domain.SessionRepo
 }
 
 func (s *Service) CreateUser(ctx context.Context, req domain.CreateUserRequest) (*domain.User, error) {
-	if strings.TrimSpace(req.Username) == "" || strings.TrimSpace(req.Password) == "" {
+	email, err := normalizeEmail(req.Email)
+	if err != nil {
+		return nil, domain.ErrInvalidCredentials
+	}
+	if strings.TrimSpace(req.Password) == "" || len(strings.TrimSpace(req.Password)) < minPasswordLength {
 		return nil, domain.ErrInvalidCredentials
 	}
 
-	if _, err := s.repo.FindByUsername(ctx, req.Username); err == nil {
+	if _, err := s.repo.FindOne(ctx, domain.User{
+		Email: email,
+	}); err == nil {
 		return nil, domain.ErrUserExists
 	} else if !errors.Is(err, domain.ErrUserNotFound) {
 		return nil, err
@@ -63,10 +73,19 @@ func (s *Service) CreateUser(ctx context.Context, req domain.CreateUserRequest) 
 	}
 
 	now := time.Now().UTC()
+	displayName := strings.TrimSpace(req.DisplayName)
+	if displayName == "" {
+		displayName = strings.TrimSpace(req.Username)
+	}
+	if displayName == "" {
+		displayName = defaultDisplayName(email)
+	}
 	user := &domain.User{
 		ID:                  s.genID.Generate(),
-		Username:            req.Username,
-		Email:               req.Email,
+		ExternalID:          newExternalID(),
+		Provider:            "local",
+		DisplayName:         displayName,
+		Email:               email,
 		PasswordHash:        &hashed,
 		IsDefault:           false,
 		LastPasswordChanged: &now,
@@ -80,12 +99,20 @@ func (s *Service) CreateUser(ctx context.Context, req domain.CreateUserRequest) 
 }
 
 func (s *Service) Login(ctx context.Context, req domain.LoginRequest) (*domain.LoginResult, error) {
-	if strings.TrimSpace(req.Username) == "" || strings.TrimSpace(req.Password) == "" {
+	email, err := normalizeEmail(req.Email)
+	if err != nil {
+		return nil, domain.ErrInvalidCredentials
+	}
+	if strings.TrimSpace(req.Password) == "" {
 		return nil, domain.ErrInvalidCredentials
 	}
 
-	user, err := s.repo.FindByUsername(ctx, req.Username)
+	user, err := s.repo.FindOne(ctx, domain.User{
+		Email:    email,
+		Provider: "local",
+	})
 	if err != nil {
+		fmt.Printf("err: %v\n", err)
 		if errors.Is(err, domain.ErrUserNotFound) {
 			return nil, domain.ErrInvalidCredentials
 		}
@@ -93,6 +120,7 @@ func (s *Service) Login(ctx context.Context, req domain.LoginRequest) (*domain.L
 	}
 
 	if user.PasswordHash == nil || !verifyPassword(req.Password, *user.PasswordHash) {
+		fmt.Printf("invalid_credentials")
 		return nil, domain.ErrInvalidCredentials
 	}
 
@@ -108,6 +136,7 @@ func (s *Service) Login(ctx context.Context, req domain.LoginRequest) (*domain.L
 		SessionTokenHash: hashToken(rawToken),
 		UserAgent:        strings.TrimSpace(req.UserAgent),
 		IPAddress:        strings.TrimSpace(req.IPAddress),
+		OrgIDs:           []int64{},
 		ExpiresAt:        now.Add(sessionTTL),
 		CreatedAt:        now,
 		LastSeenAt:       now,
@@ -125,7 +154,9 @@ func (s *Service) Login(ctx context.Context, req domain.LoginRequest) (*domain.L
 		Session: &domain.SessionView{
 			Metadata: map[string]any{
 				"user_id":               user.ID.String(),
-				"username":              user.Username,
+				"external_id":           user.ExternalID,
+				"provider":              user.Provider,
+				"display_name":          user.DisplayName,
 				"email":                 user.Email,
 				"is_default":            user.IsDefault,
 				"last_password_changed": user.LastPasswordChanged,
@@ -135,6 +166,7 @@ func (s *Service) Login(ctx context.Context, req domain.LoginRequest) (*domain.L
 		},
 		RawToken:  rawToken,
 		ExpiresAt: session.ExpiresAt,
+		SessionID: session.ID,
 	}, nil
 }
 
@@ -185,6 +217,10 @@ func (s *Service) Authenticate(ctx context.Context, rawToken string) (*domain.Se
 	return session, nil
 }
 
+func (s *Service) UpdateSessionOrgContext(ctx context.Context, sessionID snowflake.ID, activeOrgID *int64, orgIDs []int64) error {
+	return s.sessionRepo.UpdateOrgContext(ctx, sessionID, activeOrgID, orgIDs)
+}
+
 func (s *Service) ChangePassword(ctx context.Context, userID string, newPassword string) error {
 	if newPassword == "" {
 		return domain.ErrInvalidCredentials
@@ -219,6 +255,26 @@ func (s *Service) ChangePassword(ctx context.Context, userID string, newPassword
 func (s *Service) CurrentUser(ctx context.Context) (*domain.User, error) {
 	_ = ctx
 	return nil, domain.ErrUserNotFound
+}
+
+func normalizeEmail(raw string) (string, error) {
+	addr, err := mail.ParseAddress(strings.TrimSpace(raw))
+	if err != nil {
+		return "", err
+	}
+	return strings.ToLower(strings.TrimSpace(addr.Address)), nil
+}
+
+func defaultDisplayName(email string) string {
+	parts := strings.Split(email, "@")
+	if len(parts) > 0 && strings.TrimSpace(parts[0]) != "" {
+		return strings.TrimSpace(parts[0])
+	}
+	return email
+}
+
+func newExternalID() string {
+	return uuid.NewString()
 }
 
 func newSessionToken() (string, error) {

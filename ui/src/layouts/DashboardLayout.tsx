@@ -23,10 +23,9 @@ export default function DashboardLayout() {
     let active = true
     setIsLoading(true)
 
-    setCurrentOrg({ id: orgId, name: `Org ${orgId}` })
-
     api
-      .get(`/orgs/${orgId}`)
+      .post(`/user/using/${orgId}`)
+      .then(() => api.get(`/orgs/${orgId}`))
       .then((res) => {
         if (!active) return
         const org = res.data?.org ?? { id: orgId, name: `Org ${orgId}` }
@@ -36,11 +35,12 @@ export default function DashboardLayout() {
       .catch(() => {
         if (!active) return
         setIsLoading(false)
+        setCurrentOrg(null)
         navigate("/orgs", { replace: true })
       })
 
     api
-      .get("/me/orgs")
+      .get("/user/orgs")
       .then((res) => {
         if (!active) return
         setOrgs(res.data?.orgs ?? [])

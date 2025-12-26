@@ -6,13 +6,17 @@ import LoginPage from "@/pages/login"
 import OnboardingPage from "@/pages/onboarding"
 import OrgDashboard from "@/pages/org/OrgDashboard"
 import OrgCustomersPage from "@/pages/org/OrgCustomersPage"
+import OrgInvoiceDetailPage from "@/pages/org/OrgInvoiceDetailPage"
 import OrgInvoicesPage from "@/pages/org/OrgInvoicesPage"
+import OrgInvoiceTemplateFormPage from "@/pages/org/OrgInvoiceTemplateFormPage"
+import OrgInvoiceTemplatesPage from "@/pages/org/OrgInvoiceTemplatesPage"
 import OrgMeterPage from "@/pages/org/OrgMeterPage"
 import OrgMeterDetailPage from "@/pages/org/OrgMeterDetailPage"
 import OrgMeterCreatePage from "@/pages/org/OrgMeterCreatePage"
 import OrgProductDetailPage from "@/pages/org/OrgProductDetailPage"
 import OrgProductsPage from "@/pages/org/OrgProductsPage"
 import OrgSettings from "@/pages/org/OrgSettings"
+import OrgSubscriptionCreatePage from "@/pages/org/OrgSubscriptionCreatePage"
 import OrgSubscriptionsPage from "@/pages/org/OrgSubscriptionsPage"
 import OrgResolverPage from "@/pages/orgs"
 import CreatePrice from "@/pages/products/CreatePrice"
@@ -36,7 +40,7 @@ function RequireAuth() {
     return unsubscribe
   }, [])
   if (!hasHydrated) {
-    return <div className="flex min-h-screen items-center justify-center text-muted-foreground text-sm">Loading session...</div>
+    return <div className="flex min-h-screen items-center justify-center text-text-muted text-sm">Loading session...</div>
   }
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
@@ -121,8 +125,28 @@ export const router = createBrowserRouter([
             element: <OrgSubscriptionsPage />,
           },
           {
+            path: "subscriptions/create",
+            element: <OrgSubscriptionCreatePage />,
+          },
+          {
             path: "invoices",
             element: <OrgInvoicesPage />,
+          },
+          {
+            path: "invoices/:invoiceId",
+            element: <OrgInvoiceDetailPage />,
+          },
+          {
+            path: "invoice-templates",
+            element: <OrgInvoiceTemplatesPage />,
+          },
+          {
+            path: "invoice-templates/create",
+            element: <OrgInvoiceTemplateFormPage />,
+          },
+          {
+            path: "invoice-templates/:templateId",
+            element: <OrgInvoiceTemplateFormPage />,
           },
           { path: "settings", element: <OrgSettings /> },
         ],

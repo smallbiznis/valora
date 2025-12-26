@@ -10,9 +10,8 @@ import (
 )
 
 type createCustomerRequest struct {
-	OrganizationID string `json:"organization_id"`
-	Name           string `json:"name"`
-	Email          string `json:"email"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
 func (s *Server) CreateCustomer(c *gin.Context) {
@@ -23,9 +22,8 @@ func (s *Server) CreateCustomer(c *gin.Context) {
 	}
 
 	resp, err := s.customerSvc.Create(c.Request.Context(), customerdomain.CreateCustomerRequest{
-		OrganizationID: strings.TrimSpace(req.OrganizationID),
-		Name:           strings.TrimSpace(req.Name),
-		Email:          strings.TrimSpace(req.Email),
+		Name:  strings.TrimSpace(req.Name),
+		Email: strings.TrimSpace(req.Email),
 	})
 	if err != nil {
 		AbortWithError(c, err)
@@ -37,7 +35,6 @@ func (s *Server) CreateCustomer(c *gin.Context) {
 
 func (s *Server) ListCustomers(c *gin.Context) {
 	var query struct {
-		OrganizationID string `form:"organization_id"`
 		pagination.Pagination
 	}
 	if err := c.ShouldBindQuery(&query); err != nil {
@@ -45,9 +42,7 @@ func (s *Server) ListCustomers(c *gin.Context) {
 		return
 	}
 
-	orgID := strings.TrimSpace(query.OrganizationID)
 	resp, err := s.customerSvc.List(c.Request.Context(), customerdomain.ListCustomerRequest{
-		OrgID:     orgID,
 		PageToken: query.PageToken,
 		PageSize:  int32(query.PageSize),
 	})
@@ -60,11 +55,9 @@ func (s *Server) ListCustomers(c *gin.Context) {
 }
 
 func (s *Server) GetCustomerByID(c *gin.Context) {
-	orgID := strings.TrimSpace(c.Query("organization_id"))
 	id := strings.TrimSpace(c.Param("id"))
 	resp, err := s.customerSvc.GetByID(c.Request.Context(), customerdomain.GetCustomerRequest{
-		OrgID: orgID,
-		ID:    id,
+		ID: id,
 	})
 	if err != nil {
 		AbortWithError(c, err)

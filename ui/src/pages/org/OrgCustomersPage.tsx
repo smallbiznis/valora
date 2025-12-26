@@ -95,7 +95,6 @@ export default function OrgCustomersPage() {
     try {
       const res = await api.get("/customers", {
         params: {
-          organization_id: orgId,
           page_token: pageToken,
           page_size: PAGE_SIZE,
         },
@@ -167,7 +166,7 @@ export default function OrgCustomersPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">Customers</h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-text-muted text-sm">
             Manage customers, payment methods, and billing contact data.
           </p>
         </div>
@@ -236,7 +235,7 @@ export default function OrgCustomersPage() {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="px-0 text-primary"
+                className="px-0 text-accent-primary"
               >
                 More options
               </Button>
@@ -319,14 +318,14 @@ export default function OrgCustomersPage() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={6} className="text-muted-foreground">
+                <TableCell colSpan={6} className="text-text-muted">
                   Loading customers...
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && customers.length === 0 && !listError && (
               <TableRow>
-                <TableCell colSpan={6} className="text-muted-foreground">
+                <TableCell colSpan={6} className="text-text-muted">
                   No customers yet.
                 </TableCell>
               </TableRow>
@@ -339,11 +338,11 @@ export default function OrgCustomersPage() {
                     <Checkbox aria-label={`Select ${customer.name}`} />
                   </TableCell>
                   <TableCell className="font-medium">{customer.name}</TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-text-muted">
                     {customer.email}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">-</TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-text-muted">-</TableCell>
+                  <TableCell className="text-text-muted">
                     {formatDateTime(customer.created_at)}
                   </TableCell>
                   <TableCell className="text-right">
@@ -358,7 +357,7 @@ export default function OrgCustomersPage() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-        <span className="text-muted-foreground">{countLabel}</span>
+        <span className="text-text-muted">{countLabel}</span>
         <Button
           variant="outline"
           size="sm"

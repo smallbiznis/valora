@@ -1,7 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
-import { api } from "@/api/client"
 import { SignupForm } from "@/components/signup-form"
 import { useAuthStore } from "@/stores/authStore"
 
@@ -12,12 +11,11 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleSubmit = async (payload: { username: string; password: string }) => {
+  const handleSubmit = async (payload: { email: string; password: string; displayName?: string }) => {
     setError(null)
     setIsLoading(true)
     try {
       await signup(payload)
-      await api.get("/me")
       navigate("/orgs", { replace: true })
     } catch (err: any) {
       const status = err?.response?.status
@@ -32,7 +30,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-bg-subtle/40 px-4 py-12">
       <SignupForm onSubmit={handleSubmit} isLoading={isLoading} error={error} className="w-full max-w-md" />
     </div>
   )

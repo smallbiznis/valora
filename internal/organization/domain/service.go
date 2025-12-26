@@ -10,6 +10,7 @@ import (
 
 const (
 	RoleOwner  = "OWNER"
+	RoleAdmin  = "ADMIN"
 	RoleMember = "MEMBER"
 )
 
@@ -17,20 +18,32 @@ type Service interface {
 	Create(ctx context.Context, userID snowflake.ID, req CreateOrganizationRequest) (*OrganizationResponse, error)
 	GetByID(ctx context.Context, id string) (*OrganizationResponse, error)
 	ListOrganizationsByUser(ctx context.Context, userID snowflake.ID) ([]OrganizationListResponseItem, error)
+	InviteMembers(ctx context.Context, userID snowflake.ID, orgID string, invites []InviteRequest) error
+	SetBillingPreferences(ctx context.Context, userID snowflake.ID, orgID string, req BillingPreferencesRequest) error
 }
 
 type CreateOrganizationRequest struct {
-	Name            string
-	CountryCode     string
-	TimezoneName    string
+	Name         string
+	CountryCode  string
+	TimezoneName string
+}
+
+type InviteRequest struct {
+	Email string
+	Role  string
+}
+
+type BillingPreferencesRequest struct {
+	Currency string
+	Timezone string
 }
 
 type OrganizationResponse struct {
-	ID              string `json:"id"`
-	Name            string `json:"name"`
-	Slug string `json:"slug"`
-	CountryCode     string `json:"country_code"`
-	TimezoneName    string `json:"timezone_name"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Slug         string `json:"slug"`
+	CountryCode  string `json:"country_code"`
+	TimezoneName string `json:"timezone_name"`
 }
 
 type OrganizationListResponseItem struct {
@@ -47,4 +60,7 @@ var (
 	ErrInvalidCurrency     = errors.New("invalid_currency")
 	ErrInvalidUser         = errors.New("invalid_user")
 	ErrInvalidOrganization = errors.New("invalid_organization")
+	ErrInvalidEmail        = errors.New("invalid_email")
+	ErrInvalidRole         = errors.New("invalid_role")
+	ErrForbidden           = errors.New("forbidden")
 )

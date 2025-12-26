@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
+	"github.com/smallbiznis/valora/internal/orgcontext"
 	pricedomain "github.com/smallbiznis/valora/internal/price/domain"
 	pricetierdomain "github.com/smallbiznis/valora/internal/pricetier/domain"
 	"go.uber.org/fx"
@@ -43,7 +44,7 @@ func New(p Params) pricetierdomain.Service {
 }
 
 func (s *Service) Create(ctx context.Context, req pricetierdomain.CreateRequest) (*pricetierdomain.Response, error) {
-	orgID, err := s.parseOrganizationID(req.OrganizationID)
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -115,8 +116,8 @@ func (s *Service) Create(ctx context.Context, req pricetierdomain.CreateRequest)
 	return s.toResponse(entity), nil
 }
 
-func (s *Service) List(ctx context.Context, organizationID string) ([]pricetierdomain.Response, error) {
-	orgID, err := s.parseOrganizationID(organizationID)
+func (s *Service) List(ctx context.Context) ([]pricetierdomain.Response, error) {
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -134,8 +135,8 @@ func (s *Service) List(ctx context.Context, organizationID string) ([]pricetierd
 	return resp, nil
 }
 
-func (s *Service) Get(ctx context.Context, organizationID string, id string) (*pricetierdomain.Response, error) {
-	orgID, err := s.parseOrganizationID(organizationID)
+func (s *Service) Get(ctx context.Context, id string) (*pricetierdomain.Response, error) {
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -156,12 +157,12 @@ func (s *Service) Get(ctx context.Context, organizationID string, id string) (*p
 	return s.toResponse(entity), nil
 }
 
-func (s *Service) parseOrganizationID(value string) (snowflake.ID, error) {
-	orgID, err := snowflake.ParseString(strings.TrimSpace(value))
-	if err != nil || orgID == 0 {
+func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
 		return 0, pricetierdomain.ErrInvalidOrganization
 	}
-	return orgID, nil
+	return snowflake.ID(orgID), nil
 }
 
 func (s *Service) priceExists(ctx context.Context, orgID, priceID snowflake.ID) (bool, error) {

@@ -9,17 +9,15 @@ import (
 )
 
 type CreateIngestRequest struct {
-	OrganizationID     string         `json:"organization_id"`
-	CustomerID         string         `json:"customer_id"`
-	MeterCode          string         `json:"meter_code"`
-	Value              float64        `json:"value"`
-	RecordedAt         time.Time      `json:"recorded_at"`
-	IdempotencyKey     *string        `json:"idempotency_key"`
-	Metadata           map[string]any `json:"metadata"`
+	CustomerID     string         `json:"customer_id"`
+	MeterCode      string         `json:"meter_code"`
+	Value          float64        `json:"value"`
+	RecordedAt     time.Time      `json:"recorded_at"`
+	IdempotencyKey *string        `json:"idempotency_key"`
+	Metadata       map[string]any `json:"metadata"`
 }
 
 type ListUsageRequest struct {
-	OrganizationID string `json:"organization_id"`
 	CustomerID     string `json:"customer_id"`
 	SubscriptionID string `json:"subscription_id"`
 	MeterID        string `json:"meter_id"`

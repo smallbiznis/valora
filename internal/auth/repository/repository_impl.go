@@ -29,9 +29,9 @@ func (r *repo) Create(ctx context.Context, user *domain.User) error {
 	return r.db.WithContext(ctx).Create(user).Error
 }
 
-func (r *repo) FindByUsername(ctx context.Context, username string) (*domain.User, error) {
+func (r *repo) FindByExternalID(ctx context.Context, externalID string) (*domain.User, error) {
 	var user domain.User
-	err := r.db.WithContext(ctx).Where("username = ?", username).First(&user).Error
+	err := r.db.WithContext(ctx).Where("external_id = ?", externalID).First(&user).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, domain.ErrUserNotFound
 	}
@@ -39,6 +39,18 @@ func (r *repo) FindByUsername(ctx context.Context, username string) (*domain.Use
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *repo) FindOne(ctx context.Context, user domain.User) (*domain.User, error) {
+	var u domain.User
+	err := r.db.WithContext(ctx).Where(user).First(&u).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, domain.ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
 }
 
 func (r *repo) FindByID(ctx context.Context, id snowflake.ID) (*domain.User, error) {
@@ -82,6 +94,30 @@ func (r *repo) GetSessionByTokenHash(ctx context.Context, tokenHash string) (*do
 
 func (r *repo) UpdateLastSeen(ctx context.Context, sessionID snowflake.ID, lastSeen time.Time) error {
 	tx := r.db.WithContext(ctx).Model(&domain.Session{}).Where("id = ?", sessionID).Update("last_seen_at", lastSeen)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return domain.ErrSessionNotFound
+	}
+	return nil
+}
+
+func (r *repo) UpdateOrgContext(ctx context.Context, sessionID snowflake.ID, activeOrgID *int64, orgIDs []int64) error {
+	if orgIDs == nil {
+		orgIDs = []int64{}
+	}
+
+	updates := &domain.Session{
+		ActiveOrgID: activeOrgID,
+		OrgIDs:      orgIDs,
+	}
+
+	tx := r.db.WithContext(ctx).
+		Model(&domain.Session{}).
+		Where("id = ?", sessionID).
+		Select("active_org_id", "org_ids").
+		Updates(updates)
 	if tx.Error != nil {
 		return tx.Error
 	}

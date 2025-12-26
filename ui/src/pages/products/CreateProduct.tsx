@@ -221,7 +221,7 @@ export default function CreateProduct() {
     setMetersError(null)
 
     api
-      .get("/meters", { params: { organization_id: orgId } })
+      .get("/meters")
       .then((response) => {
         if (!isMounted) return
         setMeters(response.data?.data ?? [])
@@ -517,7 +517,7 @@ export default function CreateProduct() {
     <div className="space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold">Create product</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-muted text-sm">
           Set up a product and price in one flow. Each API remains independent.
         </p>
       </div>
@@ -633,7 +633,7 @@ export default function CreateProduct() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium">Metadata</p>
-                    <p className="text-muted-foreground text-xs">
+                    <p className="text-text-muted text-xs">
                       Attach structured notes to the product.
                     </p>
                   </div>
@@ -814,8 +814,8 @@ export default function CreateProduct() {
                   )}
                 />
               </div>
-              <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
-                Price code preview: <span className="font-medium text-foreground">{priceCodePreview}</span>
+              <div className="rounded-lg border bg-bg-subtle/30 p-3 text-xs text-text-muted">
+                Price code preview: <span className="font-medium text-text-primary">{priceCodePreview}</span>
               </div>
 
               <div className="space-y-4 rounded-lg border p-4">
@@ -824,7 +824,7 @@ export default function CreateProduct() {
                     <p className="text-sm font-medium">
                       {isUsageBased ? "Usage rates" : "Unit price"}
                     </p>
-                    <p className="text-muted-foreground text-xs">
+                    <p className="text-text-muted text-xs">
                       {isUsageBased
                         ? "This price is charged based on usage measured by a meter."
                         : "Set the amount charged per billing interval."}
@@ -836,16 +836,16 @@ export default function CreateProduct() {
                 {isUsageBased ? (
                   <div className="space-y-4">
                     {metersLoading && (
-                      <p className="text-muted-foreground text-sm">Loading meters...</p>
+                      <p className="text-text-muted text-sm">Loading meters...</p>
                     )}
                     {metersError && <Alert variant="destructive">{metersError}</Alert>}
                     {!metersLoading && !metersError && meters.length === 0 && (
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-text-muted text-sm">
                         No meters found. Create a meter first.
                       </p>
                     )}
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-muted-foreground text-xs">
+                      <p className="text-text-muted text-xs">
                         Add one or more meter rates for usage-based pricing.
                       </p>
                       <Button
@@ -868,7 +868,7 @@ export default function CreateProduct() {
                     </div>
                     {form.formState.errors.usage?.rates &&
                       !Array.isArray(form.formState.errors.usage.rates) && (
-                        <p className="text-destructive text-sm">
+                        <p className="text-status-error text-sm">
                           {(form.formState.errors.usage.rates as { message?: string })
                             ?.message ?? "Check the meter rates."}
                         </p>
@@ -1050,7 +1050,7 @@ export default function CreateProduct() {
             <Button type="submit" data-testid="product-submit" disabled={submitDisabled}>
               {isSubmitting ? "Creating..." : "Create product"}
             </Button>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-text-muted text-xs">
               Each step is committed separately. Partial failures can be retried.
             </p>
           </div>

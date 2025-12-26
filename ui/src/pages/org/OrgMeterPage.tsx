@@ -63,7 +63,7 @@ export default function OrgMeterPage() {
     setError(null)
 
     api
-      .get("/meters", { params: { organization_id: orgId } })
+      .get("/meters")
       .then((response) => {
         if (!isMounted) return
         setMeters(response.data?.data ?? [])
@@ -87,7 +87,7 @@ export default function OrgMeterPage() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">Meters</h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-text-muted text-sm">
             Define usage meters for this organization.
           </p>
         </div>
@@ -106,15 +106,15 @@ export default function OrgMeterPage() {
         </div>
       </div>
 
-      <div className="border-b">
+      <div className="border-b border-border-subtle">
         <nav className="flex items-center gap-6 text-sm font-medium">
-          <span className="border-b-2 border-primary pb-3 text-primary">Meters</span>
-          <span className="pb-3 text-muted-foreground">Alerts</span>
-          <span className="pb-3 text-muted-foreground">Credits</span>
+          <span className="border-b-2 border-accent-primary pb-3 text-accent-primary">Meters</span>
+          <span className="pb-3 text-text-muted">Alerts</span>
+          <span className="pb-3 text-text-muted">Credits</span>
         </nav>
       </div>
 
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-lg border border-border-subtle bg-bg-surface">
         <Table>
           <TableHeader>
             <TableRow>
@@ -128,21 +128,21 @@ export default function OrgMeterPage() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={5} className="text-muted-foreground">
+                <TableCell colSpan={5} className="text-text-muted">
                   Loading meters...
                 </TableCell>
               </TableRow>
             )}
             {error && (
               <TableRow>
-                <TableCell colSpan={5} className="text-destructive">
+                <TableCell colSpan={5} className="text-status-error">
                   {error}
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && !error && rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-muted-foreground">
+                <TableCell colSpan={5} className="text-text-muted">
                   No meters yet.
                 </TableCell>
               </TableRow>
@@ -154,7 +154,7 @@ export default function OrgMeterPage() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Link
-                        className="font-medium text-foreground hover:underline"
+                        className="font-medium text-text-primary hover:underline"
                         to={`/orgs/${orgId}/meter/${meter.id}`}
                       >
                         {meter.name}
@@ -163,20 +163,20 @@ export default function OrgMeterPage() {
                         variant={meter.active ? "secondary" : "outline"}
                         className={
                           meter.active
-                            ? "border-green-200 bg-green-50 text-green-700"
-                            : "text-muted-foreground"
+                            ? "border-status-success/30 bg-status-success/10 text-status-success"
+                            : "text-text-muted"
                         }
                       >
                         {meter.active ? "Active" : "Deactivated"}
                       </Badge>
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{meter.code}</TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-text-muted">{meter.code}</TableCell>
+                  <TableCell className="text-text-muted">
                     {formatAggregation(meter.aggregation)}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">Raw</TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-text-muted">Raw</TableCell>
+                  <TableCell className="text-text-muted">
                     {formatTimestamp(meter.created_at)}
                   </TableCell>
                 </TableRow>

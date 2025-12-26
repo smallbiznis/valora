@@ -7,6 +7,7 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	billingcycledomain "github.com/smallbiznis/valora/internal/billingcycle/domain"
+	"github.com/smallbiznis/valora/internal/orgcontext"
 	pricedomain "github.com/smallbiznis/valora/internal/price/domain"
 	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
 	"github.com/smallbiznis/valora/pkg/db/option"
@@ -57,7 +58,7 @@ func NewService(p ServiceParam) subscriptiondomain.Service {
 
 // GetActiveByCustomerID implements domain.Service.
 func (s *Service) GetActiveByCustomerID(ctx context.Context, req subscriptiondomain.GetActiveByCustomerIDRequest) (subscriptiondomain.Subscription, error) {
-	orgID, err := s.parseID(req.OrgID, subscriptiondomain.ErrInvalidOrganization)
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return subscriptiondomain.Subscription{}, err
 	}
@@ -69,7 +70,6 @@ func (s *Service) GetActiveByCustomerID(ctx context.Context, req subscriptiondom
 
 	statuses := []subscriptiondomain.SubscriptionStatus{
 		subscriptiondomain.SubscriptionStatusActive,
-		subscriptiondomain.SubscriptionStatusTrialing,
 	}
 
 	item, err := s.repo.FindActiveByCustomerID(ctx, s.db, orgID, customerID, statuses)
@@ -85,7 +85,7 @@ func (s *Service) GetActiveByCustomerID(ctx context.Context, req subscriptiondom
 
 // GetSubscriptionItem implements domain.Service.
 func (s *Service) GetSubscriptionItem(ctx context.Context, req subscriptiondomain.GetSubscriptionItemRequest) (subscriptiondomain.SubscriptionItem, error) {
-	orgID, err := s.parseID(req.OrgID, subscriptiondomain.ErrInvalidOrganization)
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return subscriptiondomain.SubscriptionItem{}, err
 	}
@@ -130,7 +130,7 @@ func (s *Service) GetSubscriptionItem(ctx context.Context, req subscriptiondomai
 }
 
 func (s *Service) List(ctx context.Context, req subscriptiondomain.ListSubscriptionRequest) (subscriptiondomain.ListSubscriptionResponse, error) {
-	orgID, err := s.parseID(req.OrgID, subscriptiondomain.ErrInvalidOrganization)
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return subscriptiondomain.ListSubscriptionResponse{}, err
 	}
@@ -196,7 +196,7 @@ func (s *Service) List(ctx context.Context, req subscriptiondomain.ListSubscript
 }
 
 func (s *Service) Create(ctx context.Context, req subscriptiondomain.CreateSubscriptionRequest) (subscriptiondomain.CreateSubscriptionResponse, error) {
-	orgID, err := s.parseID(req.OrganizationID, subscriptiondomain.ErrInvalidOrganization)
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return subscriptiondomain.CreateSubscriptionResponse{}, err
 	}
@@ -215,8 +215,8 @@ func (s *Service) Create(ctx context.Context, req subscriptiondomain.CreateSubsc
 		ID:             s.genID.Generate(),
 		OrgID:          orgID,
 		CustomerID:     customerID,
-		Status:         subscriptiondomain.SubscriptionStatusActive,
-		CollectionMode: subscriptiondomain.SendInvoice,
+		Status:         subscriptiondomain.SubscriptionStatusPending,
+		CollectionMode: req.CollectionMode,
 		StartAt:        now,
 		CreatedAt:      now,
 		UpdatedAt:      now,
@@ -231,31 +231,63 @@ func (s *Service) Create(ctx context.Context, req subscriptiondomain.CreateSubsc
 
 	for _, item := range req.Items {
 		priceID := strings.TrimSpace(item.PriceID)
+		if priceID == "" {
+			return subscriptiondomain.CreateSubscriptionResponse{},
+				subscriptiondomain.ErrInvalidPrice
+		}
+
 		price, ok := priceCache[priceID]
 		if !ok {
-			loadedPrice, err := s.pricesvc.Get(ctx, orgID.String(), priceID)
+			loadedPrice, err := s.pricesvc.Get(ctx, priceID)
 			if err != nil {
 				return subscriptiondomain.CreateSubscriptionResponse{}, err
 			}
-			if !loadedPrice.Active {
-				return subscriptiondomain.CreateSubscriptionResponse{}, subscriptiondomain.ErrInvalidPrice
+			if !loadedPrice.Active || loadedPrice.RetiredAt != nil {
+				return subscriptiondomain.CreateSubscriptionResponse{},
+					subscriptiondomain.ErrInvalidPrice
 			}
 			price = loadedPrice
 			priceCache[priceID] = loadedPrice
 		}
 
-		if price.PricingModel == pricedomain.Flat {
+		// --- PricingModel constraints ---
+		switch price.PricingModel {
+		case pricedomain.Flat:
 			flatCount++
 			if flatCount > 1 {
-				return subscriptiondomain.CreateSubscriptionResponse{}, subscriptiondomain.ErrMultipleFlatPrices
+				return subscriptiondomain.CreateSubscriptionResponse{},
+					subscriptiondomain.ErrMultipleFlatPrices
 			}
+
+		case pricedomain.PerUnit,
+			pricedomain.TieredVolume,
+			pricedomain.TieredGraduated:
+
+		default:
+			return subscriptiondomain.CreateSubscriptionResponse{},
+				pricedomain.ErrUnsupportedPricingModel
 		}
 
+		// --- Quantity & BillingMode rules ---
 		quantity := item.Quantity
-		if quantity == 0 {
-			quantity = 1
-		} else if quantity < 0 {
-			return subscriptiondomain.CreateSubscriptionResponse{}, subscriptiondomain.ErrInvalidQuantity
+		if quantity <= 0 {
+			quantity = 1 // Stripe-like default
+		}
+
+		switch price.BillingMode {
+		case pricedomain.Licensed:
+			if quantity < 1 {
+				return subscriptiondomain.CreateSubscriptionResponse{},
+					pricedomain.ErrInvalidPricingModel
+			}
+
+		case pricedomain.Metered:
+			// quantity is ignored or treated as multiplier
+			// do not block here
+
+		default:
+			return subscriptiondomain.CreateSubscriptionResponse{},
+				pricedomain.ErrInvalidBillingMode
 		}
 
 		parsedPriceID, err := s.parseID(price.ID, subscriptiondomain.ErrInvalidPrice)
@@ -263,10 +295,10 @@ func (s *Service) Create(ctx context.Context, req subscriptiondomain.CreateSubsc
 			return subscriptiondomain.CreateSubscriptionResponse{}, err
 		}
 
-		priceCode := price.Code
 		var priceCodePtr *string
-		if priceCode != "" {
-			priceCodePtr = &priceCode
+		if price.Code != "" {
+			code := price.Code
+			priceCodePtr = &code
 		}
 
 		subscriptionItems = append(subscriptionItems, subscriptiondomain.SubscriptionItem{
@@ -274,16 +306,16 @@ func (s *Service) Create(ctx context.Context, req subscriptiondomain.CreateSubsc
 			OrgID:            orgID,
 			SubscriptionID:   subscription.ID,
 			PriceID:          parsedPriceID,
-			PriceCode:        priceCodePtr,
+			PriceCode:        priceCodePtr, // snapshot
 			Quantity:         quantity,
-			BillingMode:      string(price.BillingMode),
-			BillingThreshold: price.BillingThreshold,
+			BillingMode:      string(price.BillingMode), // snapshot
+			BillingThreshold: price.BillingThreshold,    // snapshot
 			CreatedAt:        now,
 			UpdatedAt:        now,
 		})
 	}
 
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	if err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := s.repo.Insert(ctx, tx, &subscription); err != nil {
 			return err
 		}
@@ -291,8 +323,7 @@ func (s *Service) Create(ctx context.Context, req subscriptiondomain.CreateSubsc
 			return err
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return subscriptiondomain.CreateSubscriptionResponse{}, err
 	}
 
@@ -300,12 +331,17 @@ func (s *Service) Create(ctx context.Context, req subscriptiondomain.CreateSubsc
 }
 
 func (s *Service) GetByID(ctx context.Context, id string) (subscriptiondomain.Subscription, error) {
+	orgID, err := s.orgIDFromContext(ctx)
+	if err != nil {
+		return subscriptiondomain.Subscription{}, err
+	}
+
 	subscriptionID, err := snowflake.ParseString(strings.TrimSpace(id))
 	if err != nil {
 		return subscriptiondomain.Subscription{}, err
 	}
 
-	item, err := s.repo.FindByID(ctx, s.db, subscriptionID)
+	item, err := s.repo.FindByID(ctx, s.db, orgID, subscriptionID)
 	if err != nil {
 		return subscriptiondomain.Subscription{}, err
 	}
@@ -324,6 +360,14 @@ func (s *Service) parseID(value string, invalidErr error) (snowflake.ID, error) 
 	return id, nil
 }
 
+func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return 0, subscriptiondomain.ErrInvalidOrganization
+	}
+	return snowflake.ID(orgID), nil
+}
+
 func parseStatusFilter(value string) (*subscriptiondomain.SubscriptionStatus, error) {
 	status := strings.TrimSpace(value)
 	if status == "" {
@@ -332,12 +376,11 @@ func parseStatusFilter(value string) (*subscriptiondomain.SubscriptionStatus, er
 
 	status = strings.ToUpper(status)
 	switch subscriptiondomain.SubscriptionStatus(status) {
-	case subscriptiondomain.SubscriptionStatusDraft,
+	case subscriptiondomain.SubscriptionStatusPending,
 		subscriptiondomain.SubscriptionStatusActive,
-		subscriptiondomain.SubscriptionStatusTrialing,
 		subscriptiondomain.SubscriptionStatusPastDue,
 		subscriptiondomain.SubscriptionStatusCanceled,
-		subscriptiondomain.SubscriptionStatusEnded:
+		subscriptiondomain.SubscriptionStatusSuspended:
 		parsed := subscriptiondomain.SubscriptionStatus(status)
 		return &parsed, nil
 	default:
@@ -352,12 +395,11 @@ func parseStatus(value string) (subscriptiondomain.SubscriptionStatus, error) {
 	}
 
 	switch subscriptiondomain.SubscriptionStatus(status) {
-	case subscriptiondomain.SubscriptionStatusDraft,
+	case subscriptiondomain.SubscriptionStatusPending,
 		subscriptiondomain.SubscriptionStatusActive,
-		subscriptiondomain.SubscriptionStatusTrialing,
 		subscriptiondomain.SubscriptionStatusPastDue,
 		subscriptiondomain.SubscriptionStatusCanceled,
-		subscriptiondomain.SubscriptionStatusEnded:
+		subscriptiondomain.SubscriptionStatusSuspended:
 		return subscriptiondomain.SubscriptionStatus(status), nil
 	default:
 		return "", subscriptiondomain.ErrInvalidStatus

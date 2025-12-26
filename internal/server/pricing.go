@@ -16,10 +16,9 @@ func (s *Server) CreatePricing(c *gin.Context) {
 	}
 
 	resp, err := s.priceSvc.Create(c.Request.Context(), pricedomain.CreateRequest{
-		OrganizationID: strings.TrimSpace(req.OrganizationID),
-		Name:           strings.TrimSpace(req.Name),
-		Description:    req.Description,
-		Active:         req.Active,
+		Name:        strings.TrimSpace(req.Name),
+		Description: req.Description,
+		Active:      req.Active,
 	})
 	if err != nil {
 		AbortWithError(c, err)
@@ -30,8 +29,7 @@ func (s *Server) CreatePricing(c *gin.Context) {
 }
 
 func (s *Server) ListPricings(c *gin.Context) {
-	orgID := strings.TrimSpace(c.Query("organization_id"))
-	resp, err := s.priceSvc.List(c.Request.Context(), orgID)
+	resp, err := s.priceSvc.List(c.Request.Context())
 	if err != nil {
 		AbortWithError(c, err)
 		return
@@ -41,9 +39,8 @@ func (s *Server) ListPricings(c *gin.Context) {
 }
 
 func (s *Server) GetPricingByID(c *gin.Context) {
-	orgID := strings.TrimSpace(c.Query("organization_id"))
 	id := strings.TrimSpace(c.Param("id"))
-	resp, err := s.priceSvc.Get(c.Request.Context(), orgID, id)
+	resp, err := s.priceSvc.Get(c.Request.Context(), id)
 	if err != nil {
 		AbortWithError(c, err)
 		return

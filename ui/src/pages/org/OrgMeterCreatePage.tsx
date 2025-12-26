@@ -69,8 +69,8 @@ export default function OrgMeterCreatePage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
-        <div className="text-sm text-muted-foreground">
-          <Link className="text-primary hover:underline" to={`/orgs/${orgId}/meter`}>
+        <div className="text-sm text-text-muted">
+          <Link className="text-accent-primary hover:underline" to={`/orgs/${orgId}/meter`}>
             Meters
           </Link>{" "}
           / Create meter
@@ -147,7 +147,7 @@ export default function OrgMeterCreatePage() {
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div className="space-y-1">
                 <Label htmlFor="meter-active">Active</Label>
-                <p className="text-muted-foreground text-xs">
+                <p className="text-text-muted text-xs">
                   Disable to stop ingesting usage events.
                 </p>
               </div>
@@ -173,14 +173,14 @@ export default function OrgMeterCreatePage() {
           <CardHeader>
             <CardTitle>Preview</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
+          <CardContent className="space-y-3 text-sm text-text-muted">
             <div>
-              <div className="font-medium text-foreground">Aggregate by {aggregation.toLowerCase()}</div>
+              <div className="font-medium text-text-primary">Aggregate by {aggregation.toLowerCase()}</div>
               <p>Usage events will be aggregated into a single value.</p>
             </div>
             <div className="rounded-lg border border-dashed p-4 text-center">
               <div className="text-xs uppercase tracking-wide">Sample usage</div>
-              <div className="mt-2 text-2xl font-semibold text-foreground">16</div>
+              <div className="mt-2 text-2xl font-semibold text-text-primary">16</div>
               <div className="text-xs">end of cycle value</div>
             </div>
           </CardContent>

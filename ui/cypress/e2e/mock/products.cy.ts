@@ -28,7 +28,7 @@ describe("Products page", () => {
     mockLogin(orgId)
     navigateToProducts()
     cy.wait("@getProducts")
-    cy.get('[data-testid="products-json"]').should("contain.text", "[]")
+    cy.contains(/no products yet/i).should("be.visible")
   })
 
   it("lists products", () => {
@@ -45,8 +45,8 @@ describe("Products page", () => {
     mockLogin(orgId)
     navigateToProducts()
     cy.wait("@getProducts")
-    cy.get('[data-testid="products-json"]').should("contain.text", "Starter")
-    cy.get('[data-testid="products-json"]').should("contain.text", "Growth")
+    cy.contains("Starter").should("be.visible")
+    cy.contains("Growth").should("be.visible")
   })
 
   it("creates a product", () => {
@@ -75,15 +75,32 @@ describe("Products page", () => {
       body: { data: { id: "prod-123", name: "Starter", code: "starter" } },
     }).as("getProduct")
 
+    cy.intercept("GET", "/api/meters*", {
+      statusCode: 200,
+      body: { data: [] },
+    }).as("getMeters")
+
+    cy.intercept("GET", "/api/prices*", {
+      statusCode: 200,
+      body: { data: [] },
+    }).as("getPrices")
+
+    cy.intercept("GET", "/api/price_amounts*", {
+      statusCode: 200,
+      body: { data: [] },
+    }).as("getAmounts")
+
     mockLogin(orgId)
     navigateToProducts()
     cy.wait("@getProducts")
     cy.get('[data-testid="products-create"]').click()
+    cy.wait("@getMeters")
 
     cy.contains("h1", "Create product").should("be.visible")
     fillByTestId("product-name", "Starter")
     fillByTestId("product-code", "starter")
     fillByTestId("product-description", "E2E product description.")
+    fillByTestId("price-name", "Starter monthly")
     fillByTestId("product-amount", "5000")
 
     cy.get('[data-testid="product-submit"]').click()
@@ -91,6 +108,7 @@ describe("Products page", () => {
     cy.wait("@createPrice")
     cy.wait("@createAmount")
     cy.wait("@getProduct")
+    cy.wait(["@getPrices", "@getAmounts"])
     cy.location("pathname", { timeout: 10000 }).should(
       "eq",
       `/orgs/${orgId}/products/prod-123`

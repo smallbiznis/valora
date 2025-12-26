@@ -8,7 +8,6 @@ import (
 	"gorm.io/gorm"
 )
 
-
 type OrganizationListItem struct {
 	ID        snowflake.ID
 	Name      string
@@ -21,4 +20,7 @@ type Repository interface {
 	CreateOrganization(ctx context.Context, org Organization) error
 	AddMember(ctx context.Context, member OrganizationMember) error
 	ListOrganizationsByUser(ctx context.Context, userID snowflake.ID) ([]OrganizationListItem, error)
+	IsMember(ctx context.Context, orgID snowflake.ID, userID snowflake.ID) (bool, error)
+	CreateInvites(ctx context.Context, invites []OrganizationInvite) error
+	UpsertBillingPreferences(ctx context.Context, prefs OrganizationBillingPreferences) error
 }

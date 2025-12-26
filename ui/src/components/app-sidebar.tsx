@@ -68,6 +68,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       url: `${orgBasePath}/invoices`,
       icon: IconFileDescription,
     },
+    {
+      title: "Invoice templates",
+      url: `${orgBasePath}/invoice-templates`,
+      icon: IconFileDescription,
+    },
   ]
 
   const navSecondary = [

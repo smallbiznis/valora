@@ -55,7 +55,7 @@ export default function OrgMeterDetailPage() {
     setError(null)
 
     api
-      .get(`/meters/${meterId}`, { params: { organization_id: orgId } })
+      .get(`/meters/${meterId}`)
       .then((response) => {
         if (!isMounted) return
         setMeter(response.data?.data ?? null)
@@ -81,8 +81,8 @@ export default function OrgMeterDetailPage() {
         variant={meter.active ? "secondary" : "outline"}
         className={
           meter.active
-            ? "border-green-200 bg-green-50 text-green-700"
-            : "text-muted-foreground"
+            ? "border-status-success/30 bg-status-success/10 text-status-success"
+            : "text-text-muted"
         }
       >
         {meter.active ? "Active" : "Deactivated"}
@@ -91,24 +91,24 @@ export default function OrgMeterDetailPage() {
   }, [meter])
 
   if (isLoading) {
-    return <div className="text-muted-foreground text-sm">Loading meter...</div>
+    return <div className="text-text-muted text-sm">Loading meter...</div>
   }
 
   if (error) {
-    return <div className="text-destructive text-sm">{error}</div>
+    return <div className="text-status-error text-sm">{error}</div>
   }
 
   if (!meter) {
-    return <div className="text-muted-foreground text-sm">Meter not found.</div>
+    return <div className="text-text-muted text-sm">Meter not found.</div>
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-text-muted">
             Billing · Usage-based ·{" "}
-            <Link className="text-primary hover:underline" to={`/orgs/${orgId}/meter`}>
+            <Link className="text-accent-primary hover:underline" to={`/orgs/${orgId}/meter`}>
               Meters
             </Link>
           </div>
@@ -131,7 +131,7 @@ export default function OrgMeterDetailPage() {
               <CardTitle>Live meter events</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground text-sm">
+              <div className="rounded-lg border border-dashed p-6 text-center text-text-muted text-sm">
                 No events.
               </div>
               <div className="flex justify-end">
@@ -151,7 +151,7 @@ export default function OrgMeterDetailPage() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
+            <CardContent className="text-sm text-text-muted">
               Products with usage-based prices attached to this meter.
             </CardContent>
           </Card>
@@ -163,36 +163,36 @@ export default function OrgMeterDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div>
-              <div className="text-muted-foreground">Meter ID</div>
+              <div className="text-text-muted">Meter ID</div>
               <div className="font-medium">{meter.id}</div>
             </div>
             <div>
-              <div className="text-muted-foreground">Meter created</div>
+              <div className="text-text-muted">Meter created</div>
               <div className="font-medium">{formatTimestamp(meter.created_at)}</div>
             </div>
             <div>
-              <div className="text-muted-foreground">Meter last updated</div>
+              <div className="text-text-muted">Meter last updated</div>
               <div className="font-medium">{formatTimestamp(meter.updated_at)}</div>
             </div>
             <Separator />
             <div>
-              <div className="text-muted-foreground">Display name</div>
+              <div className="text-text-muted">Display name</div>
               <div className="font-medium">{meter.name}</div>
             </div>
             <div>
-              <div className="text-muted-foreground">Event name</div>
+              <div className="text-text-muted">Event name</div>
               <div className="font-medium">{meter.code}</div>
             </div>
             <div>
-              <div className="text-muted-foreground">Event ingestion</div>
+              <div className="text-text-muted">Event ingestion</div>
               <div className="font-medium">Raw</div>
             </div>
             <div>
-              <div className="text-muted-foreground">Aggregation method</div>
+              <div className="text-text-muted">Aggregation method</div>
               <div className="font-medium">{formatAggregation(meter.aggregation)}</div>
             </div>
             <div>
-              <div className="text-muted-foreground">Unit</div>
+              <div className="text-text-muted">Unit</div>
               <div className="font-medium">{meter.unit}</div>
             </div>
           </CardContent>

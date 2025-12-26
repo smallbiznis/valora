@@ -8,17 +8,16 @@ import (
 
 type Service interface {
 	Create(ctx context.Context, req CreateRequest) (*Response, error)
-	List(ctx context.Context, organizationID string) ([]Response, error)
-	Get(ctx context.Context, organizationID string, id string) (*Response, error)
+	List(ctx context.Context) ([]Response, error)
+	Get(ctx context.Context, id string) (*Response, error)
 }
 
 type CreateRequest struct {
-	OrganizationID string         `json:"organization_id"`
-	Code           string         `json:"code"`
-	Name           string         `json:"name"`
-	Description    *string        `json:"description"`
-	Active         *bool          `json:"active"`
-	Metadata       map[string]any `json:"metadata"`
+	Code        string         `json:"code"`
+	Name        string         `json:"name"`
+	Description *string        `json:"description"`
+	Active      *bool          `json:"active"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 type Response struct {

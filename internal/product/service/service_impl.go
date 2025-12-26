@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
+	"github.com/smallbiznis/valora/internal/orgcontext"
 	"github.com/smallbiznis/valora/internal/product/domain"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -38,8 +39,8 @@ func New(p Params) domain.Service {
 	}
 }
 
-func (s *Service) List(ctx context.Context, organizationID string) ([]domain.Response, error) {
-	orgID, err := s.parseOrganizationID(organizationID)
+func (s *Service) List(ctx context.Context) ([]domain.Response, error) {
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +59,7 @@ func (s *Service) List(ctx context.Context, organizationID string) ([]domain.Res
 }
 
 func (s *Service) Create(ctx context.Context, req domain.CreateRequest) (*domain.Response, error) {
-	orgID, err := s.parseOrganizationID(req.OrganizationID)
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -105,8 +106,8 @@ func (s *Service) Create(ctx context.Context, req domain.CreateRequest) (*domain
 	return &resp, nil
 }
 
-func (s *Service) Get(ctx context.Context, organizationID string, id string) (*domain.Response, error) {
-	orgID, err := s.parseOrganizationID(organizationID)
+func (s *Service) Get(ctx context.Context, id string) (*domain.Response, error) {
+	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -128,12 +129,12 @@ func (s *Service) Get(ctx context.Context, organizationID string, id string) (*d
 	return &resp, nil
 }
 
-func (s *Service) parseOrganizationID(value string) (int64, error) {
-	orgID, err := snowflake.ParseString(strings.TrimSpace(value))
-	if err != nil || orgID == 0 {
+func (s *Service) orgIDFromContext(ctx context.Context) (int64, error) {
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
 		return 0, domain.ErrInvalidOrganization
 	}
-	return orgID.Int64(), nil
+	return orgID, nil
 }
 
 func (s *Service) toResponse(p *domain.Product) domain.Response {
