@@ -194,13 +194,20 @@ func (s *ServiceImpl) roleForUser(ctx context.Context, orgID snowflake.ID, userI
 }
 
 func (s *ServiceImpl) ensureGrouping(subject string, roleName string, domain string) error {
-	existing := s.enforcer.GetFilteredGroupingPolicy(0, subject, "", domain)
+	existing, err := s.enforcer.GetFilteredGroupingPolicy(0, subject, "", domain)
+	if err != nil {
+		return err
+	}
 	for _, rule := range existing {
 		if len(rule) < 2 {
 			continue
 		}
 		if rule[1] != roleName {
-			_, _ = s.enforcer.RemoveGroupingPolicy(rule...)
+			params := make([]interface{}, 0, len(rule))
+			for _, value := range rule {
+				params = append(params, value)
+			}
+			_, _ = s.enforcer.RemoveGroupingPolicy(params...)
 		}
 	}
 
