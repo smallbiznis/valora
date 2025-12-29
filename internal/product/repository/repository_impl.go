@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/smallbiznis/valora/internal/product/domain"
+	"github.com/smallbiznis/valora/pkg/db/option"
 	"gorm.io/gorm"
 )
 
@@ -54,6 +55,31 @@ func (r *repo) FindAll(ctx context.Context, db *gorm.DB, orgID int64) ([]domain.
 		orgID,
 	).Scan(&items).Error
 	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (r *repo) List(ctx context.Context, db *gorm.DB, orgID int64, filter domain.ListRequest) ([]domain.Product, error) {
+	var items []domain.Product
+	stmt := db.WithContext(ctx).
+		Model(&domain.Product{}).
+		Where("org_id = ?", orgID)
+
+	if filter.Name != "" {
+		stmt = stmt.Where("name = ?", filter.Name)
+	}
+	if filter.Active != nil {
+		stmt = stmt.Where("active = ?", *filter.Active)
+	}
+
+	stmt = option.WithSortBy(option.WithQuerySortBy(filter.SortBy, filter.OrderBy, map[string]bool{
+		"created_at": true,
+		"updated_at": true,
+		"name":       true,
+	})).Apply(stmt)
+
+	if err := stmt.Find(&items).Error; err != nil {
 		return nil, err
 	}
 	return items, nil

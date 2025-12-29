@@ -10,11 +10,19 @@ import (
 
 type Service interface {
 	Create(ctx context.Context, req CreateRequest) (*Response, error)
-	List(ctx context.Context) ([]Response, error)
+	List(ctx context.Context, req ListRequest) ([]Response, error)
 	GetByID(ctx context.Context, id string) (*Response, error)
 	GetByCode(ctx context.Context, code string) (*Response, error)
 	Update(ctx context.Context, req UpdateRequest) (*Response, error)
 	Delete(ctx context.Context, id string) error
+}
+
+type ListRequest struct {
+	Name    string
+	Code    string
+	Active  *bool
+	SortBy  string
+	OrderBy string
 }
 
 type CreateRequest struct {

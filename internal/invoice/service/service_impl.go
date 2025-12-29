@@ -48,15 +48,83 @@ func NewService(p ServiceParam) invoicedomain.Service {
 }
 
 func (s *Service) List(ctx context.Context, req invoicedomain.ListInvoiceRequest) (invoicedomain.ListInvoiceResponse, error) {
-	_ = req
 	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return invoicedomain.ListInvoiceResponse{}, err
 	}
 
-	items, err := s.invoicerepo.Find(ctx, &invoicedomain.Invoice{OrgID: orgID},
+	filter := &invoicedomain.Invoice{OrgID: orgID}
+	if req.Status != nil {
+		filter.Status = *req.Status
+	}
+	if req.CustomerID != nil {
+		filter.CustomerID = *req.CustomerID
+	}
+	if req.InvoiceNumber != nil {
+		filter.InvoiceNumber = req.InvoiceNumber
+	}
+
+	options := []option.QueryOption{
 		option.WithSortBy(option.QuerySortBy{Allow: map[string]bool{"created_at": true}}),
-	)
+	}
+	if req.CreatedFrom != nil {
+		options = append(options, option.ApplyOperator(option.Condition{
+			Field:    "created_at",
+			Operator: option.GTE,
+			Value:    *req.CreatedFrom,
+		}))
+	}
+	if req.CreatedTo != nil {
+		options = append(options, option.ApplyOperator(option.Condition{
+			Field:    "created_at",
+			Operator: option.LTE,
+			Value:    *req.CreatedTo,
+		}))
+	}
+	if req.DueFrom != nil {
+		options = append(options, option.ApplyOperator(option.Condition{
+			Field:    "due_at",
+			Operator: option.GTE,
+			Value:    *req.DueFrom,
+		}))
+	}
+	if req.DueTo != nil {
+		options = append(options, option.ApplyOperator(option.Condition{
+			Field:    "due_at",
+			Operator: option.LTE,
+			Value:    *req.DueTo,
+		}))
+	}
+	if req.FinalizedFrom != nil {
+		options = append(options, option.ApplyOperator(option.Condition{
+			Field:    "finalized_at",
+			Operator: option.GTE,
+			Value:    *req.FinalizedFrom,
+		}))
+	}
+	if req.FinalizedTo != nil {
+		options = append(options, option.ApplyOperator(option.Condition{
+			Field:    "finalized_at",
+			Operator: option.LTE,
+			Value:    *req.FinalizedTo,
+		}))
+	}
+	if req.TotalMin != nil {
+		options = append(options, option.ApplyOperator(option.Condition{
+			Field:    "subtotal_amount",
+			Operator: option.GTE,
+			Value:    *req.TotalMin,
+		}))
+	}
+	if req.TotalMax != nil {
+		options = append(options, option.ApplyOperator(option.Condition{
+			Field:    "subtotal_amount",
+			Operator: option.LTE,
+			Value:    *req.TotalMax,
+		}))
+	}
+
+	items, err := s.invoicerepo.Find(ctx, filter, options...)
 	if err != nil {
 		return invoicedomain.ListInvoiceResponse{}, err
 	}

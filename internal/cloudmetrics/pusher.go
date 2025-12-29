@@ -83,7 +83,7 @@ type RemoteWritePusher struct {
 // NewRemoteWritePusher returns a pusher for Prometheus remote_write.
 func NewRemoteWritePusher(endpoint, authToken string) *RemoteWritePusher {
 	return &RemoteWritePusher{
-		endpoint:   endpoint,
+		endpoint:  endpoint,
 		authToken: strings.TrimSpace(authToken),
 		httpClient: &http.Client{
 			Timeout: defaultPushTimeout,

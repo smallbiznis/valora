@@ -89,13 +89,21 @@ func (s *Service) Create(ctx context.Context, req meterdomain.CreateRequest) (*m
 	return s.toResponse(m), nil
 }
 
-func (s *Service) List(ctx context.Context) ([]meterdomain.Response, error) {
+func (s *Service) List(ctx context.Context, req meterdomain.ListRequest) ([]meterdomain.Response, error) {
 	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	items, err := s.repo.List(ctx, s.db, orgID)
+	filter := meterdomain.ListRequest{
+		Name:    strings.TrimSpace(req.Name),
+		Code:    strings.TrimSpace(req.Code),
+		Active:  req.Active,
+		SortBy:  strings.TrimSpace(req.SortBy),
+		OrderBy: strings.TrimSpace(req.OrderBy),
+	}
+
+	items, err := s.repo.List(ctx, s.db, orgID, filter)
 	if err != nil {
 		return nil, err
 	}

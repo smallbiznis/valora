@@ -39,7 +39,29 @@ func (s *Server) CreateProduct(c *gin.Context) {
 }
 
 func (s *Server) ListProducts(c *gin.Context) {
-	resp, err := s.productSvc.List(c.Request.Context())
+	var query struct {
+		Name    string `form:"name"`
+		Active  string `form:"active"`
+		SortBy  string `form:"sort_by"`
+		OrderBy string `form:"order_by"`
+	}
+	if err := c.ShouldBindQuery(&query); err != nil {
+		AbortWithError(c, invalidRequestError())
+		return
+	}
+
+	active, err := parseOptionalBool(query.Active)
+	if err != nil {
+		AbortWithError(c, newValidationError("active", "invalid_active", "invalid active"))
+		return
+	}
+
+	resp, err := s.productSvc.List(c.Request.Context(), productdomain.ListRequest{
+		Name:    strings.TrimSpace(query.Name),
+		Active:  active,
+		SortBy:  strings.TrimSpace(query.SortBy),
+		OrderBy: strings.TrimSpace(query.OrderBy),
+	})
 	if err != nil {
 		AbortWithError(c, err)
 		return

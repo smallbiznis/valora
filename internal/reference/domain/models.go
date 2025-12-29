@@ -3,9 +3,9 @@ package domain
 import "time"
 
 type Country struct {
-	Code         string    `json:"code" gorm:"type:char(2);primaryKey;column:code"`
-	Name         string    `json:"name" gorm:"type:text;not null"`
-	CreatedAt    time.Time `json:"created_at,omitempty" gorm:"not null;default:CURRENT_TIMESTAMP"`
+	Code      string    `json:"code" gorm:"type:char(2);primaryKey;column:code"`
+	Name      string    `json:"name" gorm:"type:text;not null"`
+	CreatedAt time.Time `json:"created_at,omitempty" gorm:"not null;default:CURRENT_TIMESTAMP"`
 }
 
 func (Country) TableName() string { return "countries" }

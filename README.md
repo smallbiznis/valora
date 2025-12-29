@@ -2,6 +2,8 @@
 
 **Valora OSS** is an open-source **billing engine** focused on **deterministic billing logic** for modern SaaS and platform products.
 
+![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg) [![Go Report Card](https://goreportcard.com/badge/github.com/smallbiznis/valora)](https://goreportcard.com/report/github.com/smallbiznis/valora)
+
 Valora extracts billing concerns—usage metering, pricing, subscriptions, and invoicing—out of application code and into a **dedicated, self-hosted engine** with explicit boundaries.
 
 Valora computes **what should be billed**, not **how payments are executed**.

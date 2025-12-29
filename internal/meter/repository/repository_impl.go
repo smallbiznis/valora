@@ -5,6 +5,7 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	meterdomain "github.com/smallbiznis/valora/internal/meter/domain"
+	"github.com/smallbiznis/valora/pkg/db/option"
 	"gorm.io/gorm"
 )
 
@@ -87,14 +88,30 @@ func (r *repo) FindByCode(ctx context.Context, db *gorm.DB, orgID snowflake.ID, 
 	return &meter, nil
 }
 
-func (r *repo) List(ctx context.Context, db *gorm.DB, orgID snowflake.ID) ([]meterdomain.Meter, error) {
+func (r *repo) List(ctx context.Context, db *gorm.DB, orgID snowflake.ID, filter meterdomain.ListRequest) ([]meterdomain.Meter, error) {
 	var meters []meterdomain.Meter
-	err := db.WithContext(ctx).Raw(
-		`SELECT id, org_id, code, name, aggregation, unit, active, created_at, updated_at
-		 FROM meters WHERE org_id = ? ORDER BY created_at ASC`,
-		orgID,
-	).Scan(&meters).Error
-	if err != nil {
+	stmt := db.WithContext(ctx).
+		Model(&meterdomain.Meter{}).
+		Where("org_id = ?", orgID)
+
+	if filter.Name != "" {
+		stmt = stmt.Where("name = ?", filter.Name)
+	}
+	if filter.Code != "" {
+		stmt = stmt.Where("code = ?", filter.Code)
+	}
+	if filter.Active != nil {
+		stmt = stmt.Where("active = ?", *filter.Active)
+	}
+
+	stmt = option.WithSortBy(option.WithQuerySortBy(filter.SortBy, filter.OrderBy, map[string]bool{
+		"created_at": true,
+		"updated_at": true,
+		"name":       true,
+		"code":       true,
+	})).Apply(stmt)
+
+	if err := stmt.Find(&meters).Error; err != nil {
 		return nil, err
 	}
 	return meters, nil

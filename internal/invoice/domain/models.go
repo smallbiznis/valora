@@ -31,6 +31,7 @@ type Invoice struct {
 	PeriodStart    *time.Time        `gorm:""`
 	PeriodEnd      *time.Time        `gorm:""`
 	IssuedAt       *time.Time        `gorm:""`
+	DueAt          *time.Time        `gorm:""`
 	FinalizedAt    *time.Time        `gorm:""`
 	VoidedAt       *time.Time        `gorm:""`
 	Metadata       datatypes.JSONMap `gorm:"type:jsonb;not null;default:'{}'"`

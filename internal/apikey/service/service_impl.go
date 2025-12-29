@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"strconv"
@@ -227,12 +226,7 @@ func generateAPIKey(keyID string) (string, string, error) {
 	secretPart := hex.EncodeToString(secret)
 	trimmed := strings.TrimPrefix(keyID, "key_")
 	plain := fmt.Sprintf("%s%s_%s", apiKeyPrefix, trimmed, secretPart)
-	return plain, hashAPIKey(plain), nil
-}
-
-func hashAPIKey(raw string) string {
-	sum := sha256.Sum256([]byte(raw))
-	return hex.EncodeToString(sum[:])
+	return plain, apikeydomain.HashAPIKey(plain), nil
 }
 
 func newKeyID(id snowflake.ID) string {

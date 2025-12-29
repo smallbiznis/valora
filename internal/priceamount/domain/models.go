@@ -11,7 +11,7 @@ type PriceAmount struct {
 	ID                 snowflake.ID      `json:"id" gorm:"primaryKey"`
 	OrgID              snowflake.ID      `json:"organization_id" gorm:"column:org_id;not null;index"`
 	PriceID            snowflake.ID      `json:"price_id" gorm:"column:price_id;not null;index"`
-	MeterID         *snowflake.ID `gorm:"column:meter_id;index"`
+	MeterID            *snowflake.ID     `gorm:"column:meter_id;index"`
 	Currency           string            `json:"currency" gorm:"type:text;not null"`
 	UnitAmountCents    int64             `json:"unit_amount_cents" gorm:"not null"`
 	MinimumAmountCents *int64            `json:"minimum_amount_cents,omitempty" gorm:""`

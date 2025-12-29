@@ -47,7 +47,31 @@ func (s *Server) CreateMeter(c *gin.Context) {
 }
 
 func (s *Server) ListMeters(c *gin.Context) {
-	resp, err := s.meterSvc.List(c.Request.Context())
+	var query struct {
+		Name    string `form:"name"`
+		Code    string `form:"code"`
+		Active  string `form:"active"`
+		SortBy  string `form:"sort_by"`
+		OrderBy string `form:"order_by"`
+	}
+	if err := c.ShouldBindQuery(&query); err != nil {
+		AbortWithError(c, invalidRequestError())
+		return
+	}
+
+	active, err := parseOptionalBool(query.Active)
+	if err != nil {
+		AbortWithError(c, newValidationError("active", "invalid_active", "invalid active"))
+		return
+	}
+
+	resp, err := s.meterSvc.List(c.Request.Context(), meterdomain.ListRequest{
+		Name:    strings.TrimSpace(query.Name),
+		Code:    strings.TrimSpace(query.Code),
+		Active:  active,
+		SortBy:  strings.TrimSpace(query.SortBy),
+		OrderBy: strings.TrimSpace(query.OrderBy),
+	})
 	if err != nil {
 		AbortWithError(c, err)
 		return

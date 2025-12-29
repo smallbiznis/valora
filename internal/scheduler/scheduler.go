@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	auditcontext "github.com/smallbiznis/valora/internal/audit"
 	auditdomain "github.com/smallbiznis/valora/internal/audit/domain"
+	auditcontext "github.com/smallbiznis/valora/internal/auditcontext"
 	"github.com/smallbiznis/valora/internal/authorization"
 	billingcycledomain "github.com/smallbiznis/valora/internal/billingcycle/domain"
 	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"

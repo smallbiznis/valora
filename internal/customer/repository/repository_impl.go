@@ -48,11 +48,26 @@ func (r *repo) FindByID(ctx context.Context, db *gorm.DB, orgID, id snowflake.ID
 	return &customer, nil
 }
 
-func (r *repo) List(ctx context.Context, db *gorm.DB, orgID snowflake.ID, page pagination.Pagination) ([]*domain.Customer, error) {
+func (r *repo) List(ctx context.Context, db *gorm.DB, orgID snowflake.ID, filter domain.ListCustomerFilter, page pagination.Pagination) ([]*domain.Customer, error) {
 	var customers []*domain.Customer
 	stmt := db.WithContext(ctx).
 		Model(&domain.Customer{}).
 		Where("org_id = ?", orgID)
+	if filter.Name != "" {
+		stmt = stmt.Where("name = ?", filter.Name)
+	}
+	if filter.Email != "" {
+		stmt = stmt.Where("email = ?", filter.Email)
+	}
+	if filter.Currency != "" {
+		stmt = stmt.Where("currency = ?", filter.Currency)
+	}
+	if filter.CreatedFrom != nil {
+		stmt = stmt.Where("created_at >= ?", *filter.CreatedFrom)
+	}
+	if filter.CreatedTo != nil {
+		stmt = stmt.Where("created_at <= ?", *filter.CreatedTo)
+	}
 	stmt = option.ApplyPagination(page).Apply(stmt)
 	err := stmt.
 		Order("created_at desc, id desc").

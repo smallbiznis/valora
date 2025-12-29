@@ -3,13 +3,27 @@ package domain
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/smallbiznis/valora/pkg/db/pagination"
 )
 
 type ListCustomerRequest struct {
-	PageToken string
-	PageSize  int32
+	PageToken   string
+	PageSize    int32
+	Name        string
+	Email       string
+	Currency    string
+	CreatedFrom *time.Time
+	CreatedTo   *time.Time
+}
+
+type ListCustomerFilter struct {
+	Name        string
+	Email       string
+	Currency    string
+	CreatedFrom *time.Time
+	CreatedTo   *time.Time
 }
 
 type ListCustomerResponse struct {

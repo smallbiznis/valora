@@ -43,4 +43,3 @@ var Module = fx.Module("logger",
 	),
 	fx.Invoke(registerHooks),
 )
-

@@ -13,5 +13,5 @@ type Repository interface {
 	Delete(ctx context.Context, db *gorm.DB, orgID, id snowflake.ID) error
 	FindByID(ctx context.Context, db *gorm.DB, orgID, id snowflake.ID) (*Meter, error)
 	FindByCode(ctx context.Context, db *gorm.DB, orgID snowflake.ID, code string) (*Meter, error)
-	List(ctx context.Context, db *gorm.DB, orgID snowflake.ID) ([]Meter, error)
+	List(ctx context.Context, db *gorm.DB, orgID snowflake.ID, filter ListRequest) ([]Meter, error)
 }

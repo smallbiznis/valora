@@ -3,11 +3,25 @@ package domain
 import (
 	"context"
 	"errors"
+	"time"
 
+	"github.com/bwmarrin/snowflake"
 	"github.com/smallbiznis/valora/pkg/db/pagination"
 )
 
-type ListInvoiceRequest struct{}
+type ListInvoiceRequest struct {
+	Status        *InvoiceStatus
+	InvoiceNumber *int64
+	CustomerID    *snowflake.ID
+	CreatedFrom   *time.Time
+	CreatedTo     *time.Time
+	DueFrom       *time.Time
+	DueTo         *time.Time
+	FinalizedFrom *time.Time
+	FinalizedTo   *time.Time
+	TotalMin      *int64
+	TotalMax      *int64
+}
 
 type ListInvoiceResponse struct {
 	pagination.PageInfo

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -10,7 +11,103 @@ import (
 )
 
 func (s *Server) ListInvoices(c *gin.Context) {
-	resp, err := s.invoiceSvc.List(c.Request.Context(), invoicedomain.ListInvoiceRequest{})
+	var query struct {
+		Status        string `form:"status"`
+		InvoiceNumber string `form:"invoice_number"`
+		CustomerID    string `form:"customer_id"`
+		CreatedFrom   string `form:"created_from"`
+		CreatedTo     string `form:"created_to"`
+		DueFrom       string `form:"due_from"`
+		DueTo         string `form:"due_to"`
+		FinalizedFrom string `form:"finalized_from"`
+		FinalizedTo   string `form:"finalized_to"`
+		TotalMin      string `form:"total_min"`
+		TotalMax      string `form:"total_max"`
+	}
+	if err := c.ShouldBindQuery(&query); err != nil {
+		AbortWithError(c, invalidRequestError())
+		return
+	}
+
+	status, err := parseInvoiceStatus(query.Status)
+	if err != nil {
+		AbortWithError(c, newValidationError("status", "invalid_status", "invalid status"))
+		return
+	}
+
+	invoiceNumber, err := parseOptionalInt64(query.InvoiceNumber)
+	if err != nil {
+		AbortWithError(c, newValidationError("invoice_number", "invalid_invoice_number", "invalid invoice_number"))
+		return
+	}
+
+	customerID, err := parseOptionalSnowflakeID(query.CustomerID)
+	if err != nil {
+		AbortWithError(c, newValidationError("customer_id", "invalid_customer_id", "invalid customer_id"))
+		return
+	}
+
+	createdFrom, err := parseOptionalTime(query.CreatedFrom, false)
+	if err != nil {
+		AbortWithError(c, newValidationError("created_from", "invalid_created_from", "invalid created_from"))
+		return
+	}
+
+	createdTo, err := parseOptionalTime(query.CreatedTo, true)
+	if err != nil {
+		AbortWithError(c, newValidationError("created_to", "invalid_created_to", "invalid created_to"))
+		return
+	}
+
+	dueFrom, err := parseOptionalTime(query.DueFrom, false)
+	if err != nil {
+		AbortWithError(c, newValidationError("due_from", "invalid_due_from", "invalid due_from"))
+		return
+	}
+
+	dueTo, err := parseOptionalTime(query.DueTo, true)
+	if err != nil {
+		AbortWithError(c, newValidationError("due_to", "invalid_due_to", "invalid due_to"))
+		return
+	}
+
+	finalizedFrom, err := parseOptionalTime(query.FinalizedFrom, false)
+	if err != nil {
+		AbortWithError(c, newValidationError("finalized_from", "invalid_finalized_from", "invalid finalized_from"))
+		return
+	}
+
+	finalizedTo, err := parseOptionalTime(query.FinalizedTo, true)
+	if err != nil {
+		AbortWithError(c, newValidationError("finalized_to", "invalid_finalized_to", "invalid finalized_to"))
+		return
+	}
+
+	totalMin, err := parseOptionalInt64(query.TotalMin)
+	if err != nil {
+		AbortWithError(c, newValidationError("total_min", "invalid_total_min", "invalid total_min"))
+		return
+	}
+
+	totalMax, err := parseOptionalInt64(query.TotalMax)
+	if err != nil {
+		AbortWithError(c, newValidationError("total_max", "invalid_total_max", "invalid total_max"))
+		return
+	}
+
+	resp, err := s.invoiceSvc.List(c.Request.Context(), invoicedomain.ListInvoiceRequest{
+		Status:        status,
+		InvoiceNumber: invoiceNumber,
+		CustomerID:    customerID,
+		CreatedFrom:   createdFrom,
+		CreatedTo:     createdTo,
+		DueFrom:       dueFrom,
+		DueTo:         dueTo,
+		FinalizedFrom: finalizedFrom,
+		FinalizedTo:   finalizedTo,
+		TotalMin:      totalMin,
+		TotalMax:      totalMax,
+	})
 	if err != nil {
 		AbortWithError(c, err)
 		return
@@ -33,4 +130,22 @@ func (s *Server) GetInvoiceByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": item})
+}
+
+func parseInvoiceStatus(value string) (*invoicedomain.InvoiceStatus, error) {
+	status := strings.TrimSpace(value)
+	if status == "" {
+		return nil, nil
+	}
+
+	status = strings.ToUpper(status)
+	switch invoicedomain.InvoiceStatus(status) {
+	case invoicedomain.InvoiceStatusDraft,
+		invoicedomain.InvoiceStatusFinalized,
+		invoicedomain.InvoiceStatusVoid:
+		parsed := invoicedomain.InvoiceStatus(status)
+		return &parsed, nil
+	default:
+		return nil, errors.New("invalid_status")
+	}
 }

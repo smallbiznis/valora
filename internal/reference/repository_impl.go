@@ -18,8 +18,8 @@ func NewRepository(db *gorm.DB) domain.Repository {
 
 func (r *repository) ListCountries(ctx context.Context) ([]domain.Country, error) {
 	type row struct {
-		Code         string `gorm:"column:code"`
-		Name         string `gorm:"column:name"`
+		Code string `gorm:"column:code"`
+		Name string `gorm:"column:name"`
 	}
 
 	var rows []row
@@ -33,8 +33,8 @@ func (r *repository) ListCountries(ctx context.Context) ([]domain.Country, error
 	countries := make([]domain.Country, 0, len(rows))
 	for _, item := range rows {
 		countries = append(countries, domain.Country{
-			Code:         item.Code,
-			Name:         item.Name,
+			Code: item.Code,
+			Name: item.Name,
 		})
 	}
 

@@ -80,12 +80,20 @@ func (s *Service) List(ctx context.Context, req domain.ListCustomerRequest) (dom
 		return domain.ListCustomerResponse{}, err
 	}
 
+	filter := domain.ListCustomerFilter{
+		Name:        strings.TrimSpace(req.Name),
+		Email:       strings.TrimSpace(req.Email),
+		Currency:    strings.TrimSpace(req.Currency),
+		CreatedFrom: req.CreatedFrom,
+		CreatedTo:   req.CreatedTo,
+	}
+
 	pageSize := req.PageSize
 	if pageSize <= 0 {
 		pageSize = 50
 	}
 
-	items, err := s.repo.List(ctx, s.db, orgID, pagination.Pagination{
+	items, err := s.repo.List(ctx, s.db, orgID, filter, pagination.Pagination{
 		PageToken: req.PageToken,
 		PageSize:  int(pageSize),
 	})

@@ -29,8 +29,8 @@ type RedirectRequest struct {
 }
 
 type RedirectResult struct {
-	URL         string
-	State       string
+	URL          string
+	State        string
 	CodeVerifier string
 }
 

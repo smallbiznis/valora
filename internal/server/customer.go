@@ -36,15 +36,37 @@ func (s *Server) CreateCustomer(c *gin.Context) {
 func (s *Server) ListCustomers(c *gin.Context) {
 	var query struct {
 		pagination.Pagination
+		Name        string `form:"name"`
+		Email       string `form:"email"`
+		Currency    string `form:"currency"`
+		CreatedFrom string `form:"created_from"`
+		CreatedTo   string `form:"created_to"`
 	}
 	if err := c.ShouldBindQuery(&query); err != nil {
 		AbortWithError(c, invalidRequestError())
 		return
 	}
 
+	createdFrom, err := parseOptionalTime(query.CreatedFrom, false)
+	if err != nil {
+		AbortWithError(c, newValidationError("created_from", "invalid_created_from", "invalid created_from"))
+		return
+	}
+
+	createdTo, err := parseOptionalTime(query.CreatedTo, true)
+	if err != nil {
+		AbortWithError(c, newValidationError("created_to", "invalid_created_to", "invalid created_to"))
+		return
+	}
+
 	resp, err := s.customerSvc.List(c.Request.Context(), customerdomain.ListCustomerRequest{
-		PageToken: query.PageToken,
-		PageSize:  int32(query.PageSize),
+		PageToken:   query.PageToken,
+		PageSize:    int32(query.PageSize),
+		Name:        strings.TrimSpace(query.Name),
+		Email:       strings.TrimSpace(query.Email),
+		Currency:    strings.TrimSpace(query.Currency),
+		CreatedFrom: createdFrom,
+		CreatedTo:   createdTo,
 	})
 	if err != nil {
 		AbortWithError(c, err)

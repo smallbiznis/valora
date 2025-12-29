@@ -8,8 +8,15 @@ import (
 
 type Service interface {
 	Create(ctx context.Context, req CreateRequest) (*Response, error)
-	List(ctx context.Context) ([]Response, error)
+	List(ctx context.Context, req ListRequest) ([]Response, error)
 	Get(ctx context.Context, id string) (*Response, error)
+}
+
+type ListRequest struct {
+	Name    string
+	Active  *bool
+	SortBy  string
+	OrderBy string
 }
 
 type CreateRequest struct {

@@ -1,9 +1,12 @@
 name: Docker Release
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag (vX.Y.Z)"
+        required: true
+        type: string
 
 jobs:
   docker-release:
@@ -13,8 +16,11 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repository at tag
         uses: actions/checkout@v4
+        with:
+          # The caller provides the release tag to avoid HEAD ambiguity.
+          ref: ${{ inputs.tag }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -29,9 +35,22 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract version
+      - name: Resolve tag metadata
         id: version
-        run: echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.tag }}"
+
+          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid tag '${tag}'. Expected vX.Y.Z."
+            exit 1
+          fi
+
+          tag_commit="$(git rev-list -n 1 "$tag")"
+
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "commit=${tag_commit}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push multi-arch image
         uses: docker/build-push-action@v6
@@ -47,5 +66,5 @@ jobs:
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.tag }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ steps.version.outputs.commit }}
           provenance: true

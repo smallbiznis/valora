@@ -39,13 +39,20 @@ func New(p Params) domain.Service {
 	}
 }
 
-func (s *Service) List(ctx context.Context) ([]domain.Response, error) {
+func (s *Service) List(ctx context.Context, req domain.ListRequest) ([]domain.Response, error) {
 	orgID, err := s.orgIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	items, err := s.repo.FindAll(ctx, s.db, orgID)
+	filter := domain.ListRequest{
+		Name:    strings.TrimSpace(req.Name),
+		Active:  req.Active,
+		SortBy:  strings.TrimSpace(req.SortBy),
+		OrderBy: strings.TrimSpace(req.OrderBy),
+	}
+
+	items, err := s.repo.List(ctx, s.db, orgID, filter)
 	if err != nil {
 		return nil, err
 	}
