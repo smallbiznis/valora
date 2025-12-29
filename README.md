@@ -152,5 +152,11 @@ See the `LICENSE` file for details.
 
 ---
 
+## Documentation
+
+📚 Read the documentation at:
+
+- Local: http://localhost:3000 (after `pnpm start` in /docs)
+- Source: ./docs/docs/index.md
+
 > Valora aims to make billing **boring, predictable, and explainable**—so teams can focus on building their products.
->
