@@ -29,7 +29,7 @@ jobs:
       packages: write
     with:
       # Pass the resolved tag to ensure the image is built from the tag, not HEAD.
-      tag: ${{ env.RELEASE_TAG }}
+      tag: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
 
   release:
     name: Publish GitHub Release
