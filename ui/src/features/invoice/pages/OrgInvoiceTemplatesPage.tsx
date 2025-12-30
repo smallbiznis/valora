@@ -24,7 +24,7 @@ import {
   findInvoiceTemplate,
   invoiceTemplates,
   type InvoiceTemplate,
-} from "@/pages/org/invoice-template-data"
+} from "@/features/invoice/data/invoice-template-data"
 
 const formatDate = (value?: string) => {
   if (!value) return "-"
