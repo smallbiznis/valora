@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS ledger_accounts (
   org_id BIGINT NOT NULL,
   name TEXT NOT NULL,
   currency TEXT NOT NULL,
-  account_type TEXT NOT NULL, -- ASSET, LIABILITY, REVENUE
+  account_type TEXT NOT NULL CHECK (account_type IN ('ASSET','LIABILITY','REVENUE','EXPENSE')), -- ASSET, LIABILITY, REVENUE
   metadata JSONB NOT NULL DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL
