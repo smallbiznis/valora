@@ -9,10 +9,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+// import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
-import { findInvoiceTemplate, type InvoiceTemplate } from "@/pages/org/invoice-template-data"
+import { findInvoiceTemplate, type InvoiceTemplate } from "@/features/invoice/data/invoice-template-data"
 import { useOrgStore } from "@/stores/orgStore"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 type CustomField = {
   label: string

@@ -1,31 +1,49 @@
-import { useEffect, useState } from "react"
+import { lazy, Suspense, useEffect, useState, type ReactElement, type ReactNode } from "react"
 import { Navigate, Outlet, createBrowserRouter, useLocation } from "react-router-dom"
 
 import DashboardLayout from "@/layouts/DashboardLayout"
+import OrgResolverPage from "@/pages/orgs"
+import ChangePasswordPage from "@/pages/change-password"
 import LoginPage from "@/pages/login"
 import OnboardingPage from "@/pages/onboarding"
-import OrgDashboard from "@/pages/org/OrgDashboard"
-import OrgCustomersPage from "@/pages/org/OrgCustomersPage"
-import OrgApiKeysPage from "@/pages/org/OrgApiKeysPage"
-import OrgAuditLogsPage from "@/pages/org/OrgAuditLogsPage"
-import OrgInvoiceDetailPage from "@/pages/org/OrgInvoiceDetailPage"
-import OrgInvoicesPage from "@/pages/org/OrgInvoicesPage"
-import OrgInvoiceTemplateFormPage from "@/pages/org/OrgInvoiceTemplateFormPage"
-import OrgInvoiceTemplatesPage from "@/pages/org/OrgInvoiceTemplatesPage"
-import OrgMeterPage from "@/pages/org/OrgMeterPage"
-import OrgMeterDetailPage from "@/pages/org/OrgMeterDetailPage"
-import OrgMeterCreatePage from "@/pages/org/OrgMeterCreatePage"
-import OrgProductDetailPage from "@/pages/org/OrgProductDetailPage"
-import OrgProductsPage from "@/pages/org/OrgProductsPage"
-import OrgSettings from "@/pages/org/OrgSettings"
-import OrgSubscriptionCreatePage from "@/pages/org/OrgSubscriptionCreatePage"
-import OrgSubscriptionsPage from "@/pages/org/OrgSubscriptionsPage"
-import OrgResolverPage from "@/pages/orgs"
-import CreatePrice from "@/pages/products/CreatePrice"
-import CreateProduct from "@/pages/products/CreateProduct"
-import ChangePasswordPage from "@/pages/change-password"
-import SignupPage from "@/pages/signup"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useAppMode } from "@/hooks/useAppMode"
 import { useAuthStore } from "@/stores/authStore"
+
+const SignupPage = lazy(() => import("@/pages/signup"))
+
+const OrgDashboard = lazy(() => import("@/features/billing/pages/OrgDashboard"))
+const OrgCustomersPage = lazy(() => import("@/features/billing/pages/OrgCustomersPage"))
+const OrgSubscriptionsPage = lazy(() => import("@/features/billing/pages/OrgSubscriptionsPage"))
+const OrgSubscriptionCreatePage = lazy(
+  () => import("@/features/billing/pages/OrgSubscriptionCreatePage")
+)
+const OrgSettings = lazy(() => import("@/features/billing/pages/OrgSettings"))
+
+const OrgApiKeysPage = lazy(() => import("@/features/guard/pages/OrgApiKeysPage"))
+const OrgAuditLogsPage = lazy(() => import("@/features/guard/pages/OrgAuditLogsPage"))
+
+const OrgMeterPage = lazy(() => import("@/features/usage/pages/OrgMeterPage"))
+const OrgMeterCreatePage = lazy(() => import("@/features/usage/pages/OrgMeterCreatePage"))
+const OrgMeterDetailPage = lazy(() => import("@/features/usage/pages/OrgMeterDetailPage"))
+
+const OrgProductsPage = lazy(() => import("@/features/pricing/pages/OrgProductsPage"))
+const CreateProduct = lazy(() => import("@/features/pricing/pages/CreateProduct"))
+const CreatePrice = lazy(() => import("@/features/pricing/pages/CreatePrice"))
+const OrgProductDetailPage = lazy(
+  () => import("@/features/pricing/pages/OrgProductDetailPage")
+)
+
+const OrgInvoicesPage = lazy(() => import("@/features/invoice/pages/OrgInvoicesPage"))
+const OrgInvoiceDetailPage = lazy(
+  () => import("@/features/invoice/pages/OrgInvoiceDetailPage")
+)
+const OrgInvoiceTemplatesPage = lazy(
+  () => import("@/features/invoice/pages/OrgInvoiceTemplatesPage")
+)
+const OrgInvoiceTemplateFormPage = lazy(
+  () => import("@/features/invoice/pages/OrgInvoiceTemplateFormPage")
+)
 
 // eslint-disable-next-line react-refresh/only-export-components
 function RequireAuth() {
@@ -56,6 +74,32 @@ function RequireAuth() {
   return <Outlet />
 }
 
+function RouteSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-7 w-48" />
+      <Skeleton className="h-4 w-72" />
+      <Skeleton className="h-64 w-full" />
+    </div>
+  )
+}
+
+function FeatureBoundary({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<RouteSkeleton />}>{children}</Suspense>
+}
+
+function CloudOnlyRoute({ children }: { children: ReactNode }) {
+  const mode = useAppMode()
+  if (mode !== "cloud") {
+    return <Navigate to="/login" replace />
+  }
+  return <>{children}</>
+}
+
+const withFeatureBoundary = (node: ReactElement) => (
+  <FeatureBoundary>{node}</FeatureBoundary>
+)
+
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -67,7 +111,13 @@ export const router = createBrowserRouter([
   },
   {
     path: "/signup",
-    element: <SignupPage />,
+    element: (
+      <CloudOnlyRoute>
+        <FeatureBoundary>
+          <SignupPage />
+        </FeatureBoundary>
+      </CloudOnlyRoute>
+    ),
   },
   {
     element: <RequireAuth />,
@@ -80,22 +130,22 @@ export const router = createBrowserRouter([
         element: <DashboardLayout />,
         children: [
           { index: true, element: <Navigate to="dashboard" replace /> },
-          { path: "dashboard", element: <OrgDashboard /> },
+          { path: "dashboard", element: withFeatureBoundary(<OrgDashboard />) },
           {
             path: "products",
-            element: <OrgProductsPage />,
+            element: withFeatureBoundary(<OrgProductsPage />),
           },
           {
             path: "products/create",
-            element: <CreateProduct />,
+            element: withFeatureBoundary(<CreateProduct />),
           },
           {
             path: "products/:productId/prices/create",
-            element: <CreatePrice />,
+            element: withFeatureBoundary(<CreatePrice />),
           },
           {
             path: "products/:productId",
-            element: <OrgProductDetailPage />,
+            element: withFeatureBoundary(<OrgProductDetailPage />),
           },
           {
             path: "prices",
@@ -115,57 +165,57 @@ export const router = createBrowserRouter([
           },
           {
             path: "meter",
-            element: <OrgMeterPage />,
+            element: withFeatureBoundary(<OrgMeterPage />),
           },
           {
             path: "meter/create",
-            element: <OrgMeterCreatePage />,
+            element: withFeatureBoundary(<OrgMeterCreatePage />),
           },
           {
             path: "meter/:meterId",
-            element: <OrgMeterDetailPage />,
+            element: withFeatureBoundary(<OrgMeterDetailPage />),
           },
           {
             path: "api-keys",
-            element: <OrgApiKeysPage />,
+            element: withFeatureBoundary(<OrgApiKeysPage />),
           },
           {
             path: "audit-logs",
-            element: <OrgAuditLogsPage />,
+            element: withFeatureBoundary(<OrgAuditLogsPage />),
           },
           {
             path: "customers",
-            element: <OrgCustomersPage />,
+            element: withFeatureBoundary(<OrgCustomersPage />),
           },
           {
             path: "subscriptions",
-            element: <OrgSubscriptionsPage />,
+            element: withFeatureBoundary(<OrgSubscriptionsPage />),
           },
           {
             path: "subscriptions/create",
-            element: <OrgSubscriptionCreatePage />,
+            element: withFeatureBoundary(<OrgSubscriptionCreatePage />),
           },
           {
             path: "invoices",
-            element: <OrgInvoicesPage />,
+            element: withFeatureBoundary(<OrgInvoicesPage />),
           },
           {
             path: "invoices/:invoiceId",
-            element: <OrgInvoiceDetailPage />,
+            element: withFeatureBoundary(<OrgInvoiceDetailPage />),
           },
           {
             path: "invoice-templates",
-            element: <OrgInvoiceTemplatesPage />,
+            element: withFeatureBoundary(<OrgInvoiceTemplatesPage />),
           },
           {
             path: "invoice-templates/create",
-            element: <OrgInvoiceTemplateFormPage />,
+            element: withFeatureBoundary(<OrgInvoiceTemplateFormPage />),
           },
           {
             path: "invoice-templates/:templateId",
-            element: <OrgInvoiceTemplateFormPage />,
+            element: withFeatureBoundary(<OrgInvoiceTemplateFormPage />),
           },
-          { path: "settings", element: <OrgSettings /> },
+          { path: "settings", element: withFeatureBoundary(<OrgSettings />) },
         ],
       },
     ],
