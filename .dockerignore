@@ -1,3 +1,36 @@
+# Git
 .git
+.gitignore
+
+# Node / JS
 **/node_modules
+**/.pnpm-store
+**/.pnpm
+**/.npm
+**/.yarn
+**/.cache
+
+# Build outputs
+**/dist
+**/build
+**/.next
+**/.nuxt
+**/out
 public
+
+# Monorepo / tooling
+**/.turbo
+**/.nx
+**/.storybook
+
+# Docs & site generators
+docs/.docusaurus
+docs/build
+
+# Logs & OS
+**/*.log
+**/.DS_Store
+
+# Docker
+Dockerfile
+docker-compose.yml

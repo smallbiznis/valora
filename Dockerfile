@@ -43,7 +43,6 @@ COPY cmd ./cmd
 COPY internal ./internal
 COPY pkg ./pkg
 COPY configs ./configs
-COPY main.go ./
 
 # copy UI build output
 COPY --from=ui-builder /app/ui/public ./public
