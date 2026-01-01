@@ -26,6 +26,7 @@ import (
 	"github.com/smallbiznis/valora/internal/auth/session"
 	"github.com/smallbiznis/valora/internal/authorization"
 	"github.com/smallbiznis/valora/internal/billingcycle"
+	"github.com/smallbiznis/valora/internal/billingdashboard"
 	"github.com/smallbiznis/valora/internal/cloudmetrics"
 	"github.com/smallbiznis/valora/internal/config"
 	"github.com/smallbiznis/valora/internal/customer"
@@ -38,6 +39,7 @@ import (
 	"github.com/smallbiznis/valora/internal/meter"
 	"github.com/smallbiznis/valora/internal/migration"
 	"github.com/smallbiznis/valora/internal/organization"
+	"github.com/smallbiznis/valora/internal/paymentprovider"
 	"github.com/smallbiznis/valora/internal/price"
 	"github.com/smallbiznis/valora/internal/priceamount"
 	"github.com/smallbiznis/valora/internal/pricetier"
@@ -379,6 +381,7 @@ func startEnv() (*testEnv, error) {
 		session.Module,
 		apikey.Module,
 		customer.Module,
+		billingdashboard.Module,
 		invoice.Module,
 		invoicetemplate.Module,
 		ledger.Module,
@@ -388,6 +391,7 @@ func startEnv() (*testEnv, error) {
 		priceamount.Module,
 		pricetier.Module,
 		product.Module,
+		paymentprovider.Module,
 		reference.Module,
 		subscription.Module,
 		usage.Module,

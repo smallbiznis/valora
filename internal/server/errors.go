@@ -11,11 +11,13 @@ import (
 	authdomain "github.com/smallbiznis/valora/internal/auth/domain"
 	authscope "github.com/smallbiznis/valora/internal/auth/scope"
 	"github.com/smallbiznis/valora/internal/authorization"
+	billingdashboarddomain "github.com/smallbiznis/valora/internal/billingdashboard/domain"
 	customerdomain "github.com/smallbiznis/valora/internal/customer/domain"
 	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
 	invoicetemplatedomain "github.com/smallbiznis/valora/internal/invoicetemplate/domain"
 	meterdomain "github.com/smallbiznis/valora/internal/meter/domain"
 	organizationdomain "github.com/smallbiznis/valora/internal/organization/domain"
+	paymentproviderdomain "github.com/smallbiznis/valora/internal/paymentprovider/domain"
 	pricedomain "github.com/smallbiznis/valora/internal/price/domain"
 	priceamountdomain "github.com/smallbiznis/valora/internal/priceamount/domain"
 	pricetierdomain "github.com/smallbiznis/valora/internal/pricetier/domain"
@@ -178,6 +180,11 @@ func mapError(err error) (int, errorPayload) {
 			Type:    "service_unavailable",
 			Message: "service unavailable",
 		}
+	case errors.Is(err, paymentproviderdomain.ErrEncryptionKeyMissing):
+		return http.StatusServiceUnavailable, errorPayload{
+			Type:    "service_unavailable",
+			Message: "service unavailable",
+		}
 	case errors.Is(err, ErrOrgRequired):
 		return http.StatusPreconditionRequired, errorPayload{
 			Type:    "precondition_required",
@@ -211,6 +218,7 @@ func isValidationError(err error) bool {
 		return true
 	case isOrganizationValidationError(err),
 		isCustomerValidationError(err),
+		isBillingDashboardValidationError(err),
 		isInvoiceValidationError(err),
 		isInvoiceTemplateValidationError(err),
 		isRatingValidationError(err),
@@ -224,7 +232,17 @@ func isValidationError(err error) bool {
 		isAPIKeyValidationError(err),
 		isAuditValidationError(err),
 		isAuthorizationValidationError(err),
+		isPaymentProviderValidationError(err),
 		isScopeValidationError(err):
+		return true
+	default:
+		return false
+	}
+}
+
+func isBillingDashboardValidationError(err error) bool {
+	switch err {
+	case billingdashboarddomain.ErrInvalidOrganization:
 		return true
 	default:
 		return false
@@ -248,6 +266,7 @@ func isNotFoundError(err error) bool {
 		errors.Is(err, ratingdomain.ErrBillingCycleNotFound),
 		errors.Is(err, subscriptiondomain.ErrSubscriptionNotFound),
 		errors.Is(err, subscriptiondomain.ErrSubscriptionItemNotFound),
+		errors.Is(err, paymentproviderdomain.ErrNotFound),
 		errors.Is(err, gorm.ErrRecordNotFound):
 		return true
 	default:
@@ -314,6 +333,17 @@ func isAuthorizationValidationError(err error) bool {
 		authorization.ErrInvalidOrganization,
 		authorization.ErrInvalidObject,
 		authorization.ErrInvalidAction:
+		return true
+	default:
+		return false
+	}
+}
+
+func isPaymentProviderValidationError(err error) bool {
+	switch err {
+	case paymentproviderdomain.ErrInvalidOrganization,
+		paymentproviderdomain.ErrInvalidProvider,
+		paymentproviderdomain.ErrInvalidConfig:
 		return true
 	default:
 		return false

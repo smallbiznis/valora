@@ -19,6 +19,9 @@ const OrgSubscriptionCreatePage = lazy(
   () => import("@/features/billing/pages/OrgSubscriptionCreatePage")
 )
 const OrgSettings = lazy(() => import("@/features/billing/pages/OrgSettings"))
+const OrgPaymentProvidersPage = lazy(
+  () => import("@/features/billing/pages/OrgPaymentProvidersPage")
+)
 
 const OrgApiKeysPage = lazy(() => import("@/features/guard/pages/OrgApiKeysPage"))
 const OrgAuditLogsPage = lazy(() => import("@/features/guard/pages/OrgAuditLogsPage"))
@@ -197,6 +200,10 @@ export const router = createBrowserRouter([
           {
             path: "audit-logs",
             element: withFeatureBoundary(<OrgAuditLogsPage />),
+          },
+          {
+            path: "payment-providers",
+            element: withFeatureBoundary(<OrgPaymentProvidersPage />),
           },
           {
             path: "customers",

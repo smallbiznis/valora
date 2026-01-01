@@ -20,6 +20,8 @@ import (
 	authoauth2provider "github.com/smallbiznis/valora/internal/auth/oauth2provider"
 	"github.com/smallbiznis/valora/internal/auth/session"
 	"github.com/smallbiznis/valora/internal/authorization"
+	"github.com/smallbiznis/valora/internal/billingdashboard"
+	billingdashboarddomain "github.com/smallbiznis/valora/internal/billingdashboard/domain"
 	"github.com/smallbiznis/valora/internal/cloudmetrics"
 	"github.com/smallbiznis/valora/internal/config"
 	"github.com/smallbiznis/valora/internal/customer"
@@ -33,6 +35,8 @@ import (
 	meterdomain "github.com/smallbiznis/valora/internal/meter/domain"
 	"github.com/smallbiznis/valora/internal/organization"
 	organizationdomain "github.com/smallbiznis/valora/internal/organization/domain"
+	"github.com/smallbiznis/valora/internal/paymentprovider"
+	paymentproviderdomain "github.com/smallbiznis/valora/internal/paymentprovider/domain"
 	"github.com/smallbiznis/valora/internal/price"
 	pricedomain "github.com/smallbiznis/valora/internal/price/domain"
 	"github.com/smallbiznis/valora/internal/priceamount"
@@ -67,6 +71,7 @@ var Module = fx.Module("http.server",
 	session.Module,
 	apikey.Module,
 	customer.Module,
+	billingdashboard.Module,
 	invoice.Module,
 	invoicetemplate.Module,
 	ledger.Module,
@@ -76,6 +81,7 @@ var Module = fx.Module("http.server",
 	priceamount.Module,
 	pricetier.Module,
 	product.Module,
+	paymentprovider.Module,
 	reference.Module,
 	rating.Module,
 	subscription.Module,
@@ -118,31 +124,33 @@ func run(lc fx.Lifecycle, r *gin.Engine) {
 }
 
 type Server struct {
-	engine             *gin.Engine
-	cfg                config.Config
-	db                 *gorm.DB
-	authsvc            authdomain.Service
-	oauthsvc           authoauth.Service
-	sessions           *session.Manager
-	genID              *snowflake.Node
-	apiKeySvc          apikeydomain.Service
-	apiKeyLimiter      *rateLimiter
-	authzSvc           authorization.Service
-	auditSvc           auditdomain.Service
-	invoiceSvc         invoicedomain.Service
-	meterSvc           meterdomain.Service
-	organizationSvc    organizationdomain.Service
-	customerSvc        customerdomain.Service
-	priceSvc           pricedomain.Service
-	priceAmountSvc     priceamountdomain.Service
-	priceTierSvc       pricetierdomain.Service
-	productSvc         productdomain.Service
-	invoiceTemplateSvc invoicetemplatedomain.Service
-	refrepo            referencedomain.Repository
-	signupsvc          signupdomain.Service
-	ratingSvc          ratingdomain.Service
-	subscriptionSvc    subscriptiondomain.Service
-	usagesvc           usagedomain.Service
+	engine              *gin.Engine
+	cfg                 config.Config
+	db                  *gorm.DB
+	authsvc             authdomain.Service
+	oauthsvc            authoauth.Service
+	sessions            *session.Manager
+	genID               *snowflake.Node
+	apiKeySvc           apikeydomain.Service
+	apiKeyLimiter       *rateLimiter
+	authzSvc            authorization.Service
+	auditSvc            auditdomain.Service
+	billingDashboardSvc billingdashboarddomain.Service
+	invoiceSvc          invoicedomain.Service
+	meterSvc            meterdomain.Service
+	organizationSvc     organizationdomain.Service
+	customerSvc         customerdomain.Service
+	priceSvc            pricedomain.Service
+	priceAmountSvc      priceamountdomain.Service
+	priceTierSvc        pricetierdomain.Service
+	productSvc          productdomain.Service
+	paymentProviderSvc  paymentproviderdomain.Service
+	invoiceTemplateSvc  invoicetemplatedomain.Service
+	refrepo             referencedomain.Repository
+	signupsvc           signupdomain.Service
+	ratingSvc           ratingdomain.Service
+	subscriptionSvc     subscriptiondomain.Service
+	usagesvc            usagedomain.Service
 
 	scheduler *scheduler.Scheduler `optional:"true"`
 }
@@ -150,60 +158,64 @@ type Server struct {
 type ServerParams struct {
 	fx.In
 
-	Gin                *gin.Engine
-	Cfg                config.Config
-	DB                 *gorm.DB
-	Authsvc            authdomain.Service
-	OAuthsvc           authoauth.Service
-	Sessions           *session.Manager
-	GenID              *snowflake.Node
-	APIKeySvc          apikeydomain.Service
-	AuthzSvc           authorization.Service
-	AuditSvc           auditdomain.Service
-	InvoiceSvc         invoicedomain.Service
-	MeterSvc           meterdomain.Service
-	OrganizationSvc    organizationdomain.Service
-	CustomerSvc        customerdomain.Service
-	PriceSvc           pricedomain.Service
-	PriceAmountSvc     priceamountdomain.Service
-	PriceTierSvc       pricetierdomain.Service
-	ProductSvc         productdomain.Service
-	InvoiceTemplateSvc invoicetemplatedomain.Service
-	Refrepo            referencedomain.Repository
-	RatingSvc          ratingdomain.Service
-	SubscriptionSvc    subscriptiondomain.Service
-	Usagesvc           usagedomain.Service
+	Gin                 *gin.Engine
+	Cfg                 config.Config
+	DB                  *gorm.DB
+	Authsvc             authdomain.Service
+	OAuthsvc            authoauth.Service
+	Sessions            *session.Manager
+	GenID               *snowflake.Node
+	APIKeySvc           apikeydomain.Service
+	AuthzSvc            authorization.Service
+	AuditSvc            auditdomain.Service
+	BillingDashboardSvc billingdashboarddomain.Service
+	InvoiceSvc          invoicedomain.Service
+	MeterSvc            meterdomain.Service
+	OrganizationSvc     organizationdomain.Service
+	CustomerSvc         customerdomain.Service
+	PriceSvc            pricedomain.Service
+	PriceAmountSvc      priceamountdomain.Service
+	PriceTierSvc        pricetierdomain.Service
+	ProductSvc          productdomain.Service
+	PaymentProviderSvc  paymentproviderdomain.Service
+	InvoiceTemplateSvc  invoicetemplatedomain.Service
+	Refrepo             referencedomain.Repository
+	RatingSvc           ratingdomain.Service
+	SubscriptionSvc     subscriptiondomain.Service
+	Usagesvc            usagedomain.Service
 
 	Scheduler *scheduler.Scheduler
 }
 
 func NewServer(p ServerParams) *Server {
 	svc := &Server{
-		engine:             p.Gin,
-		cfg:                p.Cfg,
-		db:                 p.DB,
-		authsvc:            p.Authsvc,
-		oauthsvc:           p.OAuthsvc,
-		sessions:           p.Sessions,
-		genID:              p.GenID,
-		apiKeySvc:          p.APIKeySvc,
-		apiKeyLimiter:      newRateLimiter(5, 10*time.Minute),
-		authzSvc:           p.AuthzSvc,
-		auditSvc:           p.AuditSvc,
-		invoiceSvc:         p.InvoiceSvc,
-		meterSvc:           p.MeterSvc,
-		organizationSvc:    p.OrganizationSvc,
-		customerSvc:        p.CustomerSvc,
-		priceSvc:           p.PriceSvc,
-		priceAmountSvc:     p.PriceAmountSvc,
-		priceTierSvc:       p.PriceTierSvc,
-		productSvc:         p.ProductSvc,
-		invoiceTemplateSvc: p.InvoiceTemplateSvc,
-		refrepo:            p.Refrepo,
-		ratingSvc:          p.RatingSvc,
-		subscriptionSvc:    p.SubscriptionSvc,
-		usagesvc:           p.Usagesvc,
-		scheduler:          p.Scheduler,
+		engine:              p.Gin,
+		cfg:                 p.Cfg,
+		db:                  p.DB,
+		authsvc:             p.Authsvc,
+		oauthsvc:            p.OAuthsvc,
+		sessions:            p.Sessions,
+		genID:               p.GenID,
+		apiKeySvc:           p.APIKeySvc,
+		apiKeyLimiter:       newRateLimiter(5, 10*time.Minute),
+		authzSvc:            p.AuthzSvc,
+		auditSvc:            p.AuditSvc,
+		billingDashboardSvc: p.BillingDashboardSvc,
+		invoiceSvc:          p.InvoiceSvc,
+		meterSvc:            p.MeterSvc,
+		organizationSvc:     p.OrganizationSvc,
+		customerSvc:         p.CustomerSvc,
+		priceSvc:            p.PriceSvc,
+		priceAmountSvc:      p.PriceAmountSvc,
+		priceTierSvc:        p.PriceTierSvc,
+		productSvc:          p.ProductSvc,
+		paymentProviderSvc:  p.PaymentProviderSvc,
+		invoiceTemplateSvc:  p.InvoiceTemplateSvc,
+		refrepo:             p.Refrepo,
+		ratingSvc:           p.RatingSvc,
+		subscriptionSvc:     p.SubscriptionSvc,
+		usagesvc:            p.Usagesvc,
+		scheduler:           p.Scheduler,
 	}
 
 	svc.registerAuthRoutes()
@@ -352,12 +364,23 @@ func (s *Server) registerAdminRoutes() {
 	admin.GET("/invoices/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.GetInvoiceByID)
 	admin.GET("/invoices/:id/render", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.RenderInvoice)
 
+	// -------- Billing Dashboard --------
+	admin.GET("/billing/customers", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingDashboard, authorization.ActionBillingDashboardView), s.ListBillingCustomers)
+	admin.GET("/billing/cycles", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingDashboard, authorization.ActionBillingDashboardView), s.ListBillingCycles)
+	admin.GET("/billing/activity", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingDashboard, authorization.ActionBillingDashboardView), s.ListBillingActivity)
+
 	// -------- Invoice Templates --------
 	admin.GET("/invoice-templates", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ListInvoiceTemplates)
 	admin.POST("/invoice-templates", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.CreateInvoiceTemplate)
 	admin.GET("/invoice-templates/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.GetInvoiceTemplateByID)
 	admin.PATCH("/invoice-templates/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.UpdateInvoiceTemplate)
 	admin.POST("/invoice-templates/:id/set-default", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.SetDefaultInvoiceTemplate)
+
+	// -------- Payment Providers --------
+	admin.GET("/payment-providers/catalog", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectPaymentProvider, authorization.ActionPaymentProviderManage), s.ListPaymentProviderCatalog)
+	admin.GET("/payment-providers", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectPaymentProvider, authorization.ActionPaymentProviderManage), s.ListPaymentProviderConfigs)
+	admin.POST("/payment-providers", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectPaymentProvider, authorization.ActionPaymentProviderManage), s.UpsertPaymentProviderConfig)
+	admin.PATCH("/payment-providers/:provider", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectPaymentProvider, authorization.ActionPaymentProviderManage), s.UpdatePaymentProviderStatus)
 
 	// -------- Customers --------
 	admin.GET("/customers", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ListCustomers)
@@ -420,6 +443,11 @@ func (s *Server) registerUIRoutes() {
 			auditLogs := org.Group("/audit-logs")
 			{
 				auditLogs.GET("", serveIndex)
+			}
+
+			paymentProviders := org.Group("/payment-providers")
+			{
+				paymentProviders.GET("", serveIndex)
 			}
 
 			settings := org.Group("/settings", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin))
