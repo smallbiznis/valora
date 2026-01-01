@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	auditdomain "github.com/smallbiznis/valora/internal/audit/domain"
-	"github.com/smallbiznis/valora/internal/authorization"
 	"github.com/smallbiznis/valora/pkg/db/pagination"
 )
 
@@ -23,11 +22,6 @@ type listAuditLogsQuery struct {
 }
 
 func (s *Server) ListAuditLogs(c *gin.Context) {
-	if err := s.authorizeOrgAction(c, authorization.ObjectAuditLog, authorization.ActionAuditLogView); err != nil {
-		AbortWithError(c, err)
-		return
-	}
-
 	var query listAuditLogsQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
 		AbortWithError(c, invalidRequestError())

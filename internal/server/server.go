@@ -138,7 +138,7 @@ type Server struct {
 	subscriptionSvc subscriptiondomain.Service
 	usagesvc        usagedomain.Service
 
-	scheduler *scheduler.Scheduler
+	scheduler *scheduler.Scheduler `optional:"true"`
 }
 
 type ServerParams struct {
@@ -203,10 +203,7 @@ func NewServer(p ServerParams) *Server {
 	svc.registerAdminRoutes()
 	svc.registerUIRoutes()
 	svc.registerFallback()
-
-	if svc.cfg.Environment != "production" {
-		svc.RegisterDevBillingRoutes()
-	}
+	svc.RegisterDevBillingRoutes()
 
 	return svc
 }
@@ -270,13 +267,14 @@ func (s *Server) registerAPIRoutes() {
 	api.GET("/price_tiers/:id", s.APIKeyRequired(), s.GetPriceTierByID)
 
 	// -------- Subscriptions --------
+	// Shared handlers, different gates: API keys use scopes, admin uses RBAC.
 	api.GET("/subscriptions", s.APIKeyRequired(), s.ListSubscriptions)
 	api.POST("/subscriptions", s.APIKeyRequired(), s.CreateSubscription)
 	api.GET("/subscriptions/:id", s.APIKeyRequired(), s.GetSubscriptionByID)
-	api.POST("/subscriptions/:id/activate", s.APIKeyRequired(), s.ActivateSubscription)
-	api.POST("/subscriptions/:id/pause", s.APIKeyRequired(), s.PauseSubscription)
-	api.POST("/subscriptions/:id/resume", s.APIKeyRequired(), s.ResumeSubscription)
-	api.POST("/subscriptions/:id/cancel", s.APIKeyRequired(), s.CancelSubscription)
+	api.POST("/subscriptions/:id/activate", s.APIKeyRequired(), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionActivate), s.ActivateSubscription)
+	api.POST("/subscriptions/:id/pause", s.APIKeyRequired(), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionPause), s.PauseSubscription)
+	api.POST("/subscriptions/:id/resume", s.APIKeyRequired(), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionResume), s.ResumeSubscription)
+	api.POST("/subscriptions/:id/cancel", s.APIKeyRequired(), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionCancel), s.CancelSubscription)
 
 	// -------- Invoices --------
 	api.GET("/invoices", s.APIKeyRequired(), s.ListInvoices)
@@ -336,10 +334,10 @@ func (s *Server) registerAdminRoutes() {
 	admin.GET("/subscriptions", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ListSubscriptions)
 	admin.POST("/subscriptions", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.CreateSubscription)
 	admin.GET("/subscriptions/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.GetSubscriptionByID)
-	admin.POST("/subscriptions/:id/activate", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ActivateSubscription)
-	admin.POST("/subscriptions/:id/pause", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.PauseSubscription)
-	admin.POST("/subscriptions/:id/resume", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ResumeSubscription)
-	admin.POST("/subscriptions/:id/cancel", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.CancelSubscription)
+	admin.POST("/subscriptions/:id/activate", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionActivate), s.ActivateSubscription)
+	admin.POST("/subscriptions/:id/pause", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionPause), s.PauseSubscription)
+	admin.POST("/subscriptions/:id/resume", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionResume), s.ResumeSubscription)
+	admin.POST("/subscriptions/:id/cancel", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionCancel), s.CancelSubscription)
 
 	// -------- Invoices --------
 	admin.GET("/invoices", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ListInvoices)
@@ -350,11 +348,11 @@ func (s *Server) registerAdminRoutes() {
 	admin.POST("/customers", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.CreateCustomer)
 	admin.GET("/customers/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.GetCustomerByID)
 
-	admin.GET("/audit-logs", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ListAuditLogs)
-	admin.GET("/api-keys", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ListAPIKeys)
-	admin.POST("/api-keys", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.CreateAPIKey)
-	admin.POST("/api-keys/:key_id/reveal", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.RevealAPIKey)
-	admin.POST("/api-keys/:key_id/revoke", s.RequireRole(organizationdomain.RoleOwner), s.RevokeAPIKey)
+	admin.GET("/audit-logs", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectAuditLog, authorization.ActionAuditLogView), s.ListAuditLogs)
+	admin.GET("/api-keys", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectAPIKey, authorization.ActionAPIKeyView), s.ListAPIKeys)
+	admin.POST("/api-keys", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectAPIKey, authorization.ActionAPIKeyCreate), s.CreateAPIKey)
+	admin.POST("/api-keys/:key_id/reveal", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectAPIKey, authorization.ActionAPIKeyRotate), s.RevealAPIKey)
+	admin.POST("/api-keys/:key_id/revoke", s.RequireRole(organizationdomain.RoleOwner), s.authorizeOrgAction(authorization.ObjectAPIKey, authorization.ActionAPIKeyRevoke), s.RevokeAPIKey)
 }
 
 func (s *Server) registerUIRoutes() {

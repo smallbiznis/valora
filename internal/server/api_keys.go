@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 	apikeydomain "github.com/smallbiznis/valora/internal/apikey/domain"
 	authdomain "github.com/smallbiznis/valora/internal/auth/domain"
-	"github.com/smallbiznis/valora/internal/authorization"
 	"gorm.io/gorm"
 )
 
@@ -24,11 +23,6 @@ type revealAPIKeyRequest struct {
 }
 
 func (s *Server) ListAPIKeys(c *gin.Context) {
-	if err := s.authorizeOrgAction(c, authorization.ObjectAPIKey, authorization.ActionAPIKeyView); err != nil {
-		AbortWithError(c, err)
-		return
-	}
-
 	keys, err := s.apiKeySvc.List(c.Request.Context())
 	if err != nil {
 		AbortWithError(c, err)
@@ -39,11 +33,6 @@ func (s *Server) ListAPIKeys(c *gin.Context) {
 }
 
 func (s *Server) CreateAPIKey(c *gin.Context) {
-	if err := s.authorizeOrgAction(c, authorization.ObjectAPIKey, authorization.ActionAPIKeyCreate); err != nil {
-		AbortWithError(c, err)
-		return
-	}
-
 	var req createAPIKeyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		AbortWithError(c, invalidRequestError())
@@ -70,11 +59,6 @@ func (s *Server) RevealAPIKey(c *gin.Context) {
 	userID, ok := s.userIDFromSession(c)
 	if !ok {
 		AbortWithError(c, ErrUnauthorized)
-		return
-	}
-
-	if err := s.authorizeOrgAction(c, authorization.ObjectAPIKey, authorization.ActionAPIKeyRotate); err != nil {
-		AbortWithError(c, err)
 		return
 	}
 
@@ -118,11 +102,6 @@ func (s *Server) RevealAPIKey(c *gin.Context) {
 }
 
 func (s *Server) RevokeAPIKey(c *gin.Context) {
-	if err := s.authorizeOrgAction(c, authorization.ObjectAPIKey, authorization.ActionAPIKeyRevoke); err != nil {
-		AbortWithError(c, err)
-		return
-	}
-
 	keyID := strings.TrimSpace(c.Param("key_id"))
 	if err := s.apiKeySvc.Revoke(c.Request.Context(), keyID); err != nil {
 		AbortWithError(c, err)
