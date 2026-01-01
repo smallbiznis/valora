@@ -34,6 +34,10 @@ CREATE INDEX IF NOT EXISTS idx_usage_events_org_id ON usage_events(org_id);
 CREATE INDEX IF NOT EXISTS idx_usage_events_customer_id ON usage_events(customer_id);
 CREATE INDEX IF NOT EXISTS idx_usage_events_subscription_id ON usage_events(subscription_id);
 CREATE INDEX IF NOT EXISTS idx_usage_events_meter_id ON usage_events(meter_id);
+CREATE INDEX IF NOT EXISTS idx_usage_events_org_customer_created ON usage_events(org_id, customer_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_events_org_sub_created ON usage_events(org_id, subscription_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_events_org_meter_created ON usage_events(org_id, meter_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_events_org_created ON usage_events(org_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS billing_events (
     id BIGINT PRIMARY KEY,

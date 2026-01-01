@@ -9,6 +9,7 @@ import (
 	"github.com/smallbiznis/valora/internal/orgcontext"
 	pricedomain "github.com/smallbiznis/valora/internal/price/domain"
 	priceamountdomain "github.com/smallbiznis/valora/internal/priceamount/domain"
+	"github.com/smallbiznis/valora/pkg/db/option"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/datatypes"
@@ -54,14 +55,37 @@ func (s *Service) Create(ctx context.Context, req priceamountdomain.CreateReques
 		return nil, err
 	}
 
+	// Check for existing active amount for the same price, meter, and currency
+	latest, err := s.repo.FindOne(ctx, s.db, &priceamountdomain.PriceAmount{
+		OrgID:    orgID,
+		PriceID:  priceID,
+		MeterID:  meterID,
+		Currency: req.Currency,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// If an active amount exists, set its EffectiveTo to now
+	if latest != nil {
+		now := time.Now().UTC()
+		latest.EffectiveTo = &now
+		if _, err = s.repo.Update(ctx, s.db, latest); err != nil {
+			return nil, err
+		}
+	}
+
+	// Validate amount values
 	if err := validateAmountValues(req); err != nil {
 		return nil, err
 	}
 
+	// Ensure the referenced price exists
 	if err := s.ensurePriceExists(ctx, orgID, priceID); err != nil {
 		return nil, err
 	}
 
+	// Create new price amount
 	now := time.Now().UTC()
 	entity := &priceamountdomain.PriceAmount{
 		ID:                 s.genID.Generate(),
@@ -72,6 +96,7 @@ func (s *Service) Create(ctx context.Context, req priceamountdomain.CreateReques
 		UnitAmountCents:    req.UnitAmountCents,
 		MinimumAmountCents: req.MinimumAmountCents,
 		MaximumAmountCents: req.MaximumAmountCents,
+		EffectiveFrom:      now,
 		CreatedAt:          now,
 		UpdatedAt:          now,
 	}
@@ -79,6 +104,7 @@ func (s *Service) Create(ctx context.Context, req priceamountdomain.CreateReques
 		entity.Metadata = datatypes.JSONMap(req.Metadata)
 	}
 
+	// Insert into repository
 	if err := s.repo.Insert(ctx, s.db, entity); err != nil {
 		return nil, err
 	}
@@ -104,7 +130,42 @@ func (s *Service) List(ctx context.Context, req priceamountdomain.ListPriceAmoun
 		filter.PriceID = priceID
 	}
 
-	items, err := s.repo.List(ctx, s.db, filter)
+	opts := []option.QueryOption{}
+
+	// Apply effective date filters
+	if req.EffectiveFrom != nil {
+		opts = append(opts, option.ApplyOperator(option.Condition{
+			Field:    "effective_from",
+			Operator: option.GTE,
+			Value:    *req.EffectiveFrom,
+		}))
+	}
+
+	// Filter by EffectiveTo if provided
+	if req.EffectiveTo != nil {
+		opts = append(opts, option.ApplyOperator(option.Condition{
+			Field:    "effective_to",
+			Operator: option.LTE,
+			Value:    *req.EffectiveTo,
+		}))
+	}
+
+	// If no effective date filters are provided, default to currently effective amounts
+	if req.EffectiveFrom == nil && req.EffectiveTo == nil {
+		now := time.Now().UTC()
+		opts = append(opts, option.ApplyOperator(option.Condition{
+			Field:    "effective_from",
+			Operator: option.LTE,
+			Value:    now,
+		}))
+
+		opts = append(opts, option.ApplyOperator(option.Condition{
+			Field:    "effective_to",
+			Operator: option.ISNULL,
+		}))
+	}
+
+	items, err := s.repo.List(ctx, s.db, filter, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -172,6 +233,7 @@ func (s *Service) toResponse(a *priceamountdomain.PriceAmount) *priceamountdomai
 		value := a.MeterID.String()
 		meterID = &value
 	}
+
 	return &priceamountdomain.Response{
 		ID:                 a.ID.String(),
 		OrganizationID:     a.OrgID.String(),
@@ -181,6 +243,8 @@ func (s *Service) toResponse(a *priceamountdomain.PriceAmount) *priceamountdomai
 		UnitAmountCents:    a.UnitAmountCents,
 		MinimumAmountCents: a.MinimumAmountCents,
 		MaximumAmountCents: a.MaximumAmountCents,
+		EffectiveFrom:      a.EffectiveFrom,
+		EffectiveTo:        a.EffectiveTo,
 		CreatedAt:          a.CreatedAt,
 		UpdatedAt:          a.UpdatedAt,
 	}

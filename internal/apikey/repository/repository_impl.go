@@ -16,13 +16,13 @@ func Provide() apikeydomain.Repository {
 
 func (r *repo) Insert(ctx context.Context, db *gorm.DB, key *apikeydomain.APIKey) error {
 	return db.WithContext(ctx).Exec(
-		`INSERT INTO api_keys (id, org_id, key_id, name, scope, key_hash, is_active, created_at, updated_at, last_used_at, expires_at, rotated_from_key_id)
+		`INSERT INTO api_keys (id, org_id, key_id, name, scopes, key_hash, is_active, created_at, updated_at, last_used_at, expires_at, rotated_from_key_id)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		key.ID,
 		key.OrgID,
 		key.KeyID,
 		key.Name,
-		key.Scope,
+		key.Scopes,
 		key.KeyHash,
 		key.IsActive,
 		key.CreatedAt,
@@ -36,10 +36,10 @@ func (r *repo) Insert(ctx context.Context, db *gorm.DB, key *apikeydomain.APIKey
 func (r *repo) Update(ctx context.Context, db *gorm.DB, key *apikeydomain.APIKey) error {
 	return db.WithContext(ctx).Exec(
 		`UPDATE api_keys
-		 SET name = ?, scope = ?, key_hash = ?, is_active = ?, updated_at = ?, last_used_at = ?, expires_at = ?, rotated_from_key_id = ?
+		 SET name = ?, scopes = ?, key_hash = ?, is_active = ?, updated_at = ?, last_used_at = ?, expires_at = ?, rotated_from_key_id = ?
 		 WHERE org_id = ? AND key_id = ?`,
 		key.Name,
-		key.Scope,
+		key.Scopes,
 		key.KeyHash,
 		key.IsActive,
 		key.UpdatedAt,
@@ -54,7 +54,7 @@ func (r *repo) Update(ctx context.Context, db *gorm.DB, key *apikeydomain.APIKey
 func (r *repo) FindByKeyID(ctx context.Context, db *gorm.DB, orgID snowflake.ID, keyID string) (*apikeydomain.APIKey, error) {
 	var key apikeydomain.APIKey
 	err := db.WithContext(ctx).Raw(
-		`SELECT id, org_id, key_id, name, scope, key_hash, is_active, created_at, updated_at, last_used_at, expires_at, rotated_from_key_id
+		`SELECT id, org_id, key_id, name, scopes, key_hash, is_active, created_at, updated_at, last_used_at, expires_at, rotated_from_key_id
 		 FROM api_keys WHERE org_id = ? AND key_id = ?`,
 		orgID,
 		keyID,
@@ -71,7 +71,7 @@ func (r *repo) FindByKeyID(ctx context.Context, db *gorm.DB, orgID snowflake.ID,
 func (r *repo) List(ctx context.Context, db *gorm.DB, orgID snowflake.ID) ([]apikeydomain.APIKey, error) {
 	var keys []apikeydomain.APIKey
 	err := db.WithContext(ctx).Raw(
-		`SELECT id, org_id, key_id, name, scope, key_hash, is_active, created_at, updated_at, last_used_at, expires_at, rotated_from_key_id
+		`SELECT id, org_id, key_id, name, scopes, key_hash, is_active, created_at, updated_at, last_used_at, expires_at, rotated_from_key_id
 		 FROM api_keys WHERE org_id = ? ORDER BY created_at DESC`,
 		orgID,
 	).Scan(&keys).Error

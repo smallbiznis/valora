@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     org_id BIGINT NOT NULL,
     key_id TEXT NOT NULL,
     name TEXT NOT NULL,
-    scope TEXT NOT NULL,
+    scopes TEXT[] NOT NULL,
     key_hash TEXT NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

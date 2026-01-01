@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 
 CREATE INDEX IF NOT EXISTS idx_subscriptions_org_id ON subscriptions(org_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_customer_id ON subscriptions(customer_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_customer_active_unique ON subscriptions(customer_id) WHERE status = 'ACTIVE';
 
 CREATE TABLE IF NOT EXISTS subscription_items (
     id BIGINT PRIMARY KEY,
@@ -48,3 +49,4 @@ CREATE INDEX IF NOT EXISTS idx_subscription_items_org_id ON subscription_items(o
 CREATE INDEX IF NOT EXISTS idx_subscription_items_subscription_id ON subscription_items(subscription_id);
 CREATE INDEX IF NOT EXISTS idx_subscription_items_price_id ON subscription_items(price_id);
 CREATE INDEX IF NOT EXISTS idx_subscription_items_meter_id ON subscription_items(meter_id);
+CREATE INDEX IF NOT EXISTS idx_subscription_items_sub_meter ON subscription_items(subscription_id, meter_id)

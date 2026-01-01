@@ -277,6 +277,7 @@ func (s *Server) registerAPIRoutes() {
 	api.POST("/subscriptions/:id/pause", s.APIKeyRequired(), s.PauseSubscription)
 	api.POST("/subscriptions/:id/resume", s.APIKeyRequired(), s.ResumeSubscription)
 	api.POST("/subscriptions/:id/cancel", s.APIKeyRequired(), s.CancelSubscription)
+
 	// -------- Invoices --------
 	api.GET("/invoices", s.APIKeyRequired(), s.ListInvoices)
 	api.GET("/invoices/:id", s.APIKeyRequired(), s.GetInvoiceByID)
@@ -285,6 +286,8 @@ func (s *Server) registerAPIRoutes() {
 	api.GET("/customers", s.APIKeyRequired(), s.ListCustomers)
 	api.POST("/customers", s.APIKeyRequired(), s.CreateCustomer)
 	api.GET("/customers/:id", s.APIKeyRequired(), s.GetCustomerByID)
+
+	api.POST("/usage", s.APIKeyRequired(), s.IngestUsage)
 
 	if s.cfg.Environment != "production" {
 		api.POST("/test/cleanup", s.TestCleanup)

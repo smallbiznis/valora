@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS price_amounts (
     unit_amount_cents BIGINT NOT NULL,
     minimum_amount_cents BIGINT,
     maximum_amount_cents BIGINT,
+    effective_from TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    effective_to TIMESTAMPTZ,
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP

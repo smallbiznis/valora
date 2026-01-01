@@ -7,7 +7,9 @@ import (
 )
 
 type ListPriceAmountRequest struct {
-	PriceID string `url:"price_id"`
+	PriceID       string     `url:"price_id"`
+	EffectiveFrom *time.Time `url:"effective_from"`
+	EffectiveTo   *time.Time `url:"effective_to"`
 }
 
 type GetPriceAmountByID struct {
@@ -31,16 +33,18 @@ type CreateRequest struct {
 }
 
 type Response struct {
-	ID                 string    `json:"id"`
-	OrganizationID     string    `json:"organization_id"`
-	PriceID            string    `json:"price_id"`
-	MeterID            *string   `json:"meter_id,omitempty"`
-	Currency           string    `json:"currency"`
-	UnitAmountCents    int64     `json:"unit_amount_cents"`
-	MinimumAmountCents *int64    `json:"minimum_amount_cents,omitempty"`
-	MaximumAmountCents *int64    `json:"maximum_amount_cents,omitempty"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	ID                 string     `json:"id"`
+	OrganizationID     string     `json:"organization_id"`
+	PriceID            string     `json:"price_id"`
+	MeterID            *string    `json:"meter_id,omitempty"`
+	Currency           string     `json:"currency"`
+	UnitAmountCents    int64      `json:"unit_amount_cents"`
+	MinimumAmountCents *int64     `json:"minimum_amount_cents,omitempty"`
+	MaximumAmountCents *int64     `json:"maximum_amount_cents,omitempty"`
+	EffectiveFrom      time.Time  `json:"effective_from"`
+	EffectiveTo        *time.Time `json:"effective_to,omitempty"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
 }
 
 var (

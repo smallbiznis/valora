@@ -18,13 +18,14 @@ type Service interface {
 }
 
 type CreateRequest struct {
-	Name string `json:"name"`
+	Name   string   `json:"name"`
+	Scopes []string `json:"scopes"`
 }
 
 type Response struct {
 	KeyID            string     `json:"key_id"`
 	Name             string     `json:"name"`
-	Scope            string     `json:"scope"`
+	Scopes           []string   `json:"scopes"`
 	IsActive         bool       `json:"is_active"`
 	CreatedAt        time.Time  `json:"created_at"`
 	LastUsedAt       *time.Time `json:"last_used_at"`

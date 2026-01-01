@@ -15,7 +15,8 @@ import (
 )
 
 type createAPIKeyRequest struct {
-	Name string `json:"name"`
+	Name   string   `json:"name"`
+	Scopes []string `json:"scopes"`
 }
 
 type revealAPIKeyRequest struct {
@@ -49,7 +50,7 @@ func (s *Server) CreateAPIKey(c *gin.Context) {
 		return
 	}
 
-	resp, err := s.apiKeySvc.Create(c.Request.Context(), apikeydomain.CreateRequest{Name: req.Name})
+	resp, err := s.apiKeySvc.Create(c.Request.Context(), apikeydomain.CreateRequest{Name: req.Name, Scopes: req.Scopes})
 	if err != nil {
 		AbortWithError(c, err)
 		return
