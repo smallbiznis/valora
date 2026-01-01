@@ -7,7 +7,6 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
-	"github.com/smallbiznis/valora/internal/authorization"
 	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
 	"github.com/smallbiznis/valora/pkg/db/pagination"
 )
@@ -105,7 +104,6 @@ func (s *Server) CancelSubscription(c *gin.Context) {
 		c,
 		subscriptiondomain.SubscriptionStatusCanceled,
 		"subscription.canceled",
-		authorization.ActionSubscriptionCancel,
 	)
 }
 
@@ -114,7 +112,6 @@ func (s *Server) ActivateSubscription(c *gin.Context) {
 		c,
 		subscriptiondomain.SubscriptionStatusActive,
 		"subscription.activated",
-		authorization.ActionSubscriptionActivate,
 	)
 }
 
@@ -123,7 +120,6 @@ func (s *Server) PauseSubscription(c *gin.Context) {
 		c,
 		subscriptiondomain.SubscriptionStatusPaused,
 		"subscription.paused",
-		authorization.ActionSubscriptionPause,
 	)
 }
 
@@ -132,19 +128,13 @@ func (s *Server) ResumeSubscription(c *gin.Context) {
 		c,
 		subscriptiondomain.SubscriptionStatusActive,
 		"subscription.resumed",
-		authorization.ActionSubscriptionResume,
 	)
 }
 
-func (s *Server) transitionSubscription(c *gin.Context, target subscriptiondomain.SubscriptionStatus, auditAction string, capabilityAction string) {
+func (s *Server) transitionSubscription(c *gin.Context, target subscriptiondomain.SubscriptionStatus, auditAction string) {
 	id := strings.TrimSpace(c.Param("id"))
 	if _, err := snowflake.ParseString(id); err != nil {
 		AbortWithError(c, newValidationError("id", "invalid_id", "invalid id"))
-		return
-	}
-
-	if err := s.authorizeOrgAction(c, authorization.ObjectSubscription, capabilityAction); err != nil {
-		AbortWithError(c, err)
 		return
 	}
 

@@ -8,14 +8,18 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
+	"github.com/lib/pq"
 	apikeydomain "github.com/smallbiznis/valora/internal/apikey/domain"
+	auditdomain "github.com/smallbiznis/valora/internal/audit/domain"
+	auditcontext "github.com/smallbiznis/valora/internal/auditcontext"
 	"github.com/smallbiznis/valora/internal/orgcontext"
 )
 
 const (
-	contextAuthTypeKey = "auth_type"
-	contextOrgIDKey    = "org_id"
-	contextAPIKeyIDKey = "api_key_id"
+	contextAuthTypeKey     = "auth_type"
+	contextOrgIDKey        = "org_id"
+	contextAPIKeyIDKey     = "api_key_id"
+	contextAPIKeyScopesKey = "api_key_scopes"
 )
 
 // APIKeyRequired authenticates requests using an API key only.
@@ -43,13 +47,14 @@ func (s *Server) APIKeyRequired() gin.HandlerFunc {
 		now := time.Now().UTC()
 
 		var record struct {
-			ID      snowflake.ID `gorm:"column:id"`
-			OrgID   snowflake.ID `gorm:"column:org_id"`
-			KeyHash string       `gorm:"column:key_hash"`
+			ID      snowflake.ID   `gorm:"column:id"`
+			OrgID   snowflake.ID   `gorm:"column:org_id"`
+			KeyHash string         `gorm:"column:key_hash"`
+			Scopes  pq.StringArray `gorm:"column:scopes"`
 		}
 
 		if err := s.db.WithContext(c.Request.Context()).Raw(
-			`SELECT id, org_id, key_hash
+			`SELECT id, org_id, key_hash, scopes
 			 FROM api_keys
 			 WHERE key_hash = ?
 			   AND is_active = true
@@ -68,10 +73,14 @@ func (s *Server) APIKeyRequired() gin.HandlerFunc {
 		}
 
 		ctx := c.Request.Context()
+		scopes := make([]string, len(record.Scopes))
+		copy(scopes, record.Scopes)
 		ctx = context.WithValue(ctx, contextAuthTypeKey, "api_key")
 		ctx = context.WithValue(ctx, contextOrgIDKey, int64(record.OrgID))
 		ctx = context.WithValue(ctx, contextAPIKeyIDKey, int64(record.ID))
+		ctx = context.WithValue(ctx, contextAPIKeyScopesKey, scopes)
 		ctx = orgcontext.WithOrgID(ctx, int64(record.OrgID))
+		ctx = auditcontext.WithActor(ctx, string(auditdomain.ActorTypeAPIKey), record.ID.String())
 
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
