@@ -6,6 +6,7 @@ import { admin } from "@/api/client"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogClose,
@@ -52,7 +53,7 @@ const formatDateTime = (value?: string | null) => {
 type ApiKey = {
   key_id: string
   name: string
-  scope: string
+  scopes?: string[]
   is_active: boolean
   created_at: string
   last_used_at?: string | null
@@ -86,17 +87,26 @@ const statusVariant = (key: ApiKey) => {
   return "default"
 }
 
+const formatScopes = (key: ApiKey) => {
+  if (Array.isArray(key.scopes) && key.scopes.length > 0) {
+    return key.scopes.join(", ")
+  }
+  return "-"
+}
+
 export default function OrgApiKeysPage() {
   const { orgId } = useParams()
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [listError, setListError] = useState<string | null>(null)
+  const [availableScopes, setAvailableScopes] = useState<string[]>([])
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [createName, setCreateName] = useState("")
   const [createError, setCreateError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [createdSecret, setCreatedSecret] = useState<ApiKeySecretResponse | null>(null)
+  const [createScopes, setCreateScopes] = useState<string[]>([])
 
   const [revealKey, setRevealKey] = useState<ApiKey | null>(null)
   const [revealPassword, setRevealPassword] = useState("")
@@ -131,6 +141,19 @@ export default function OrgApiKeysPage() {
     void loadKeys()
   }, [loadKeys])
 
+  useEffect(() => {
+    const loadScopes = async () => {
+      if (!orgId) return
+      try {
+        const res = await admin.get<string[]>("/api-keys/scopes")
+        setAvailableScopes(Array.isArray(res.data) ? res.data : [])
+      } catch {
+        setAvailableScopes([])
+      }
+    }
+    void loadScopes()
+  }, [orgId])
+
   const handleCreate = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!createName.trim()) {
@@ -143,9 +166,11 @@ export default function OrgApiKeysPage() {
     try {
       const res = await admin.post<ApiKeySecretResponse>("/api-keys", {
         name: createName.trim(),
+        scopes: createScopes,
       })
       setCreatedSecret(res.data)
       setCreateName("")
+      setCreateScopes([])
       await loadKeys()
     } catch (err: any) {
       setCreateError(err?.message ?? "Unable to create API key.")
@@ -217,6 +242,7 @@ export default function OrgApiKeysPage() {
             if (!open) {
               setCreateError(null)
               setCreateName("")
+              setCreateScopes([])
               setCreatedSecret(null)
             }
           }}
@@ -270,6 +296,33 @@ export default function OrgApiKeysPage() {
                     autoComplete="off"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Scopes</Label>
+                  {availableScopes.length === 0 ? (
+                    <p className="text-text-muted text-xs">No scopes available.</p>
+                  ) : (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {availableScopes.map((scope) => (
+                        <label key={scope} className="flex items-center gap-2 text-xs">
+                          <Checkbox
+                            checked={createScopes.includes(scope)}
+                            onCheckedChange={(checked) => {
+                              setCreateScopes((current) => {
+                                if (checked === true) {
+                                  return current.includes(scope)
+                                    ? current
+                                    : [...current, scope]
+                                }
+                                return current.filter((item) => item !== scope)
+                              })
+                            }}
+                          />
+                          <span className="font-mono text-[11px]">{scope}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <DialogFooter>
                   <DialogClose asChild>
                     <Button type="button" variant="ghost">
@@ -301,7 +354,7 @@ export default function OrgApiKeysPage() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Key ID</TableHead>
-              <TableHead>Scope</TableHead>
+              <TableHead>Scopes</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Last used</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -327,7 +380,7 @@ export default function OrgApiKeysPage() {
                   <TableCell className="font-mono text-xs text-text-muted">
                     {maskKeyID(key.key_id)}
                   </TableCell>
-                  <TableCell className="text-text-muted text-xs">{key.scope}</TableCell>
+                  <TableCell className="text-text-muted text-xs">{formatScopes(key)}</TableCell>
                   <TableCell>
                     <Badge variant={statusVariant(key)}>{statusLabel(key)}</Badge>
                   </TableCell>

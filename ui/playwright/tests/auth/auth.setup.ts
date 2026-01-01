@@ -41,7 +41,7 @@ test("authenticate admin and persist storage state", async ({ request, baseURL }
   let user = defaultUser
 
   if (sessionToken) {
-    const useOrgResponse = await request.post(`/api/user/using/${orgId}`, {
+    const useOrgResponse = await request.post(`/auth/user/using/${orgId}`, {
       headers: { Cookie: `_sid=${sessionToken}` },
     })
     if (useOrgResponse.status() !== 200) {
@@ -84,7 +84,7 @@ test("authenticate admin and persist storage state", async ({ request, baseURL }
       email: metadata.email || defaultUser.email,
     }
 
-    const useOrgResponse = await request.post(`/api/user/using/${orgId}`)
+    const useOrgResponse = await request.post(`/auth/user/using/${orgId}`)
     if (useOrgResponse.status() !== 200) {
       throw new Error(
         `Unable to set org context (status ${useOrgResponse.status()}). Check org membership for ${orgId}.`
