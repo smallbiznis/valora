@@ -42,7 +42,6 @@ RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 COPY pkg ./pkg
-COPY configs ./configs
 
 # copy UI build output
 COPY --from=ui-builder /app/ui/public ./public
