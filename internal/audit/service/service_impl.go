@@ -103,9 +103,9 @@ func (s *Service) AuditLog(ctx context.Context, orgID *snowflake.ID, actorType s
 }
 
 func (s *Service) List(ctx context.Context, req auditdomain.ListAuditLogRequest) (auditdomain.ListAuditLogResponse, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return auditdomain.ListAuditLogResponse{}, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return auditdomain.ListAuditLogResponse{}, auditdomain.ErrInvalidOrganization
 	}
 
 	if req.StartAt != nil && req.EndAt != nil && req.StartAt.After(*req.EndAt) {
@@ -184,14 +184,6 @@ func (s *Service) List(ctx context.Context, req auditdomain.ListAuditLogRequest)
 	return resp, nil
 }
 
-func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
-	orgID, ok := orgcontext.OrgIDFromContext(ctx)
-	if !ok || orgID == 0 {
-		return 0, auditdomain.ErrInvalidOrganization
-	}
-	return snowflake.ID(orgID), nil
-}
-
 func (s *Service) resolveOrgID(ctx context.Context, orgID *snowflake.ID) *snowflake.ID {
 	if orgID != nil && *orgID != 0 {
 		return orgID
@@ -200,8 +192,7 @@ func (s *Service) resolveOrgID(ctx context.Context, orgID *snowflake.ID) *snowfl
 	if !ok || resolved == 0 {
 		return nil
 	}
-	parsed := snowflake.ID(resolved)
-	return &parsed
+	return &resolved
 }
 
 func (s *Service) resolveActor(ctx context.Context, actorType string, actorID *string) (string, *string) {

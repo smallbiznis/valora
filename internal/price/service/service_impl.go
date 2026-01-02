@@ -95,9 +95,9 @@ func (s *Service) Create(ctx context.Context, req pricedomain.CreateRequest) (*p
 }
 
 func (s *Service) List(ctx context.Context) ([]pricedomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, pricedomain.ErrInvalidOrganization
 	}
 
 	items, err := s.repo.List(ctx, s.db, orgID)
@@ -114,9 +114,9 @@ func (s *Service) List(ctx context.Context) ([]pricedomain.Response, error) {
 }
 
 func (s *Service) Get(ctx context.Context, id string) (*pricedomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, pricedomain.ErrInvalidOrganization
 	}
 
 	priceID, err := parseID(id)
@@ -133,14 +133,6 @@ func (s *Service) Get(ctx context.Context, id string) (*pricedomain.Response, er
 	}
 
 	return s.toResponse(entity), nil
-}
-
-func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
-	orgID, ok := orgcontext.OrgIDFromContext(ctx)
-	if !ok || orgID == 0 {
-		return 0, pricedomain.ErrInvalidOrganization
-	}
-	return snowflake.ID(orgID), nil
 }
 
 func (s *Service) productExists(ctx context.Context, orgID, productID snowflake.ID) (bool, error) {
@@ -294,9 +286,9 @@ func validatePricingModelConfig(pricingModel pricedomain.PricingModel, billingMo
 }
 
 func (s *Service) parseCreateIdentifiers(ctx context.Context, req pricedomain.CreateRequest) (snowflake.ID, snowflake.ID, string, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return 0, 0, "", err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return 0, 0, "", pricedomain.ErrInvalidOrganization
 	}
 
 	productID, err := parseID(req.ProductID)

@@ -50,9 +50,9 @@ func New(p Params) apikeydomain.Service {
 }
 
 func (s *Service) List(ctx context.Context) ([]apikeydomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, apikeydomain.ErrInvalidOrganization
 	}
 
 	items, err := s.repo.List(ctx, s.db, orgID)
@@ -69,9 +69,9 @@ func (s *Service) List(ctx context.Context) ([]apikeydomain.Response, error) {
 }
 
 func (s *Service) Create(ctx context.Context, req apikeydomain.CreateRequest) (*apikeydomain.SecretResponse, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, apikeydomain.ErrInvalidOrganization
 	}
 
 	name := strings.TrimSpace(req.Name)
@@ -112,9 +112,9 @@ func (s *Service) Create(ctx context.Context, req apikeydomain.CreateRequest) (*
 }
 
 func (s *Service) Rotate(ctx context.Context, keyID string) (*apikeydomain.SecretResponse, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, apikeydomain.ErrInvalidOrganization
 	}
 
 	trimmed := strings.TrimSpace(keyID)
@@ -123,7 +123,7 @@ func (s *Service) Rotate(ctx context.Context, keyID string) (*apikeydomain.Secre
 	}
 
 	var result *apikeydomain.SecretResponse
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		current, err := s.repo.FindByKeyID(ctx, tx, orgID, trimmed)
 		if err != nil {
 			return err
@@ -181,9 +181,9 @@ func (s *Service) Rotate(ctx context.Context, keyID string) (*apikeydomain.Secre
 }
 
 func (s *Service) Revoke(ctx context.Context, keyID string) error {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return apikeydomain.ErrInvalidOrganization
 	}
 
 	trimmed := strings.TrimSpace(keyID)
@@ -209,14 +209,6 @@ func (s *Service) Revoke(ctx context.Context, keyID string) error {
 		key.ExpiresAt = &now
 	}
 	return s.repo.Update(ctx, s.db, key)
-}
-
-func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
-	orgID, ok := orgcontext.OrgIDFromContext(ctx)
-	if !ok || orgID == 0 {
-		return 0, apikeydomain.ErrInvalidOrganization
-	}
-	return snowflake.ID(orgID), nil
 }
 
 func (s *Service) toResponse(key *apikeydomain.APIKey) apikeydomain.Response {

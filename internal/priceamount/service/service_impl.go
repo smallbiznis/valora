@@ -45,9 +45,9 @@ func New(p Params) priceamountdomain.Service {
 }
 
 func (s *Service) Create(ctx context.Context, req priceamountdomain.CreateRequest) (*priceamountdomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, priceamountdomain.ErrInvalidOrganization
 	}
 
 	priceID, meterID, currency, err := s.parseAmountIdentifiers(req)
@@ -128,14 +128,15 @@ func (s *Service) Create(ctx context.Context, req priceamountdomain.CreateReques
 func (s *Service) List(ctx context.Context, req priceamountdomain.ListPriceAmountRequest) ([]priceamountdomain.Response, error) {
 	filter := priceamountdomain.PriceAmount{}
 
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, priceamountdomain.ErrInvalidOrganization
 	}
 	filter.OrgID = orgID
 
 	var priceID snowflake.ID
 	if req.PriceID != "" {
+		var err error
 		priceID, err = parseID(req.PriceID)
 		if err != nil {
 			return nil, priceamountdomain.ErrInvalidPrice
@@ -192,9 +193,9 @@ func (s *Service) List(ctx context.Context, req priceamountdomain.ListPriceAmoun
 }
 
 func (s *Service) Get(ctx context.Context, req priceamountdomain.GetPriceAmountByID) (*priceamountdomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, priceamountdomain.ErrInvalidOrganization
 	}
 
 	amountID, err := parseID(req.ID)
@@ -211,14 +212,6 @@ func (s *Service) Get(ctx context.Context, req priceamountdomain.GetPriceAmountB
 	}
 
 	return s.toResponse(entity), nil
-}
-
-func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
-	orgID, ok := orgcontext.OrgIDFromContext(ctx)
-	if !ok || orgID == 0 {
-		return 0, priceamountdomain.ErrInvalidOrganization
-	}
-	return snowflake.ID(orgID), nil
 }
 
 func (s *Service) priceExists(ctx context.Context, db *gorm.DB, orgID, priceID snowflake.ID) (bool, error) {

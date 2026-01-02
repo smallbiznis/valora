@@ -40,10 +40,11 @@ func New(p Params) domain.Service {
 }
 
 func (s *Service) List(ctx context.Context, req domain.ListRequest) ([]domain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, domain.ErrInvalidOrganization
 	}
+	orgIDValue := int64(orgID)
 
 	filter := domain.ListRequest{
 		Name:    strings.TrimSpace(req.Name),
@@ -52,7 +53,7 @@ func (s *Service) List(ctx context.Context, req domain.ListRequest) ([]domain.Re
 		OrderBy: strings.TrimSpace(req.OrderBy),
 	}
 
-	items, err := s.repo.List(ctx, s.db, orgID, filter)
+	items, err := s.repo.List(ctx, s.db, orgIDValue, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -66,10 +67,11 @@ func (s *Service) List(ctx context.Context, req domain.ListRequest) ([]domain.Re
 }
 
 func (s *Service) Create(ctx context.Context, req domain.CreateRequest) (*domain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, domain.ErrInvalidOrganization
 	}
+	orgIDValue := int64(orgID)
 
 	code := strings.TrimSpace(req.Code)
 	if code == "" {
@@ -95,7 +97,7 @@ func (s *Service) Create(ctx context.Context, req domain.CreateRequest) (*domain
 	now := time.Now().UTC()
 	p := &domain.Product{
 		ID:          s.genID.Generate().Int64(),
-		OrgID:       orgID,
+		OrgID:       orgIDValue,
 		Code:        code,
 		Name:        name,
 		Description: descriptionPtr,
@@ -114,17 +116,18 @@ func (s *Service) Create(ctx context.Context, req domain.CreateRequest) (*domain
 }
 
 func (s *Service) Get(ctx context.Context, id string) (*domain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, domain.ErrInvalidOrganization
 	}
+	orgIDValue := int64(orgID)
 
 	productID, err := snowflake.ParseString(strings.TrimSpace(id))
 	if err != nil {
 		return nil, domain.ErrInvalidID
 	}
 
-	item, err := s.repo.FindByID(ctx, s.db, orgID, productID.Int64())
+	item, err := s.repo.FindByID(ctx, s.db, orgIDValue, productID.Int64())
 	if err != nil {
 		return nil, err
 	}
@@ -134,14 +137,6 @@ func (s *Service) Get(ctx context.Context, id string) (*domain.Response, error) 
 
 	resp := s.toResponse(item)
 	return &resp, nil
-}
-
-func (s *Service) orgIDFromContext(ctx context.Context) (int64, error) {
-	orgID, ok := orgcontext.OrgIDFromContext(ctx)
-	if !ok || orgID == 0 {
-		return 0, domain.ErrInvalidOrganization
-	}
-	return orgID, nil
 }
 
 func (s *Service) toResponse(p *domain.Product) domain.Response {

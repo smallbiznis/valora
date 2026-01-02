@@ -41,9 +41,9 @@ func New(p Params) domain.Service {
 }
 
 func (s *Service) Create(ctx context.Context, req domain.CreateCustomerRequest) (domain.Customer, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return domain.Customer{}, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return domain.Customer{}, domain.ErrInvalidOrganization
 	}
 
 	name := strings.TrimSpace(req.Name)
@@ -75,9 +75,9 @@ func (s *Service) Create(ctx context.Context, req domain.CreateCustomerRequest) 
 }
 
 func (s *Service) List(ctx context.Context, req domain.ListCustomerRequest) (domain.ListCustomerResponse, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return domain.ListCustomerResponse{}, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return domain.ListCustomerResponse{}, domain.ErrInvalidOrganization
 	}
 
 	filter := domain.ListCustomerFilter{
@@ -132,9 +132,9 @@ func (s *Service) List(ctx context.Context, req domain.ListCustomerRequest) (dom
 }
 
 func (s *Service) GetByID(ctx context.Context, req domain.GetCustomerRequest) (domain.Customer, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return domain.Customer{}, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return domain.Customer{}, domain.ErrInvalidOrganization
 	}
 
 	id, err := s.parseID(req.ID)
@@ -151,14 +151,6 @@ func (s *Service) GetByID(ctx context.Context, req domain.GetCustomerRequest) (d
 	}
 
 	return *item, nil
-}
-
-func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
-	orgID, ok := orgcontext.OrgIDFromContext(ctx)
-	if !ok || orgID == 0 {
-		return 0, domain.ErrInvalidOrganization
-	}
-	return snowflake.ID(orgID), nil
 }
 
 func (s *Service) parseID(value string) (snowflake.ID, error) {

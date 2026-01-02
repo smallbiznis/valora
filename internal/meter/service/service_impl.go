@@ -39,9 +39,9 @@ func New(p Params) meterdomain.Service {
 }
 
 func (s *Service) Create(ctx context.Context, req meterdomain.CreateRequest) (*meterdomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, meterdomain.ErrInvalidOrganization
 	}
 
 	code := strings.TrimSpace(req.Code)
@@ -90,9 +90,9 @@ func (s *Service) Create(ctx context.Context, req meterdomain.CreateRequest) (*m
 }
 
 func (s *Service) List(ctx context.Context, req meterdomain.ListRequest) ([]meterdomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, meterdomain.ErrInvalidOrganization
 	}
 
 	filter := meterdomain.ListRequest{
@@ -117,9 +117,9 @@ func (s *Service) List(ctx context.Context, req meterdomain.ListRequest) ([]mete
 }
 
 func (s *Service) Update(ctx context.Context, req meterdomain.UpdateRequest) (*meterdomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, meterdomain.ErrInvalidOrganization
 	}
 
 	meterID, err := meterdomain.ParseID(strings.TrimSpace(req.ID))
@@ -172,9 +172,9 @@ func (s *Service) Update(ctx context.Context, req meterdomain.UpdateRequest) (*m
 }
 
 func (s *Service) Delete(ctx context.Context, id string) error {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return meterdomain.ErrInvalidOrganization
 	}
 
 	meterID, err := meterdomain.ParseID(strings.TrimSpace(id))
@@ -194,9 +194,9 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 }
 
 func (s *Service) GetByCode(ctx context.Context, code string) (*meterdomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, meterdomain.ErrInvalidOrganization
 	}
 
 	item, err := s.repo.FindByCode(ctx, s.db, orgID, code)
@@ -211,9 +211,9 @@ func (s *Service) GetByCode(ctx context.Context, code string) (*meterdomain.Resp
 }
 
 func (s *Service) GetByID(ctx context.Context, id string) (*meterdomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, meterdomain.ErrInvalidOrganization
 	}
 
 	meterID, err := meterdomain.ParseID(id)
@@ -230,14 +230,6 @@ func (s *Service) GetByID(ctx context.Context, id string) (*meterdomain.Response
 	}
 
 	return s.toResponse(item), nil
-}
-
-func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
-	orgID, ok := orgcontext.OrgIDFromContext(ctx)
-	if !ok || orgID == 0 {
-		return 0, meterdomain.ErrInvalidOrganization
-	}
-	return snowflake.ID(orgID), nil
 }
 
 func (s *Service) toResponse(m *meterdomain.Meter) *meterdomain.Response {

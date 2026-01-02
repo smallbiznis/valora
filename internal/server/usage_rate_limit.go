@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/smallbiznis/valora/internal/observability/logger"
 	obsmetrics "github.com/smallbiznis/valora/internal/observability/metrics"
+	"github.com/smallbiznis/valora/internal/orgcontext"
 	"go.uber.org/zap"
 )
 
@@ -31,8 +32,8 @@ func (s *Server) UsageIngestRateLimit() gin.HandlerFunc {
 			return
 		}
 
-		orgID := orgIDFromContext(c.Request.Context())
-		if orgID == 0 {
+		orgID, ok := orgcontext.OrgIDFromContext(c.Request.Context())
+		if !ok || orgID == 0 {
 			AbortWithError(c, ErrOrgRequired)
 			return
 		}

@@ -59,9 +59,9 @@ func NewService(p ServiceParam) subscriptiondomain.Service {
 
 // GetActiveByCustomerID implements domain.Service.
 func (s *Service) GetActiveByCustomerID(ctx context.Context, req subscriptiondomain.GetActiveByCustomerIDRequest) (subscriptiondomain.Subscription, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return subscriptiondomain.Subscription{}, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return subscriptiondomain.Subscription{}, subscriptiondomain.ErrInvalidOrganization
 	}
 
 	customerID, err := s.parseID(req.CustomerID, subscriptiondomain.ErrInvalidCustomer)
@@ -86,9 +86,9 @@ func (s *Service) GetActiveByCustomerID(ctx context.Context, req subscriptiondom
 
 // GetSubscriptionItem implements domain.Service.
 func (s *Service) GetSubscriptionItem(ctx context.Context, req subscriptiondomain.GetSubscriptionItemRequest) (subscriptiondomain.SubscriptionItem, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return subscriptiondomain.SubscriptionItem{}, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return subscriptiondomain.SubscriptionItem{}, subscriptiondomain.ErrInvalidOrganization
 	}
 
 	subscriptionID, err := s.parseID(req.SubscriptionID, subscriptiondomain.ErrInvalidSubscription)
@@ -131,9 +131,9 @@ func (s *Service) GetSubscriptionItem(ctx context.Context, req subscriptiondomai
 }
 
 func (s *Service) List(ctx context.Context, req subscriptiondomain.ListSubscriptionRequest) (subscriptiondomain.ListSubscriptionResponse, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return subscriptiondomain.ListSubscriptionResponse{}, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return subscriptiondomain.ListSubscriptionResponse{}, subscriptiondomain.ErrInvalidOrganization
 	}
 
 	filter := &subscriptiondomain.Subscription{
@@ -222,9 +222,9 @@ func (s *Service) List(ctx context.Context, req subscriptiondomain.ListSubscript
 }
 
 func (s *Service) Create(ctx context.Context, req subscriptiondomain.CreateSubscriptionRequest) (subscriptiondomain.CreateSubscriptionResponse, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return subscriptiondomain.CreateSubscriptionResponse{}, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return subscriptiondomain.CreateSubscriptionResponse{}, subscriptiondomain.ErrInvalidOrganization
 	}
 
 	customerID, err := s.parseID(req.CustomerID, subscriptiondomain.ErrInvalidCustomer)
@@ -278,9 +278,9 @@ func (s *Service) Create(ctx context.Context, req subscriptiondomain.CreateSubsc
 }
 
 func (s *Service) GetByID(ctx context.Context, id string) (subscriptiondomain.Subscription, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return subscriptiondomain.Subscription{}, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return subscriptiondomain.Subscription{}, subscriptiondomain.ErrInvalidOrganization
 	}
 
 	subscriptionID, err := snowflake.ParseString(strings.TrimSpace(id))
@@ -305,9 +305,9 @@ func (s *Service) TransitionSubscription(
 	targetStatus subscriptiondomain.SubscriptionStatus,
 	reason subscriptiondomain.TransitionReason,
 ) error {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return subscriptiondomain.ErrInvalidOrganization
 	}
 
 	_ = reason
@@ -378,14 +378,6 @@ func (s *Service) parseID(value string, invalidErr error) (snowflake.ID, error) 
 		return 0, invalidErr
 	}
 	return id, nil
-}
-
-func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
-	orgID, ok := orgcontext.OrgIDFromContext(ctx)
-	if !ok || orgID == 0 {
-		return 0, subscriptiondomain.ErrInvalidOrganization
-	}
-	return snowflake.ID(orgID), nil
 }
 
 func (s *Service) validateActivation(ctx context.Context, tx *gorm.DB, subscription *subscriptiondomain.Subscription) error {

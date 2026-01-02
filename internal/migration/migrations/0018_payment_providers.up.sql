@@ -23,7 +23,7 @@ CREATE INDEX IF NOT EXISTS idx_payment_provider_configs_org_id ON payment_provid
 INSERT INTO payment_provider_catalog (provider, display_name, description, supports_webhook, supports_refund)
 VALUES
   ('stripe', 'Stripe', 'Card and wallet payments with global reach.', TRUE, TRUE),
-  ('midtrans', 'Midtrans', 'SEA payments with bank transfer and wallets.', TRUE, FALSE),
-  ('xendit', 'Xendit', 'Indonesia payments and disbursements.', TRUE, FALSE),
+  ('midtrans', 'Midtrans', 'SEA payments with bank transfer and wallets.', TRUE, TRUE),
+  ('xendit', 'Xendit', 'Indonesia payments and disbursements.', TRUE, TRUE),
   ('manual', 'Manual / Offline', 'Offline settlement via bank transfer or cash.', FALSE, FALSE)
 ON CONFLICT (provider) DO NOTHING;

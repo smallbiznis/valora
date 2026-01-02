@@ -44,9 +44,9 @@ func NewService(p Params) templatedomain.Service {
 }
 
 func (s *Service) Create(ctx context.Context, req templatedomain.CreateRequest) (*templatedomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, templatedomain.ErrInvalidOrganization
 	}
 
 	name := strings.TrimSpace(req.Name)
@@ -79,7 +79,7 @@ func (s *Service) Create(ctx context.Context, req templatedomain.CreateRequest) 
 		UpdatedAt: now,
 	}
 
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if req.IsDefault {
 			if err := s.unsetDefault(ctx, tx, orgID, now); err != nil {
 				return err
@@ -96,9 +96,9 @@ func (s *Service) Create(ctx context.Context, req templatedomain.CreateRequest) 
 }
 
 func (s *Service) List(ctx context.Context, req templatedomain.ListRequest) ([]templatedomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, templatedomain.ErrInvalidOrganization
 	}
 
 	filter := templatedomain.ListRequest{
@@ -119,9 +119,9 @@ func (s *Service) List(ctx context.Context, req templatedomain.ListRequest) ([]t
 }
 
 func (s *Service) GetByID(ctx context.Context, id string) (*templatedomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, templatedomain.ErrInvalidOrganization
 	}
 
 	templateID, err := templatedomain.ParseID(id)
@@ -141,9 +141,9 @@ func (s *Service) GetByID(ctx context.Context, id string) (*templatedomain.Respo
 }
 
 func (s *Service) Update(ctx context.Context, req templatedomain.UpdateRequest) (*templatedomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, templatedomain.ErrInvalidOrganization
 	}
 
 	templateID, err := templatedomain.ParseID(req.ID)
@@ -205,9 +205,9 @@ func (s *Service) Update(ctx context.Context, req templatedomain.UpdateRequest) 
 }
 
 func (s *Service) SetDefault(ctx context.Context, id string) (*templatedomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, templatedomain.ErrInvalidOrganization
 	}
 
 	templateID, err := templatedomain.ParseID(id)
@@ -270,14 +270,6 @@ func (s *Service) emitAudit(ctx context.Context, action string, tmpl *templatedo
 	targetID := tmpl.ID.String()
 	orgID := tmpl.OrgID
 	_ = s.auditSvc.AuditLog(ctx, &orgID, "", nil, action, "invoice_template", &targetID, metadata)
-}
-
-func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
-	orgID, ok := orgcontext.OrgIDFromContext(ctx)
-	if !ok || orgID == 0 {
-		return 0, templatedomain.ErrInvalidOrganization
-	}
-	return snowflake.ID(orgID), nil
 }
 
 func (s *Service) toResponse(tmpl *templatedomain.InvoiceTemplate) *templatedomain.Response {

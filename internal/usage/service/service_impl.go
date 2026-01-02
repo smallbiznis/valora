@@ -75,9 +75,9 @@ func (s *Service) Ingest(
 	req usagedomain.CreateIngestRequest,
 ) (*usagedomain.UsageEvent, error) {
 
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, usagedomain.ErrInvalidOrganization
 	}
 
 	customerID, err := s.parseID(req.CustomerID, usagedomain.ErrInvalidCustomer)
@@ -189,32 +189,6 @@ func parseOptionalID(value string) snowflake.ID {
 		return 0
 	}
 	return id
-}
-
-func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
-	if orgID, ok := orgcontext.OrgIDFromContext(ctx); ok && orgID != 0 {
-		return snowflake.ID(orgID), nil
-	}
-
-	if raw := ctx.Value("org_id"); raw != nil {
-		switch value := raw.(type) {
-		case int64:
-			if value != 0 {
-				return snowflake.ID(value), nil
-			}
-		case snowflake.ID:
-			if value != 0 {
-				return value, nil
-			}
-		case string:
-			parsed, err := snowflake.ParseString(strings.TrimSpace(value))
-			if err == nil && parsed != 0 {
-				return parsed, nil
-			}
-		}
-	}
-
-	return 0, usagedomain.ErrInvalidOrganization
 }
 
 func (s *Service) resolveMeter(ctx context.Context, orgID snowflake.ID, meterCode string) (*meterdomain.Response, error) {
@@ -468,9 +442,9 @@ func normalizeIdempotencyKey(key string) string {
 }
 
 func (s *Service) buildUsageFilter(ctx context.Context, req usagedomain.ListUsageRequest) (*usagedomain.UsageEvent, int32, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, 0, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, 0, usagedomain.ErrInvalidOrganization
 	}
 
 	filter := &usagedomain.UsageEvent{

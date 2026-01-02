@@ -43,9 +43,9 @@ type customerBalanceRow struct {
 }
 
 func (s *Service) ListCustomerBalances(ctx context.Context) (billingdashboard.CustomerBalancesResponse, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return billingdashboard.CustomerBalancesResponse{}, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return billingdashboard.CustomerBalancesResponse{}, billingdashboard.ErrInvalidOrganization
 	}
 
 	var rows []customerBalanceRow
@@ -115,9 +115,9 @@ type billingCycleRow struct {
 }
 
 func (s *Service) ListBillingCycles(ctx context.Context) (billingdashboard.BillingCycleSummaryResponse, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return billingdashboard.BillingCycleSummaryResponse{}, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return billingdashboard.BillingCycleSummaryResponse{}, billingdashboard.ErrInvalidOrganization
 	}
 
 	var rows []billingCycleRow
@@ -162,9 +162,9 @@ type activityRow struct {
 }
 
 func (s *Service) ListBillingActivity(ctx context.Context, limit int) (billingdashboard.BillingActivityResponse, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return billingdashboard.BillingActivityResponse{}, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return billingdashboard.BillingActivityResponse{}, billingdashboard.ErrInvalidOrganization
 	}
 	if limit <= 0 {
 		limit = 15
@@ -287,12 +287,4 @@ func formatCustomerLabel(metadata datatypes.JSONMap) string {
 		}
 	}
 	return ""
-}
-
-func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
-	orgID, ok := orgcontext.OrgIDFromContext(ctx)
-	if !ok || orgID == 0 {
-		return 0, billingdashboard.ErrInvalidOrganization
-	}
-	return snowflake.ID(orgID), nil
 }

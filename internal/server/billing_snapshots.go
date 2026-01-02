@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
 	"github.com/smallbiznis/valora/internal/billingdashboard/rollup"
 	"github.com/smallbiznis/valora/internal/orgcontext"
@@ -30,12 +29,11 @@ func (s *Server) RebuildBillingSnapshots(c *gin.Context) {
 		return
 	}
 
-	orgIDValue, ok := orgcontext.OrgIDFromContext(c.Request.Context())
-	if !ok || orgIDValue == 0 {
+	orgID, ok := orgcontext.OrgIDFromContext(c.Request.Context())
+	if !ok || orgID == 0 {
 		AbortWithError(c, ErrOrgRequired)
 		return
 	}
-	orgID := snowflake.ID(orgIDValue)
 
 	scope := strings.ToLower(strings.TrimSpace(req.Scope))
 	orgScope := &orgID

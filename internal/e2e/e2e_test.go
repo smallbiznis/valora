@@ -41,6 +41,7 @@ import (
 	"github.com/smallbiznis/valora/internal/observability"
 	"github.com/smallbiznis/valora/internal/organization"
 	"github.com/smallbiznis/valora/internal/paymentprovider"
+	"github.com/smallbiznis/valora/internal/payment"
 	"github.com/smallbiznis/valora/internal/price"
 	"github.com/smallbiznis/valora/internal/priceamount"
 	"github.com/smallbiznis/valora/internal/pricetier"
@@ -54,6 +55,7 @@ import (
 	"github.com/smallbiznis/valora/internal/subscription"
 	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
 	"github.com/smallbiznis/valora/internal/usage"
+	"github.com/smallbiznis/valora/internal/usage/snapshot"
 	"github.com/smallbiznis/valora/pkg/db"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -61,12 +63,13 @@ import (
 )
 
 type testEnv struct {
-	app       *fx.App
-	server    *server.Server
-	db        *gorm.DB
-	baseURL   string
-	scheduler *scheduler.Scheduler
-	httpSrv   *httptest.Server
+	app            *fx.App
+	server         *server.Server
+	db             *gorm.DB
+	baseURL        string
+	scheduler      *scheduler.Scheduler
+	snapshotWorker *snapshot.Worker
+	httpSrv        *httptest.Server
 }
 
 var env *testEnv
@@ -140,7 +143,7 @@ func TestE2E_BootstrapDefaultOrgAndAdmin(t *testing.T) {
 		t.Fatalf("expected org id after login")
 	}
 
-	reqURL := env.baseURL + "/user/orgs"
+	reqURL := env.baseURL + "/auth/user/orgs"
 	resp, body := doJSON(t, client, http.MethodGet, reqURL, nil, nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected status 200 for orgs, got %d: %s", resp.StatusCode, string(body))
@@ -157,10 +160,11 @@ func TestE2E_APIKeyAuthentication(t *testing.T) {
 	apiKey := createAPIKey(t, client, orgID)
 
 	usageReq := map[string]any{
-		"customer_id": fixture.CustomerID,
-		"meter_code":  fixture.MeterCode,
-		"value":       3.0,
-		"recorded_at": time.Now().UTC(),
+		"customer_id":     fixture.CustomerID,
+		"meter_code":      fixture.MeterCode,
+		"value":           3.0,
+		"recorded_at":     time.Now().UTC(),
+		"idempotency_key": fmt.Sprintf("e2e-%d", time.Now().UnixNano()),
 		"metadata": map[string]any{
 			"source": "e2e",
 		},
@@ -168,12 +172,13 @@ func TestE2E_APIKeyAuthentication(t *testing.T) {
 	headers := map[string]string{
 		"Authorization": "Bearer " + apiKey,
 	}
-	resp, body := doJSON(t, newHTTPClient(), http.MethodPost, env.baseURL+"/hooks/usage", usageReq, headers)
+	resp, body := doJSON(t, newHTTPClient(), http.MethodPost, env.baseURL+"/api/usage", usageReq, headers)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected status 200 for usage ingest, got %d: %s", resp.StatusCode, string(body))
 	}
 
-	resp, body = doJSON(t, newHTTPClient(), http.MethodPost, env.baseURL+"/hooks/usage", usageReq, map[string]string{
+	usageReq["idempotency_key"] = fmt.Sprintf("e2e-%d", time.Now().UnixNano())
+	resp, body = doJSON(t, newHTTPClient(), http.MethodPost, env.baseURL+"/api/usage", usageReq, map[string]string{
 		"Authorization": "Bearer invalid",
 	})
 	if resp.StatusCode != http.StatusUnauthorized {
@@ -365,6 +370,7 @@ func startEnv() (*testEnv, error) {
 		subSvc      subscriptiondomain.Service
 		auditSvc    auditdomain.Service
 		authzSvc    authorization.Service
+		snapWorker  *snapshot.Worker
 		httpSrv     *httptest.Server
 		schedulerSv *scheduler.Scheduler
 	)
@@ -389,6 +395,7 @@ func startEnv() (*testEnv, error) {
 		ledger.Module,
 		meter.Module,
 		organization.Module,
+		payment.Module,
 		price.Module,
 		priceamount.Module,
 		pricetier.Module,
@@ -399,6 +406,7 @@ func startEnv() (*testEnv, error) {
 		usage.Module,
 		rating.Module,
 		billingcycle.Module,
+		fx.Provide(scheduler.New),
 		fx.Provide(func() *snowflake.Node {
 			node, err := snowflake.NewNode(1)
 			if err != nil {
@@ -408,7 +416,7 @@ func startEnv() (*testEnv, error) {
 		}),
 		fx.Provide(server.NewEngine),
 		fx.Provide(server.NewServer),
-		fx.Populate(&srv, &dbConn, &cfg, &log, &genID, &ratingSvc, &invoiceSvc, &ledgerSvc, &subSvc, &auditSvc, &authzSvc),
+		fx.Populate(&srv, &dbConn, &cfg, &log, &genID, &ratingSvc, &invoiceSvc, &ledgerSvc, &subSvc, &auditSvc, &authzSvc, &snapWorker, &schedulerSv),
 	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -436,31 +444,16 @@ func startEnv() (*testEnv, error) {
 		return nil, err
 	}
 
-	schedulerSv, err = scheduler.New(scheduler.Params{
-		DB:              dbConn,
-		Log:             log,
-		RatingSvc:       ratingSvc,
-		InvoiceSvc:      invoiceSvc,
-		LedgerSvc:       ledgerSvc,
-		SubscriptionSvc: subSvc,
-		AuditSvc:        auditSvc,
-		AuthzSvc:        authzSvc,
-		GenID:           genID,
-	})
-	if err != nil {
-		app.Stop(context.Background())
-		return nil, err
-	}
-
 	httpSrv = httptest.NewServer(srv.Engine())
 
 	return &testEnv{
-		app:       app,
-		server:    srv,
-		db:        dbConn,
-		baseURL:   httpSrv.URL,
-		scheduler: schedulerSv,
-		httpSrv:   httpSrv,
+		app:            app,
+		server:         srv,
+		db:             dbConn,
+		baseURL:        httpSrv.URL,
+		scheduler:      schedulerSv,
+		snapshotWorker: snapWorker,
+		httpSrv:        httpSrv,
 	}, nil
 }
 
@@ -558,7 +551,7 @@ func loginAdmin(t *testing.T) (*http.Client, string) {
 		}
 	}
 
-	reqURL := env.baseURL + "/user/orgs"
+	reqURL := env.baseURL + "/auth/user/orgs"
 	resp, body = doJSON(t, client, http.MethodGet, reqURL, nil, nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("list orgs failed: %d: %s", resp.StatusCode, string(body))
@@ -597,7 +590,7 @@ func createBillingFixture(t *testing.T, client *http.Client, orgID string) billi
 		"aggregation_type": "SUM",
 		"unit":             "API_CALL",
 	}
-	resp, body := doJSON(t, client, http.MethodPost, env.baseURL+"/api/meters", meterReq, headers)
+	resp, body := doJSON(t, client, http.MethodPost, env.baseURL+"/admin/meters", meterReq, headers)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("create meter failed: %d: %s", resp.StatusCode, string(body))
 	}
@@ -614,7 +607,7 @@ func createBillingFixture(t *testing.T, client *http.Client, orgID string) billi
 		"code": "e2e-product",
 		"name": "E2E Product",
 	}
-	resp, body = doJSON(t, client, http.MethodPost, env.baseURL+"/api/products", productReq, headers)
+	resp, body = doJSON(t, client, http.MethodPost, env.baseURL+"/admin/products", productReq, headers)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("create product failed: %d: %s", resp.StatusCode, string(body))
 	}
@@ -638,7 +631,7 @@ func createBillingFixture(t *testing.T, client *http.Client, orgID string) billi
 		"billing_unit":           "API_CALL",
 		"tax_behavior":           "EXCLUSIVE",
 	}
-	resp, body = doJSON(t, client, http.MethodPost, env.baseURL+"/api/prices", priceReq, headers)
+	resp, body = doJSON(t, client, http.MethodPost, env.baseURL+"/admin/prices", priceReq, headers)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("create price failed: %d: %s", resp.StatusCode, string(body))
 	}
@@ -652,7 +645,7 @@ func createBillingFixture(t *testing.T, client *http.Client, orgID string) billi
 		"currency":          "USD",
 		"unit_amount_cents": 100,
 	}
-	resp, body = doJSON(t, client, http.MethodPost, env.baseURL+"/api/price_amounts", priceAmountReq, headers)
+	resp, body = doJSON(t, client, http.MethodPost, env.baseURL+"/admin/price_amounts", priceAmountReq, headers)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("create price amount failed: %d: %s", resp.StatusCode, string(body))
 	}
@@ -666,7 +659,7 @@ func createBillingFixture(t *testing.T, client *http.Client, orgID string) billi
 		"name":  "E2E Customer",
 		"email": "e2e@example.com",
 	}
-	resp, body = doJSON(t, client, http.MethodPost, env.baseURL+"/api/customers", customerReq, headers)
+	resp, body = doJSON(t, client, http.MethodPost, env.baseURL+"/admin/customers", customerReq, headers)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("create customer failed: %d: %s", resp.StatusCode, string(body))
 	}
@@ -688,7 +681,7 @@ func createBillingFixture(t *testing.T, client *http.Client, orgID string) billi
 			{"price_id": priceResp.Data.ID, "meter_id": meterResp.Data.ID, "quantity": 1},
 		},
 	}
-	resp, body = doJSON(t, client, http.MethodPost, env.baseURL+"/api/subscriptions", subscriptionReq, headers)
+	resp, body = doJSON(t, client, http.MethodPost, env.baseURL+"/admin/subscriptions", subscriptionReq, headers)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("create subscription failed: %d: %s", resp.StatusCode, string(body))
 	}
@@ -709,7 +702,7 @@ func createBillingFixture(t *testing.T, client *http.Client, orgID string) billi
 func activateSubscription(t *testing.T, client *http.Client, orgID, subscriptionID string) {
 	t.Helper()
 	headers := map[string]string{server.HeaderOrg: orgID}
-	resp, body := doJSON(t, client, http.MethodPost, env.baseURL+"/api/subscriptions/"+subscriptionID+"/activate", nil, headers)
+	resp, body := doJSON(t, client, http.MethodPost, env.baseURL+"/admin/subscriptions/"+subscriptionID+"/activate", nil, headers)
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("activate subscription failed: %d: %s", resp.StatusCode, string(body))
 	}
@@ -718,7 +711,7 @@ func activateSubscription(t *testing.T, client *http.Client, orgID, subscription
 func cancelSubscription(t *testing.T, client *http.Client, orgID, subscriptionID string) {
 	t.Helper()
 	headers := map[string]string{server.HeaderOrg: orgID}
-	resp, body := doJSON(t, client, http.MethodPost, env.baseURL+"/api/subscriptions/"+subscriptionID+"/cancel", nil, headers)
+	resp, body := doJSON(t, client, http.MethodPost, env.baseURL+"/admin/subscriptions/"+subscriptionID+"/cancel", nil, headers)
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("cancel subscription failed: %d: %s", resp.StatusCode, string(body))
 	}
@@ -727,7 +720,7 @@ func cancelSubscription(t *testing.T, client *http.Client, orgID, subscriptionID
 func getSubscriptionStatus(t *testing.T, client *http.Client, orgID, subscriptionID string) string {
 	t.Helper()
 	headers := map[string]string{server.HeaderOrg: orgID}
-	resp, body := doJSON(t, client, http.MethodGet, env.baseURL+"/api/subscriptions/"+subscriptionID, nil, headers)
+	resp, body := doJSON(t, client, http.MethodGet, env.baseURL+"/admin/subscriptions/"+subscriptionID, nil, headers)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("get subscription failed: %d: %s", resp.StatusCode, string(body))
 	}

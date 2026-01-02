@@ -11,13 +11,14 @@ import (
 	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
 	"github.com/smallbiznis/valora/internal/invoice/render"
 	templatedomain "github.com/smallbiznis/valora/internal/invoicetemplate/domain"
+	"github.com/smallbiznis/valora/internal/orgcontext"
 	"gorm.io/gorm"
 )
 
 func (s *Service) RenderInvoice(ctx context.Context, invoiceID string) (invoicedomain.RenderInvoiceResponse, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return invoicedomain.RenderInvoiceResponse{}, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return invoicedomain.RenderInvoiceResponse{}, invoicedomain.ErrInvalidOrganization
 	}
 
 	id, err := parseID(strings.TrimSpace(invoiceID))

@@ -88,12 +88,13 @@ func (s *Service) ListCatalog(ctx context.Context) ([]domain.CatalogProviderResp
 }
 
 func (s *Service) ListConfigs(ctx context.Context) ([]domain.ConfigSummary, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, domain.ErrInvalidOrganization
 	}
+	orgIDValue := int64(orgID)
 
-	items, err := s.repo.ListConfigs(ctx, s.db, orgID)
+	items, err := s.repo.ListConfigs(ctx, s.db, orgIDValue)
 	if err != nil {
 		return nil, err
 	}
@@ -111,10 +112,11 @@ func (s *Service) ListConfigs(ctx context.Context) ([]domain.ConfigSummary, erro
 }
 
 func (s *Service) UpsertConfig(ctx context.Context, req domain.UpsertRequest) (*domain.ConfigSummary, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, domain.ErrInvalidOrganization
 	}
+	orgIDValue := int64(orgID)
 
 	provider := strings.ToLower(strings.TrimSpace(req.Provider))
 	if provider == "" {
@@ -139,7 +141,7 @@ func (s *Service) UpsertConfig(ctx context.Context, req domain.UpsertRequest) (*
 		return nil, err
 	}
 
-	existing, err := s.repo.FindConfig(ctx, s.db, orgID, provider)
+	existing, err := s.repo.FindConfig(ctx, s.db, orgIDValue, provider)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +149,7 @@ func (s *Service) UpsertConfig(ctx context.Context, req domain.UpsertRequest) (*
 	now := time.Now().UTC()
 	cfg := domain.ProviderConfig{
 		ID:        s.genID.Generate().Int64(),
-		OrgID:     orgID,
+		OrgID:     orgIDValue,
 		Provider:  provider,
 		Config:    encrypted,
 		IsActive:  true,
@@ -189,10 +191,11 @@ func (s *Service) UpsertConfig(ctx context.Context, req domain.UpsertRequest) (*
 }
 
 func (s *Service) SetActive(ctx context.Context, provider string, isActive bool) (*domain.ConfigSummary, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, domain.ErrInvalidOrganization
 	}
+	orgIDValue := int64(orgID)
 
 	provider = strings.ToLower(strings.TrimSpace(provider))
 	if provider == "" {
@@ -207,7 +210,7 @@ func (s *Service) SetActive(ctx context.Context, provider string, isActive bool)
 		return nil, domain.ErrInvalidProvider
 	}
 
-	updated, err := s.repo.UpdateStatus(ctx, s.db, orgID, provider, isActive, time.Now().UTC())
+	updated, err := s.repo.UpdateStatus(ctx, s.db, orgIDValue, provider, isActive, time.Now().UTC())
 	if err != nil {
 		return nil, err
 	}
@@ -235,14 +238,6 @@ func (s *Service) SetActive(ctx context.Context, provider string, isActive bool)
 	}
 
 	return &resp, nil
-}
-
-func (s *Service) orgIDFromContext(ctx context.Context) (int64, error) {
-	orgID, ok := orgcontext.OrgIDFromContext(ctx)
-	if !ok || orgID == 0 {
-		return 0, domain.ErrInvalidOrganization
-	}
-	return orgID, nil
 }
 
 func (s *Service) encryptConfig(config map[string]any) (datatypes.JSON, error) {

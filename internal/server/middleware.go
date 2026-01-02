@@ -234,7 +234,7 @@ func (s *Server) roleForOrg(ctx context.Context, orgID, userID snowflake.ID) (st
 
 func (s *Server) orgIDFromRequest(c *gin.Context) (snowflake.ID, error) {
 	if orgID, ok := orgcontext.OrgIDFromContext(c.Request.Context()); ok && orgID != 0 {
-		return snowflake.ID(orgID), nil
+		return orgID, nil
 	}
 
 	candidate := strings.TrimSpace(c.Param("id"))

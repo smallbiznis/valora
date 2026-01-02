@@ -62,9 +62,9 @@ func NewService(p ServiceParam) invoicedomain.Service {
 }
 
 func (s *Service) List(ctx context.Context, req invoicedomain.ListInvoiceRequest) (invoicedomain.ListInvoiceResponse, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return invoicedomain.ListInvoiceResponse{}, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return invoicedomain.ListInvoiceResponse{}, invoicedomain.ErrInvalidOrganization
 	}
 
 	filter := &invoicedomain.Invoice{OrgID: orgID}
@@ -155,9 +155,9 @@ func (s *Service) List(ctx context.Context, req invoicedomain.ListInvoiceRequest
 }
 
 func (s *Service) GetByID(ctx context.Context, id string) (invoicedomain.Invoice, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return invoicedomain.Invoice{}, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return invoicedomain.Invoice{}, invoicedomain.ErrInvalidOrganization
 	}
 
 	invoiceID, err := snowflake.ParseString(strings.TrimSpace(id))
@@ -493,14 +493,6 @@ func (s *Service) emitAudit(ctx context.Context, action string, invoice *invoice
 	targetID := invoice.ID.String()
 	orgID := invoice.OrgID
 	_ = s.auditSvc.AuditLog(ctx, &orgID, "", nil, action, "invoice", &targetID, metadata)
-}
-
-func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
-	orgID, ok := orgcontext.OrgIDFromContext(ctx)
-	if !ok || orgID == 0 {
-		return 0, invoicedomain.ErrInvalidOrganization
-	}
-	return snowflake.ID(orgID), nil
 }
 
 type billingCycleRow struct {

@@ -83,7 +83,10 @@ func (s *Server) actorFromContext(c *gin.Context) (Actor, bool) {
 	}
 
 	ctx := c.Request.Context()
-	orgID := orgIDFromContext(ctx)
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok {
+		orgID = 0
+	}
 
 	if authType, ok := ctx.Value(contextAuthTypeKey).(string); ok {
 		normalized := strings.TrimSpace(authType)
@@ -113,17 +116,6 @@ func (s *Server) actorFromContext(c *gin.Context) (Actor, bool) {
 		return Actor{}, false
 	}
 	return Actor{Type: ActorUser, OrgID: orgID, ID: userID.String()}, true
-}
-
-func orgIDFromContext(ctx context.Context) snowflake.ID {
-	if ctx == nil {
-		return 0
-	}
-	orgID, ok := orgcontext.OrgIDFromContext(ctx)
-	if !ok || orgID == 0 {
-		return 0
-	}
-	return snowflake.ID(orgID)
 }
 
 func (a Actor) subject() string {

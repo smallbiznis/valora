@@ -44,9 +44,9 @@ func New(p Params) pricetierdomain.Service {
 }
 
 func (s *Service) Create(ctx context.Context, req pricetierdomain.CreateRequest) (*pricetierdomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, pricetierdomain.ErrInvalidOrganization
 	}
 
 	priceID, unit, err := s.parseTierIdentifiers(req)
@@ -88,9 +88,9 @@ func (s *Service) Create(ctx context.Context, req pricetierdomain.CreateRequest)
 }
 
 func (s *Service) List(ctx context.Context) ([]pricetierdomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, pricetierdomain.ErrInvalidOrganization
 	}
 
 	items, err := s.repo.List(ctx, s.db, orgID)
@@ -107,9 +107,9 @@ func (s *Service) List(ctx context.Context) ([]pricetierdomain.Response, error) 
 }
 
 func (s *Service) Get(ctx context.Context, id string) (*pricetierdomain.Response, error) {
-	orgID, err := s.orgIDFromContext(ctx)
-	if err != nil {
-		return nil, err
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, pricetierdomain.ErrInvalidOrganization
 	}
 
 	tierID, err := parseID(id)
@@ -126,14 +126,6 @@ func (s *Service) Get(ctx context.Context, id string) (*pricetierdomain.Response
 	}
 
 	return s.toResponse(entity), nil
-}
-
-func (s *Service) orgIDFromContext(ctx context.Context) (snowflake.ID, error) {
-	orgID, ok := orgcontext.OrgIDFromContext(ctx)
-	if !ok || orgID == 0 {
-		return 0, pricetierdomain.ErrInvalidOrganization
-	}
-	return snowflake.ID(orgID), nil
 }
 
 func (s *Service) priceExists(ctx context.Context, orgID, priceID snowflake.ID) (bool, error) {
