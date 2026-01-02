@@ -18,7 +18,7 @@ func DefaultConfig() Config {
 		RunInterval:         time.Minute,
 		BatchSize:           50,
 		RecoveryThreshold:   15 * time.Minute,
-		FinalizeInvoices:    false,
+		FinalizeInvoices:    true,
 		MaxCloseBatchSize:   50,
 		MaxRatingBatchSize:  25,
 		MaxInvoiceBatchSize: 25,

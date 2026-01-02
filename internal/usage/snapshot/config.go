@@ -6,12 +6,16 @@ import "time"
 type Config struct {
 	BatchSize    int
 	PollInterval time.Duration
+	RunTimeout   time.Duration
+	RowTimeout   time.Duration
 }
 
 func DefaultConfig() Config {
 	return Config{
 		BatchSize:    50,
 		PollInterval: 2 * time.Second,
+		RunTimeout:   5 * time.Second,
+		RowTimeout:   300 * time.Millisecond,
 	}
 }
 

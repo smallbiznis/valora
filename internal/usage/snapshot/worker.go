@@ -2,7 +2,6 @@ package snapshot
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"time"
 
@@ -51,7 +50,7 @@ func (w *Worker) RunForever(ctx context.Context) {
 	defer ticker.Stop()
 
 	for {
-		if err := w.RunOnce(); err != nil {
+		if err := w.RunOnce(ctx); err != nil {
 			w.log.Warn("usage snapshot run failed", zap.Error(err))
 		}
 
@@ -63,8 +62,8 @@ func (w *Worker) RunForever(ctx context.Context) {
 	}
 }
 
-func (w *Worker) RunOnce() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+func (w *Worker) RunOnce(parentCtx context.Context) error {
+	ctx, cancel := context.WithTimeout(parentCtx, w.cfg.RunTimeout)
 	defer cancel()
 
 	_, err := w.processBatch(ctx, w.cfg.BatchSize)
@@ -72,38 +71,46 @@ func (w *Worker) RunOnce() error {
 }
 
 func (w *Worker) processBatch(ctx context.Context, limit int) (int, error) {
-	if w.db == nil || w.usageRepo == nil || w.meterRepo == nil || w.subscriptionRepo == nil {
-		return 0, errors.New("snapshot_worker_unavailable")
+	var rows []usagedomain.SnapshotCandidate
+
+	err := w.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var err error
+		rows, err = w.usageRepo.LockAccepted(ctx, tx, limit)
+		return err
+	})
+	if err != nil {
+		return 0, err
 	}
-	if limit <= 0 {
-		limit = w.cfg.BatchSize
+
+	if len(rows) == 0 {
+		return 0, nil
 	}
 
 	processed := 0
-	err := w.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		rows, err := w.usageRepo.LockAccepted(ctx, tx, limit)
-		if err != nil {
-			return err
-		}
-		if len(rows) == 0 {
-			return nil
-		}
-		now := time.Now().UTC()
-		for _, row := range rows {
-			update, err := w.buildSnapshot(ctx, tx, row, now)
+	now := time.Now().UTC()
+
+	for _, row := range rows {
+		rowCtx, cancel := context.WithTimeout(ctx, w.cfg.RowTimeout)
+		err := w.db.WithContext(rowCtx).Transaction(func(tx *gorm.DB) error {
+			update, err := w.buildSnapshot(rowCtx, tx, row, now)
 			if err != nil {
 				return err
 			}
-			if err := w.usageRepo.UpdateSnapshot(ctx, tx, update); err != nil {
-				return err
-			}
-			processed++
+			return w.usageRepo.UpdateSnapshot(rowCtx, tx, update)
+		})
+		cancel()
+
+		if err != nil {
+			w.log.Warn("snapshot row failed",
+				zap.Error(err),
+				zap.String("usage_id", row.ID.String()),
+			)
+			continue
 		}
-		return nil
-	})
-	if err != nil {
-		return processed, err
+
+		processed++
 	}
+
 	return processed, nil
 }
 

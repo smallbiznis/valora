@@ -39,3 +39,9 @@ CREATE INDEX IF NOT EXISTS idx_invoice_items_org_id ON invoice_items(org_id);
 CREATE INDEX IF NOT EXISTS idx_invoice_items_invoice_id ON invoice_items(invoice_id);
 CREATE INDEX IF NOT EXISTS idx_invoice_items_rating_result_item_id ON invoice_items(rating_result_item_id);
 CREATE INDEX IF NOT EXISTS idx_invoice_items_subscription_item_id ON invoice_items(subscription_item_id);
+
+CREATE TABLE invoice_sequences (
+  org_id          BIGINT PRIMARY KEY,
+  next_number     BIGINT NOT NULL,
+  updated_at      TIMESTAMPTZ NOT NULL
+);

@@ -9,6 +9,7 @@ import (
 	"github.com/bwmarrin/snowflake"
 	customerdomain "github.com/smallbiznis/valora/internal/customer/domain"
 	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
+	invoiceformat "github.com/smallbiznis/valora/internal/invoice/format"
 	"github.com/smallbiznis/valora/internal/invoice/render"
 	templatedomain "github.com/smallbiznis/valora/internal/invoicetemplate/domain"
 	"github.com/smallbiznis/valora/internal/orgcontext"
@@ -191,7 +192,20 @@ func buildInvoiceView(invoice *invoicedomain.Invoice) render.InvoiceView {
 		return render.InvoiceView{}
 	}
 	number := ""
-	if invoice.InvoiceNumber != nil {
+	if strings.TrimSpace(invoice.DisplayNumber) != "" {
+		number = invoice.DisplayNumber
+	} else if invoice.InvoiceNumber != nil && invoice.IssuedAt != nil {
+		formatted, err := invoiceformat.FormatInvoiceNumber(
+			invoiceformat.DefaultInvoiceNumberTemplate,
+			*invoice.IssuedAt,
+			*invoice.InvoiceNumber,
+		)
+		if err == nil {
+			number = formatted
+		} else {
+			number = fmtInvoiceNumber(*invoice.InvoiceNumber)
+		}
+	} else if invoice.InvoiceNumber != nil {
 		number = fmtInvoiceNumber(*invoice.InvoiceNumber)
 	}
 	return render.InvoiceView{

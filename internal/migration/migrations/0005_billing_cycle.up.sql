@@ -16,3 +16,4 @@ CREATE TABLE IF NOT EXISTS billing_cycles (
 CREATE UNIQUE INDEX IF NOT EXISTS ux_billing_cycle_period ON billing_cycles(subscription_id, period_start, period_end);
 CREATE INDEX IF NOT EXISTS idx_billing_cycles_org_id ON billing_cycles(org_id);
 CREATE INDEX IF NOT EXISTS idx_billing_cycles_subscription_id ON billing_cycles(subscription_id);
+CREATE UNIQUE INDEX uniq_open_cycle ON billing_cycles (org_id, subscription_id) WHERE status = 'OPEN';

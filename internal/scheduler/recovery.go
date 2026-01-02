@@ -8,12 +8,14 @@ import (
 	"github.com/smallbiznis/valora/internal/authorization"
 	billingcycledomain "github.com/smallbiznis/valora/internal/billingcycle/domain"
 	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
+	obsmetrics "github.com/smallbiznis/valora/internal/observability/metrics"
 )
 
 func (s *Scheduler) RecoverySweepJob(ctx context.Context) error {
 	now := time.Now().UTC()
 	cutoff := now.Add(-s.cfg.RecoveryThreshold)
 	var jobErr error
+	schedMetrics := obsmetrics.Scheduler()
 
 	// Retry rating for stuck closing cycles.
 	for {
@@ -52,7 +54,7 @@ func (s *Scheduler) RecoverySweepJob(ctx context.Context) error {
 
 			if err := s.ratingSvc.RunRating(cycleCtx, cycle.ID.String()); err != nil {
 				jobErr = errors.Join(jobErr, err)
-				_ = s.recordCycleError(ctx, cycle.ID, err)
+				_ = s.recordCycleErrorWithMetrics(ctx, cycle.ID, obsmetrics.CycleStageRecoveryRating, err)
 				s.emitAuditEvent(cycleCtx, auditEvent{
 					OrgID:          cycle.OrgID,
 					Action:         "rating.failed",
@@ -69,7 +71,7 @@ func (s *Scheduler) RecoverySweepJob(ctx context.Context) error {
 			}
 			if err := s.markRatingCompleted(ctx, cycle.ID, now); err != nil {
 				jobErr = errors.Join(jobErr, err)
-				_ = s.recordCycleError(ctx, cycle.ID, err)
+				_ = s.recordCycleErrorWithMetrics(ctx, cycle.ID, obsmetrics.CycleStageRecoveryRating, err)
 				s.emitAuditEvent(cycleCtx, auditEvent{
 					OrgID:          cycle.OrgID,
 					Action:         "rating.failed",
@@ -134,25 +136,25 @@ func (s *Scheduler) RecoverySweepJob(ctx context.Context) error {
 			hasResults, err := s.hasRatingResults(ctx, cycle.ID)
 			if err != nil {
 				jobErr = errors.Join(jobErr, err)
-				_ = s.recordCycleError(ctx, cycle.ID, err)
+				_ = s.recordCycleErrorWithMetrics(ctx, cycle.ID, obsmetrics.CycleStageRecoveryClose, err)
 				continue
 			}
 			if !hasResults {
 				jobErr = errors.Join(jobErr, invoicedomain.ErrMissingRatingResults)
-				_ = s.recordCycleError(ctx, cycle.ID, invoicedomain.ErrMissingRatingResults)
+				_ = s.recordCycleErrorWithMetrics(ctx, cycle.ID, obsmetrics.CycleStageRecoveryClose, invoicedomain.ErrMissingRatingResults)
 				continue
 			}
 			cycleCtx := s.withAuditContext(ctx, cycle.SubscriptionID.String(), cycle.ID.String())
 			if err := s.ensureLedgerEntryForCycle(cycleCtx, cycle); err != nil {
 				jobErr = errors.Join(jobErr, err)
-				_ = s.recordCycleError(ctx, cycle.ID, err)
+				_ = s.recordCycleErrorWithMetrics(ctx, cycle.ID, obsmetrics.CycleStageRecoveryClose, err)
 				continue
 			}
 
 			updated, err := s.markCycleClosed(ctx, cycle.ID, now)
 			if err != nil {
 				jobErr = errors.Join(jobErr, err)
-				_ = s.recordCycleError(ctx, cycle.ID, err)
+				_ = s.recordCycleErrorWithMetrics(ctx, cycle.ID, obsmetrics.CycleStageRecoveryClose, err)
 				continue
 			}
 			if updated {
@@ -209,14 +211,14 @@ func (s *Scheduler) RecoverySweepJob(ctx context.Context) error {
 			cycleCtx := s.withAuditContext(ctx, cycle.SubscriptionID.String(), cycle.ID.String())
 			if err := s.invoiceSvc.GenerateInvoice(cycleCtx, cycle.ID.String()); err != nil {
 				jobErr = errors.Join(jobErr, err)
-				_ = s.recordCycleError(ctx, cycle.ID, err)
+				_ = s.recordCycleErrorWithMetrics(ctx, cycle.ID, obsmetrics.CycleStageRecoveryInvoice, err)
 				continue
 			}
 
 			invoice, err := s.loadInvoiceByCycle(ctx, cycle.ID)
 			if err != nil {
 				jobErr = errors.Join(jobErr, err)
-				_ = s.recordCycleError(ctx, cycle.ID, err)
+				_ = s.recordCycleErrorWithMetrics(ctx, cycle.ID, obsmetrics.CycleStageRecoveryInvoice, err)
 				continue
 			}
 			if invoice == nil {
@@ -225,9 +227,13 @@ func (s *Scheduler) RecoverySweepJob(ctx context.Context) error {
 
 			if err := s.markCycleInvoiced(ctx, cycle.ID, now); err != nil {
 				jobErr = errors.Join(jobErr, err)
-				_ = s.recordCycleError(ctx, cycle.ID, err)
+				_ = s.recordCycleErrorWithMetrics(ctx, cycle.ID, obsmetrics.CycleStageRecoveryInvoice, err)
 				continue
 			}
+			schedMetrics.IncBillingCycleTransition(
+				string(billingcycledomain.BillingCycleStatusClosed),
+				obsmetrics.BillingCycleTransitionInvoiced,
+			)
 			s.emitAuditEvent(cycleCtx, auditEvent{
 				OrgID:          cycle.OrgID,
 				Action:         "billing_cycle.recovered",

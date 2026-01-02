@@ -12,6 +12,7 @@ import (
 	billingcycledomain "github.com/smallbiznis/valora/internal/billingcycle/domain"
 	"github.com/smallbiznis/valora/internal/events"
 	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
+	invoiceformat "github.com/smallbiznis/valora/internal/invoice/format"
 	"github.com/smallbiznis/valora/internal/invoice/render"
 	templatedomain "github.com/smallbiznis/valora/internal/invoicetemplate/domain"
 	ledgerdomain "github.com/smallbiznis/valora/internal/ledger/domain"
@@ -253,11 +254,16 @@ func (s *Service) GenerateInvoice(ctx context.Context, billingCycleID string) er
 		}
 
 		now := time.Now().UTC()
+		displayNumber, err := invoiceformat.FormatInvoiceNumber(invoiceformat.DefaultInvoiceNumberTemplate, now, invoiceNumber)
+		if err != nil {
+			return err
+		}
 		invoiceID := s.genID.Generate()
 		invoice := invoicedomain.Invoice{
 			ID:             invoiceID,
 			OrgID:          cycle.OrgID,
 			InvoiceNumber:  &invoiceNumber,
+			DisplayNumber:  displayNumber,
 			BillingCycleID: cycle.ID,
 			SubscriptionID: cycle.SubscriptionID,
 			CustomerID:     subscription.CustomerID,
@@ -632,18 +638,22 @@ func (s *Service) lockOrganization(ctx context.Context, tx *gorm.DB, orgID snowf
 	return nil
 }
 
-func (s *Service) nextInvoiceNumber(ctx context.Context, tx *gorm.DB, orgID snowflake.ID) (int64, error) {
+func (s *Service) nextInvoiceNumber(
+	ctx context.Context,
+	tx *gorm.DB,
+	orgID snowflake.ID,
+) (int64, error) {
+
 	var next int64
-	err := tx.WithContext(ctx).Raw(
-		`SELECT COALESCE(MAX(invoice_number), 0) + 1
-		 FROM invoices
-		 WHERE org_id = ?`,
-		orgID,
-	).Scan(&next).Error
-	if err != nil {
-		return 0, err
-	}
-	return next, nil
+	err := tx.WithContext(ctx).Raw(`
+		UPDATE invoice_sequences
+		SET next_number = next_number + 1,
+		    updated_at = now()
+		WHERE org_id = ?
+		RETURNING next_number - 1
+	`, orgID).Scan(&next).Error
+
+	return next, err
 }
 
 func (s *Service) insertInvoice(ctx context.Context, tx *gorm.DB, invoice invoicedomain.Invoice) (bool, error) {

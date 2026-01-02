@@ -51,7 +51,7 @@ func (s *Server) APIKeyRequired() gin.HandlerFunc {
 			ID      snowflake.ID   `gorm:"column:id"`
 			OrgID   snowflake.ID   `gorm:"column:org_id"`
 			KeyHash string         `gorm:"column:key_hash"`
-			Scopes  pq.StringArray `gorm:"column:scopes"`
+			Scopes  pq.StringArray `gorm:"column:scopes;type:text[]"`
 		}
 
 		if err := s.db.WithContext(c.Request.Context()).Raw(

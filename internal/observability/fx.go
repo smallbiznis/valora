@@ -21,6 +21,7 @@ var Module = fx.Module("observability",
 		metrics.NewHTTPMetrics,
 	),
 	fx.Invoke(ensureTracingProvider),
+	fx.Invoke(ensureSchedulerMetrics),
 )
 
 func ensureTracingProvider(_ *sdktrace.TracerProvider) {}
@@ -56,5 +57,10 @@ func provideMetricsConfig(cfg Config) metrics.Config {
 		ExporterEndpoint: cfg.OtelExporterEndpoint,
 		ExporterProtocol: cfg.OtelExporterProtocol,
 		ServiceName:      cfg.ServiceName,
+		Environment:      cfg.Environment,
 	}
+}
+
+func ensureSchedulerMetrics(cfg metrics.Config) {
+	metrics.SchedulerWithConfig(cfg)
 }

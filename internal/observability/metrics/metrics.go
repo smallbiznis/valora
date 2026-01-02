@@ -23,6 +23,7 @@ type Config struct {
 	ExporterEndpoint string
 	ExporterProtocol string
 	ServiceName      string
+	Environment      string
 }
 
 // Metrics exposes application-level instruments.

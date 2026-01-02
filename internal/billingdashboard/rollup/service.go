@@ -88,6 +88,10 @@ func (s *Service) ProcessPending(ctx context.Context, limit int) error {
 
 	var jobErr error
 	for _, row := range rows {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
 		if err := s.processEvent(ctx, row); err != nil {
 			jobErr = errors.Join(jobErr, err)
 			s.log.Warn("failed to process billing event", zap.Error(err), zap.String("event_id", row.ID.String()))
@@ -399,6 +403,10 @@ func (s *Service) ProcessRebuildRequests(ctx context.Context, limit int) error {
 
 	var jobErr error
 	for _, row := range rows {
+		if ctx.Err() == nil {
+			return ctx.Err()
+		}
+
 		if err := s.processRebuildRequest(ctx, row); err != nil {
 			jobErr = errors.Join(jobErr, err)
 			s.log.Warn("failed to rebuild billing snapshots", zap.Error(err), zap.String("request_id", row.ID.String()))
@@ -415,8 +423,11 @@ type rebuildRequestRow struct {
 }
 
 func (s *Service) processRebuildRequest(ctx context.Context, row rebuildRequestRow) error {
+	rebuildCtx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+
 	now := time.Now().UTC()
-	result := s.db.WithContext(ctx).Exec(
+	result := s.db.WithContext(rebuildCtx).Exec(
 		`UPDATE billing_snapshot_rebuild_requests
 		 SET status = ?, started_at = ?
 		 WHERE id = ? AND status = ?`,
@@ -433,10 +444,10 @@ func (s *Service) processRebuildRequest(ctx context.Context, row rebuildRequestR
 	}
 
 	req := RebuildRequest{OrgID: row.OrgID, BillingCycleID: row.BillingCycleID}
-	err := s.RebuildSnapshots(ctx, req)
+	err := s.RebuildSnapshots(rebuildCtx, req)
 	completedAt := time.Now().UTC()
 	if err != nil {
-		return s.db.WithContext(ctx).Exec(
+		return s.db.WithContext(rebuildCtx).Exec(
 			`UPDATE billing_snapshot_rebuild_requests
 			 SET status = ?, error = ?, completed_at = ?
 			 WHERE id = ?`,
@@ -447,7 +458,7 @@ func (s *Service) processRebuildRequest(ctx context.Context, row rebuildRequestR
 		).Error
 	}
 
-	return s.db.WithContext(ctx).Exec(
+	return s.db.WithContext(rebuildCtx).Exec(
 		`UPDATE billing_snapshot_rebuild_requests
 		 SET status = ?, completed_at = ?
 		 WHERE id = ?`,
@@ -552,6 +563,11 @@ func (s *Service) replayLedgerEntries(ctx context.Context, orgID *snowflake.ID) 
 	lastID := snowflake.ID(0)
 
 	for {
+
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
 		args := []any{lastOccurred, lastOccurred, lastID}
 		query := `SELECT id, occurred_at
 			FROM ledger_entries

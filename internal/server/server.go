@@ -9,6 +9,7 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/smallbiznis/valora/internal/apikey"
 	apikeydomain "github.com/smallbiznis/valora/internal/apikey/domain"
 	"github.com/smallbiznis/valora/internal/audit"
@@ -116,6 +117,7 @@ func NewEngine(obsCfg observability.Config, httpMetrics *obsmetrics.HTTPMetrics)
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	return r
 }

@@ -15,13 +15,13 @@ import (
 )
 
 type usageRow struct {
-	ID             snowflake.ID `gorm:"column:id"`
-	SubscriptionID snowflake.ID `gorm:"column:subscription_id"`
+	ID             snowflake.ID  `gorm:"column:id"`
+	SubscriptionID snowflake.ID  `gorm:"column:subscription_id"`
 	MeterID        *snowflake.ID `gorm:"column:meter_id"`
-	Status         string       `gorm:"column:status"`
-	Value          float64      `gorm:"column:value"`
-	RecordedAt     time.Time    `gorm:"column:recorded_at"`
-	IdempotencyKey string       `gorm:"column:idempotency_key"`
+	Status         string        `gorm:"column:status"`
+	Value          float64       `gorm:"column:value"`
+	RecordedAt     time.Time     `gorm:"column:recorded_at"`
+	IdempotencyKey string        `gorm:"column:idempotency_key"`
 }
 
 type ratingResultRow struct {
@@ -406,10 +406,10 @@ func TestE2E_SubscriptionLifecycleValidation(t *testing.T) {
 	}
 
 	events := []struct {
-		key           string
-		idempotency   string
-		at            time.Time
-		value         float64
+		key         string
+		idempotency string
+		at          time.Time
+		value       float64
 	}{
 		{key: "before-start", idempotency: fmt.Sprintf("sub-life-before-%d", time.Now().UnixNano()), at: now.Add(-3 * time.Hour), value: 1},
 		{key: "inside-window", idempotency: fmt.Sprintf("sub-life-inside-%d", time.Now().UnixNano()), at: now.Add(-90 * time.Minute), value: 2},
@@ -588,7 +588,7 @@ func runSnapshot(t *testing.T) {
 	if env.snapshotWorker == nil {
 		t.Fatalf("snapshot worker not available")
 	}
-	if err := env.snapshotWorker.RunOnce(); err != nil {
+	if err := env.snapshotWorker.RunOnce(context.Background()); err != nil {
 		t.Fatalf("snapshot run failed: %v", err)
 	}
 }

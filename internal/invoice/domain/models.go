@@ -22,6 +22,7 @@ type Invoice struct {
 	ID                snowflake.ID      `gorm:"primaryKey"`
 	OrgID             snowflake.ID      `gorm:"not null;index;uniqueIndex:ux_invoice_number_org,priority:1"`
 	InvoiceNumber     *int64            `gorm:"uniqueIndex:ux_invoice_number_org,priority:2"`
+	DisplayNumber     string            `gorm:"-"`
 	BillingCycleID    snowflake.ID      `gorm:"not null;index;uniqueIndex:ux_invoice_billing_cycle"`
 	SubscriptionID    snowflake.ID      `gorm:"not null;index"`
 	CustomerID        snowflake.ID      `gorm:"not null;index"`
