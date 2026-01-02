@@ -27,9 +27,11 @@ type Config struct {
 
 // Metrics exposes application-level instruments.
 type Metrics struct {
-	usageIngest   metric.Int64Counter
-	paymentEvents metric.Int64Counter
-	ledgerEntries metric.Int64Counter
+	usageIngest      metric.Int64Counter
+	paymentEvents    metric.Int64Counter
+	ledgerEntries    metric.Int64Counter
+	rateLimitAllowed metric.Int64Counter
+	rateLimitDenied  metric.Int64Counter
 }
 
 // NewProvider configures and registers the meter provider.
@@ -90,11 +92,21 @@ func New(cfg Config, provider metric.MeterProvider) (*Metrics, error) {
 	if err != nil {
 		return nil, err
 	}
+	rateLimitAllowed, err := meter.Int64Counter("valora_rate_limit_allowed_total")
+	if err != nil {
+		return nil, err
+	}
+	rateLimitDenied, err := meter.Int64Counter("valora_rate_limit_denied_total")
+	if err != nil {
+		return nil, err
+	}
 
 	return &Metrics{
-		usageIngest:   usageIngest,
-		paymentEvents: paymentEvents,
-		ledgerEntries: ledgerEntries,
+		usageIngest:      usageIngest,
+		paymentEvents:    paymentEvents,
+		ledgerEntries:    ledgerEntries,
+		rateLimitAllowed: rateLimitAllowed,
+		rateLimitDenied:  rateLimitDenied,
 	}, nil
 }
 
@@ -128,6 +140,31 @@ func (m *Metrics) RecordLedgerEntry(ctx context.Context, sourceType string) {
 	m.ledgerEntries.Add(ctx, 1, metric.WithAttributes(attrs...))
 }
 
+// RecordRateLimitAllowed increments rate limit allow counts.
+func (m *Metrics) RecordRateLimitAllowed(ctx context.Context, orgID, endpoint string) {
+	if m == nil {
+		return
+	}
+	attrs := FilterAttributes(
+		attribute.String("org_id", strings.TrimSpace(orgID)),
+		attribute.String("endpoint", strings.TrimSpace(endpoint)),
+	)
+	m.rateLimitAllowed.Add(ctx, 1, metric.WithAttributes(attrs...))
+}
+
+// RecordRateLimitDenied increments rate limit deny counts.
+func (m *Metrics) RecordRateLimitDenied(ctx context.Context, orgID, endpoint, reason string) {
+	if m == nil {
+		return
+	}
+	attrs := FilterAttributes(
+		attribute.String("org_id", strings.TrimSpace(orgID)),
+		attribute.String("endpoint", strings.TrimSpace(endpoint)),
+		attribute.String("reason", strings.TrimSpace(reason)),
+	)
+	m.rateLimitDenied.Add(ctx, 1, metric.WithAttributes(attrs...))
+}
+
 func newExporter(protocol, endpoint string) (sdkmetric.Exporter, error) {
 	protocol = strings.ToLower(strings.TrimSpace(protocol))
 	switch protocol {
@@ -149,6 +186,7 @@ func newExporter(protocol, endpoint string) (sdkmetric.Exporter, error) {
 }
 
 var allowedLabelKeys = map[attribute.Key]struct{}{
+	"org_id":      {},
 	"org_tier":    {},
 	"endpoint":    {},
 	"status_code": {},
@@ -156,6 +194,7 @@ var allowedLabelKeys = map[attribute.Key]struct{}{
 	"provider":    {},
 	"event_type":  {},
 	"source_type": {},
+	"reason":      {},
 }
 
 // FilterAttributes strips disallowed labels to keep metrics low-cardinality.
