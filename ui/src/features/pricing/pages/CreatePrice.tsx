@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { useFieldArray, useForm } from "react-hook-form"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -24,6 +25,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
+import { canManageBilling } from "@/lib/roles"
+import { useOrgStore } from "@/stores/orgStore"
 
 type PricingModel = "FLAT" | "USAGE_BASED"
 type BillingInterval = "DAY" | "WEEK" | "MONTH" | "YEAR"
@@ -111,6 +114,8 @@ const toNumberOrNull = (value: string) => {
 export default function CreatePrice() {
   const { orgId, productId } = useParams()
   const navigate = useNavigate()
+  const role = useOrgStore((state) => state.currentOrg?.role)
+  const canManage = canManageBilling(role)
   const [product, setProduct] = useState<ProductSummary | null>(null)
   const [productLoading, setProductLoading] = useState(true)
   const [productError, setProductError] = useState<string | null>(null)
@@ -218,6 +223,10 @@ export default function CreatePrice() {
       isMounted = false
     }
   }, [orgId])
+
+  if (!canManage) {
+    return <ForbiddenState description="You do not have access to create prices." />
+  }
 
   const priceCodePreview = useMemo(() => {
     const trimmed = product?.code?.trim()

@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
-import { Box, MoreHorizontal, Pencil, Plus } from "lucide-react"
+import { Box, Plus } from "lucide-react"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Badge } from "@/components/ui/badge"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -17,6 +17,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
+import { canManageBilling } from "@/lib/roles"
+import { useOrgStore } from "@/stores/orgStore"
 
 type Product = {
   id: string
@@ -113,6 +116,8 @@ const formatUnitLabel = (pricingModel: string) => {
 
 export default function OrgProductDetailPage() {
   const { orgId, productId } = useParams()
+  const role = useOrgStore((state) => state.currentOrg?.role)
+  const canManage = canManageBilling(role)
   const [product, setProduct] = useState<Product | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -121,6 +126,7 @@ export default function OrgProductDetailPage() {
   const [meters, setMeters] = useState<Meter[]>([])
   const [pricingLoading, setPricingLoading] = useState(true)
   const [pricingError, setPricingError] = useState<string | null>(null)
+  const [isForbidden, setIsForbidden] = useState(false)
 
   useEffect(() => {
     if (!orgId || !productId) {
@@ -131,6 +137,7 @@ export default function OrgProductDetailPage() {
     let isMounted = true
     setIsLoading(true)
     setError(null)
+    setIsForbidden(false)
 
     admin
       .get(`/products/${productId}`)
@@ -140,7 +147,11 @@ export default function OrgProductDetailPage() {
       })
       .catch((err) => {
         if (!isMounted) return
-        setError(err?.message ?? "Unable to load product.")
+        if (isForbiddenError(err)) {
+          setIsForbidden(true)
+          return
+        }
+        setError(getErrorMessage(err, "Unable to load product."))
       })
       .finally(() => {
         if (!isMounted) return
@@ -179,7 +190,11 @@ export default function OrgProductDetailPage() {
       })
       .catch((err) => {
         if (!isMounted) return
-        setPricingError(err?.message ?? "Unable to load pricing.")
+        if (isForbiddenError(err)) {
+          setIsForbidden(true)
+          return
+        }
+        setPricingError(getErrorMessage(err, "Unable to load pricing."))
       })
       .finally(() => {
         if (!isMounted) return
@@ -238,6 +253,10 @@ export default function OrgProductDetailPage() {
     return <div className="text-status-error text-sm">{error}</div>
   }
 
+  if (isForbidden) {
+    return <ForbiddenState description="You do not have access to this product." />
+  }
+
   if (!product) {
     return <div className="text-text-muted text-sm">Product not found.</div>
   }
@@ -289,12 +308,7 @@ export default function OrgProductDetailPage() {
             <div className="text-text-muted text-sm">{summaryLine}</div>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline">Edit product</Button>
-          <Button variant="outline" size="icon-sm" aria-label="Product actions">
-            <MoreHorizontal className="size-4" />
-          </Button>
-        </div>
+        <div className="flex flex-wrap items-center gap-2" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
@@ -306,7 +320,7 @@ export default function OrgProductDetailPage() {
                 <CardDescription>Manage all prices attached to this product.</CardDescription>
               </div>
               {orgId && productId && (
-                <Button asChild variant="outline" size="icon" aria-label="Add price">
+                <Button asChild variant="outline" size="icon" aria-label="Add price" disabled={!canManage}>
                   <Link to={`/orgs/${orgId}/products/${productId}/prices/create`}>
                     <Plus className="size-4" />
                   </Link>
@@ -408,44 +422,11 @@ export default function OrgProductDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Cross-sells</CardTitle>
-              <CardDescription>
-                Suggest a related product for customers to add to their order.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-sm text-text-muted">
-                Cross-sell products appear inside Checkout alongside this product.
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="cross-sell-search">
-                  Cross-sells to
-                </label>
-                <Input id="cross-sell-search" placeholder="Find a product..." />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Features</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-lg border border-dashed p-6 text-center text-text-muted text-sm">
-                No features added yet.
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader>
             <CardTitle>Details</CardTitle>
-            <Button variant="outline" size="icon-sm" aria-label="Edit product details">
-              <Pencil className="size-4" />
-            </Button>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div>
@@ -475,9 +456,6 @@ export default function OrgProductDetailPage() {
               <div className="font-medium">
                 {readMetadataValue(product.metadata, "attributes")}
               </div>
-              <Button variant="link" size="sm" className="h-auto px-0">
-                View more
-              </Button>
             </div>
           </CardContent>
         </Card>

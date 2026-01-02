@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -32,6 +43,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
+import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
 
 type CatalogProvider = {
   provider: string
@@ -135,6 +147,7 @@ export default function OrgPaymentProvidersPage() {
   const [configs, setConfigs] = useState<ProviderConfig[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [isForbidden, setIsForbidden] = useState(false)
 
   const [activeProvider, setActiveProvider] = useState<CatalogProvider | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -144,6 +157,10 @@ export default function OrgPaymentProvidersPage() {
   const [rawConfig, setRawConfig] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [toggleProvider, setToggleProvider] = useState<string | null>(null)
+  const [pendingToggle, setPendingToggle] = useState<{
+    provider: string
+    nextValue: boolean
+  } | null>(null)
 
   const loadData = useCallback(async () => {
     if (!orgId) {
@@ -153,6 +170,7 @@ export default function OrgPaymentProvidersPage() {
 
     setIsLoading(true)
     setLoadError(null)
+    setIsForbidden(false)
 
     try {
       const [catalogRes, configRes] = await Promise.all([
@@ -163,7 +181,11 @@ export default function OrgPaymentProvidersPage() {
       setCatalog(Array.isArray(catalogRes.data?.providers) ? catalogRes.data.providers : [])
       setConfigs(Array.isArray(configRes.data?.configs) ? configRes.data.configs : [])
     } catch (err: any) {
-      setLoadError(err?.message ?? "Unable to load payment providers.")
+      if (isForbiddenError(err)) {
+        setIsForbidden(true)
+      } else {
+        setLoadError(getErrorMessage(err, "Unable to load payment providers."))
+      }
       setCatalog([])
       setConfigs([])
     } finally {
@@ -298,7 +320,7 @@ export default function OrgPaymentProvidersPage() {
       resetDialog()
       await loadData()
     } catch (err: any) {
-      setFormError(err?.message ?? "Unable to save provider configuration.")
+      setFormError(getErrorMessage(err, "Unable to save provider configuration."))
     } finally {
       setIsSaving(false)
     }
@@ -310,10 +332,14 @@ export default function OrgPaymentProvidersPage() {
       await admin.patch(`/payment-providers/${provider}`, { is_active: nextValue })
       await loadData()
     } catch (err: any) {
-      setLoadError(err?.message ?? "Unable to update provider status.")
+      setLoadError(getErrorMessage(err, "Unable to update provider status."))
     } finally {
       setToggleProvider(null)
     }
+  }
+
+  if (isForbidden) {
+    return <ForbiddenState description="You do not have access to payment providers." />
   }
 
   return (
@@ -389,7 +415,10 @@ export default function OrgPaymentProvidersPage() {
                               checked={config?.configured ? config.is_active : false}
                               disabled={!config?.configured || toggleProvider === provider.provider}
                               onCheckedChange={(value) =>
-                                handleToggle(provider.provider, Boolean(value))
+                                setPendingToggle({
+                                  provider: provider.provider,
+                                  nextValue: Boolean(value),
+                                })
                               }
                             />
                             <span className="text-xs text-text-muted">Active</span>
@@ -488,6 +517,42 @@ export default function OrgPaymentProvidersPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(pendingToggle)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingToggle(null)
+            setFormError(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingToggle?.nextValue ? "Enable provider" : "Disable provider"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingToggle?.nextValue
+                ? "Enabling starts routing new payments immediately."
+                : "Disabling stops payment collection immediately and cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={toggleProvider !== null}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={toggleProvider !== null}
+              onClick={async () => {
+                if (!pendingToggle) return
+                await handleToggle(pendingToggle.provider, pendingToggle.nextValue)
+                setPendingToggle(null)
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

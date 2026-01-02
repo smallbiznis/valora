@@ -11,6 +11,7 @@ import { useOrgStore } from "@/stores/orgStore"
 type OrgResponse = {
   id: string
   name: string
+  role?: string
 }
 
 export default function OrgResolverPage() {

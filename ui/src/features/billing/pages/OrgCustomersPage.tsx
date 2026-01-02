@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useParams, useSearchParams } from "react-router-dom"
+import { Link, useParams, useSearchParams } from "react-router-dom"
 import { IconPlus } from "@tabler/icons-react"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,7 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogClose,
@@ -42,6 +42,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
+import { canManageBilling } from "@/lib/roles"
+import { useOrgStore } from "@/stores/orgStore"
 
 type Customer = {
   id: string | number
@@ -73,11 +76,14 @@ const formatDateTime = (value?: string) => {
 
 export default function OrgCustomersPage() {
   const { orgId } = useParams()
+  const role = useOrgStore((state) => state.currentOrg?.role)
+  const canManage = canManageBilling(role)
   const [searchParams, setSearchParams] = useSearchParams()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [listError, setListError] = useState<string | null>(null)
+  const [isForbidden, setIsForbidden] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -107,6 +113,7 @@ export default function OrgCustomersPage() {
       setIsLoading(true)
     }
     setListError(null)
+    setIsForbidden(false)
 
     try {
       const res = await admin.get("/customers", {
@@ -129,7 +136,11 @@ export default function OrgCustomersPage() {
       setNextPageToken(payload.next_page_token ?? null)
       setHasMore(Boolean(payload.has_more))
     } catch (err: any) {
-      setListError(err?.message ?? "Unable to load customers.")
+      if (isForbiddenError(err)) {
+        setIsForbidden(true)
+      } else {
+        setListError(getErrorMessage(err, "Unable to load customers."))
+      }
       if (!append) {
         setCustomers([])
       }
@@ -165,7 +176,7 @@ export default function OrgCustomersPage() {
       setLanguage("en-US")
       setIsDialogOpen(false)
     } catch (err: any) {
-      setCreateError(err?.message ?? "Unable to create customer.")
+      setCreateError(getErrorMessage(err, "Unable to create customer."))
     } finally {
       setIsCreating(false)
     }
@@ -176,6 +187,10 @@ export default function OrgCustomersPage() {
     return `${total} item${total === 1 ? "" : "s"}`
   }, [customers.length])
 
+  if (isForbidden) {
+    return <ForbiddenState description="You do not have access to customers." />
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -185,89 +200,88 @@ export default function OrgCustomersPage() {
             Manage customers, payment methods, and billing contact data.
           </p>
         </div>
-        <Dialog
-          open={isDialogOpen}
-          onOpenChange={(open) => {
-            setIsDialogOpen(open)
-            if (!open) {
-              setCreateError(null)
-              setName("")
-              setEmail("")
-              setLanguage("en-US")
-            }
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <IconPlus />
-              Add customer
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-xl">
-            <DialogHeader>
-              <DialogTitle>Create customer</DialogTitle>
-              <DialogDescription>
-                Add a customer profile for billing and invoicing.
-              </DialogDescription>
-            </DialogHeader>
-            <form className="space-y-4" onSubmit={handleCreate}>
-              {createError && <Alert variant="destructive">{createError}</Alert>}
-              <div className="space-y-2">
-                <Label htmlFor="customer-name">Name</Label>
-                <Input
-                  id="customer-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Customer display name"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="customer-email">Email</Label>
-                <Input
-                  id="customer-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="billing@company.com"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="customer-language">Language</Label>
-                <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger id="customer-language">
-                    <SelectValue placeholder="Select a language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en-US">English (United States)</SelectItem>
-                    <SelectItem value="en-GB">English (United Kingdom)</SelectItem>
-                    <SelectItem value="id-ID">Bahasa Indonesia</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="px-0 text-accent-primary"
-              >
-                More options
+        {canManage ? (
+          <Dialog
+            open={isDialogOpen}
+            onOpenChange={(open) => {
+              setIsDialogOpen(open)
+              if (!open) {
+                setCreateError(null)
+                setName("")
+                setEmail("")
+                setLanguage("en-US")
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <IconPlus />
+                Add customer
               </Button>
-              <Separator />
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button type="button" variant="outline">
-                    Cancel
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Create customer</DialogTitle>
+                <DialogDescription>
+                  Add a customer profile for billing and invoicing.
+                </DialogDescription>
+              </DialogHeader>
+              <form className="space-y-4" onSubmit={handleCreate}>
+                {createError && <Alert variant="destructive">{createError}</Alert>}
+                <div className="space-y-2">
+                  <Label htmlFor="customer-name">Name</Label>
+                  <Input
+                    id="customer-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Customer display name"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customer-email">Email</Label>
+                  <Input
+                    id="customer-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="billing@company.com"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customer-language">Language</Label>
+                  <Select value={language} onValueChange={setLanguage}>
+                    <SelectTrigger id="customer-language">
+                      <SelectValue placeholder="Select a language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en-US">English (United States)</SelectItem>
+                      <SelectItem value="en-GB">English (United Kingdom)</SelectItem>
+                      <SelectItem value="id-ID">Bahasa Indonesia</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Separator />
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">
+                      Cancel
+                    </Button>
+                  </DialogClose>
+                  <Button type="submit" disabled={isCreating || !orgId}>
+                    {isCreating ? "Saving..." : "Add customer"}
                   </Button>
-                </DialogClose>
-                <Button type="submit" disabled={isCreating || !orgId}>
-                  {isCreating ? "Saving..." : "Add customer"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <Button size="sm" disabled>
+            <IconPlus />
+            Add customer
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -372,20 +386,6 @@ export default function OrgCustomersPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button variant="outline" size="sm">
-          Copy
-        </Button>
-        <Button variant="outline" size="sm">
-          Export
-        </Button>
-        <Button variant="outline" size="sm">
-          Analyze
-        </Button>
-        <Button variant="outline" size="sm">
-          Edit columns
-        </Button>
-      </div>
 
       {listError && <Alert variant="destructive">{listError}</Alert>}
 
@@ -393,9 +393,6 @@ export default function OrgCustomersPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-10">
-                <Checkbox aria-label="Select all customers" />
-              </TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Primary payment method</TableHead>
@@ -406,14 +403,14 @@ export default function OrgCustomersPage() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={6} className="text-text-muted">
+                <TableCell colSpan={5} className="text-text-muted">
                   Loading customers...
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && customers.length === 0 && !listError && (
               <TableRow>
-                <TableCell colSpan={6} className="text-text-muted">
+                <TableCell colSpan={5} className="text-text-muted">
                   No customers yet.
                 </TableCell>
               </TableRow>
@@ -422,10 +419,18 @@ export default function OrgCustomersPage() {
               customers.length > 0 &&
               customers.map((customer) => (
                 <TableRow key={customer.id}>
-                  <TableCell>
-                    <Checkbox aria-label={`Select ${customer.name}`} />
+                  <TableCell className="font-medium">
+                    {orgId ? (
+                      <Link
+                        className="text-accent-primary hover:underline"
+                        to={`/orgs/${orgId}/customers/${customer.id}`}
+                      >
+                        {customer.name}
+                      </Link>
+                    ) : (
+                      customer.name
+                    )}
                   </TableCell>
-                  <TableCell className="font-medium">{customer.name}</TableCell>
                   <TableCell className="text-text-muted">
                     {customer.email}
                   </TableCell>

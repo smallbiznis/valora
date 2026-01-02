@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,6 +11,9 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
+import { getErrorMessage } from "@/lib/api-errors"
+import { canManageBilling } from "@/lib/roles"
+import { useOrgStore } from "@/stores/orgStore"
 
 const aggregationOptions = [
   { label: "Sum", value: "SUM" },
@@ -22,6 +26,8 @@ const aggregationOptions = [
 export default function OrgMeterCreatePage() {
   const { orgId } = useParams()
   const navigate = useNavigate()
+  const role = useOrgStore((state) => state.currentOrg?.role)
+  const canManage = canManageBilling(role)
 
   const [name, setName] = useState("")
   const [code, setCode] = useState("")
@@ -34,6 +40,10 @@ export default function OrgMeterCreatePage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
+    if (!canManage) {
+      setError("You do not have permission to create meters.")
+      return
+    }
     if (!orgId) {
       setError("Organization is missing.")
       return
@@ -60,10 +70,14 @@ export default function OrgMeterCreatePage() {
         navigate(`/orgs/${orgId}/meter`, { replace: true })
       }
     } catch (err: any) {
-      setError(err?.message ?? "Unable to create meter.")
+      setError(getErrorMessage(err, "Unable to create meter."))
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (!canManage) {
+    return <ForbiddenState description="You do not have access to create meters." />
   }
 
   return (

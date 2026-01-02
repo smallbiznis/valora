@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -33,6 +34,7 @@ import {
   parseDate,
   resolveCurrency,
 } from "@/features/admin/pricing/utils"
+import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
 
 const fetchPrice = async (priceId: string) => {
   const response = await admin.get(`/prices/${priceId}`)
@@ -63,6 +65,23 @@ const fetchCurrencies = async () => {
   const response = await admin.get("/currencies")
   const payload = response.data?.data
   return Array.isArray(payload) ? (payload as Currency[]) : []
+}
+
+type PriceTier = {
+  id: string
+  price_id: string
+  tier_mode: number
+  start_quantity: number
+  end_quantity?: number | null
+  unit_amount_cents?: number | null
+  flat_amount_cents?: number | null
+  unit: string
+}
+
+const fetchPriceTiers = async () => {
+  const response = await admin.get("/price_tiers")
+  const payload = response.data?.data
+  return Array.isArray(payload) ? (payload as PriceTier[]) : []
 }
 
 type AmountStatus = "Active" | "Expired" | "Upcoming"
@@ -134,6 +153,14 @@ export default function AdminPricingDetailPage() {
     queryKey: ["currencies"],
     queryFn: fetchCurrencies,
   })
+  const {
+    data: tiersData,
+    isLoading: tiersLoading,
+    error: tiersError,
+  } = useQuery({
+    queryKey: ["price_tiers"],
+    queryFn: fetchPriceTiers,
+  })
 
   const amounts = useMemo(() => {
     const list = amountsData ?? []
@@ -177,12 +204,26 @@ export default function AdminPricingDetailPage() {
   const hasMultipleActive = activeCount > 1
   const hasActive = activeCount > 0
 
+  const tiers = useMemo(() => {
+    const list = tiersData ?? []
+    return list.filter((tier) => tier.price_id === priceId)
+  }, [tiersData, priceId])
+
+  const isForbidden =
+    isForbiddenError(priceError) ||
+    isForbiddenError(amountsError) ||
+    isForbiddenError(tiersError)
+
   if (!priceId) {
     return (
       <div className="text-text-muted text-sm">
         Select a price to view details.
       </div>
     )
+  }
+
+  if (isForbidden) {
+    return <ForbiddenState description="You do not have access to this price." />
   }
 
   return (
@@ -225,7 +266,7 @@ export default function AdminPricingDetailPage() {
           )}
           {priceError && (
             <div className="text-status-error text-sm">
-              {(priceError as Error)?.message ?? "Unable to load price."}
+              {getErrorMessage(priceError, "Unable to load price.")}
             </div>
           )}
           {price && (
@@ -293,7 +334,7 @@ export default function AdminPricingDetailPage() {
           )}
           {amountsError && (
             <div className="text-status-error text-sm">
-              {(amountsError as Error)?.message ?? "Unable to load price history."}
+              {getErrorMessage(amountsError, "Unable to load price history.")}
             </div>
           )}
           {hasMultipleActive && (
@@ -391,6 +432,60 @@ export default function AdminPricingDetailPage() {
               currencies={currencies}
               priceAmounts={amounts}
             />
+          )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Tier configuration</CardTitle>
+          <CardDescription>Slabs and ranges for tiered pricing models.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {tiersLoading && (
+            <div className="flex items-center gap-2 text-text-muted text-sm">
+              <Spinner />
+              Loading tiers
+            </div>
+          )}
+          {tiersError && (
+            <div className="text-status-error text-sm">
+              {getErrorMessage(tiersError, "Unable to load price tiers.")}
+            </div>
+          )}
+          {!tiersLoading && !tiersError && tiers.length === 0 && (
+            <div className="text-text-muted text-sm">No tiers configured.</div>
+          )}
+          {!tiersLoading && !tiersError && tiers.length > 0 && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Range</TableHead>
+                  <TableHead>Unit amount</TableHead>
+                  <TableHead>Flat amount</TableHead>
+                  <TableHead>Mode</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tiers.map((tier) => (
+                  <TableRow key={tier.id}>
+                    <TableCell>
+                      {tier.end_quantity == null
+                        ? `${tier.start_quantity}+`
+                        : `${tier.start_quantity} - ${tier.end_quantity}`}
+                    </TableCell>
+                    <TableCell>
+                      {tier.unit_amount_cents == null ? "-" : `${tier.unit_amount_cents}¢`}
+                    </TableCell>
+                    <TableCell>
+                      {tier.flat_amount_cents == null ? "-" : `${tier.flat_amount_cents}¢`}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">Mode {tier.tier_mode}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

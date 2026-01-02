@@ -48,7 +48,7 @@ export function AppShell() {
         const match = list.find(
           (item: any) => String(item?.id ?? item?.ID ?? item?.org_id ?? "") === orgId
         )
-        setCurrentOrg(match ?? { id: orgId, name: `Org ${orgId}` })
+        setCurrentOrg(match ?? { id: orgId, name: `Org ${orgId}`, role: "MEMBER" })
         setIsLoading(false)
       })
       .catch(() => {
@@ -123,7 +123,7 @@ function Topbar() {
   const logout = useAuthStore((s) => s.logout)
 
   const initial = currentOrg?.name?.[0]?.toUpperCase() ?? "O"
-  const handleOrgSwitch = async (org: { id: string; name: string }) => {
+  const handleOrgSwitch = async (org: { id: string; name: string; role?: string }) => {
     try {
       await auth.post(`/user/using/${org.id}`)
       setCurrentOrg(org)

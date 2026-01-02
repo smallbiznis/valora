@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -30,6 +31,7 @@ import {
 
 import type { Price } from "@/features/admin/pricing/types"
 import { formatPricingModel, formatUnit } from "@/features/admin/pricing/utils"
+import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
 
 const fetchPrices = async () => {
   const response = await admin.get("/prices")
@@ -52,6 +54,10 @@ export default function AdminPricingListPage() {
   })
 
   const prices = useMemo(() => data ?? [], [data])
+
+  if (isForbiddenError(error)) {
+    return <ForbiddenState description="You do not have access to prices." />
+  }
 
   return (
     <div className="space-y-6 px-4 py-6">
@@ -77,7 +83,7 @@ export default function AdminPricingListPage() {
           )}
           {error && (
             <div className="text-status-error text-sm">
-              {(error as Error)?.message ?? "Unable to load prices."}
+              {getErrorMessage(error, "Unable to load prices.")}
             </div>
           )}
           {!isLoading && !error && prices.length === 0 && (

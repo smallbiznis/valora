@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useParams, useSearchParams } from "react-router-dom"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -28,6 +29,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
+import { canManageBilling } from "@/lib/roles"
+import { useOrgStore } from "@/stores/orgStore"
 
 type Product = {
   id: number | string
@@ -62,10 +66,13 @@ const readMetadataValue = (
 
 export default function OrgProductsPage() {
   const { orgId } = useParams()
+  const role = useOrgStore((state) => state.currentOrg?.role)
+  const canManage = canManageBilling(role)
   const [searchParams, setSearchParams] = useSearchParams()
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isForbidden, setIsForbidden] = useState(false)
   const totalCount = products.length
   const activeCount = products.filter((product) => product.active).length
   const archivedCount = totalCount - activeCount
@@ -101,6 +108,7 @@ export default function OrgProductsPage() {
     let isMounted = true
     setIsLoading(true)
     setError(null)
+    setIsForbidden(false)
 
     admin
       .get("/products", {
@@ -117,7 +125,11 @@ export default function OrgProductsPage() {
       })
       .catch((err) => {
         if (!isMounted) return
-        setError(err?.message ?? "Unable to load products.")
+        if (isForbiddenError(err)) {
+          setIsForbidden(true)
+          return
+        }
+        setError(getErrorMessage(err, "Unable to load products."))
       })
       .finally(() => {
         if (!isMounted) return
@@ -129,6 +141,10 @@ export default function OrgProductsPage() {
     }
   }, [orgId, nameFilter, activeFilter, sortBy, orderBy])
 
+  if (isForbidden) {
+    return <ForbiddenState description="You do not have access to products." />
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -139,14 +155,16 @@ export default function OrgProductsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm">
-            Analyze
-          </Button>
-          {orgId && (
+          {orgId && canManage && (
             <Button asChild size="sm">
               <Link data-testid="products-create" to={`/orgs/${orgId}/products/create`}>
                 Create product
               </Link>
+            </Button>
+          )}
+          {orgId && !canManage && (
+            <Button size="sm" disabled>
+              Create product
             </Button>
           )}
         </div>
@@ -248,12 +266,6 @@ export default function OrgProductsPage() {
           </Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm">
-            Export products
-          </Button>
-          <Button variant="outline" size="sm">
-            Edit columns
-          </Button>
         </div>
       </div>
 

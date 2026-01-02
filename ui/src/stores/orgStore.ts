@@ -3,6 +3,7 @@ import { create } from "zustand"
 type Org = {
   id: string
   name: string
+  role?: string
 }
 
 type OrgState = {

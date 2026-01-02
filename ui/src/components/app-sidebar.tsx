@@ -8,6 +8,7 @@ import {
   IconListDetails,
   IconMeterCube,
   IconPlugConnected,
+  IconTag,
   IconShieldCheck,
   IconSettings,
   IconUsers,
@@ -17,6 +18,8 @@ import { NavLink, useParams } from "react-router-dom"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
+import { canManageBilling } from "@/lib/roles"
+import { useOrgStore } from "@/stores/orgStore"
 import {
   Sidebar,
   SidebarContent,
@@ -37,6 +40,8 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { orgId } = useParams()
+  const role = useOrgStore((state) => state.currentOrg?.role)
+  const canAccessAdmin = canManageBilling(role)
   const orgBasePath = orgId ? `/orgs/${orgId}` : "/orgs"
 
   const navMain = [
@@ -50,6 +55,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: "Products",
       url: `${orgBasePath}/products`,
       icon: IconBox,
+    },
+    {
+      title: "Pricing",
+      url: `${orgBasePath}/prices`,
+      icon: IconTag,
     },
     {
       title: "Meters",
@@ -76,7 +86,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       url: `${orgBasePath}/invoice-templates`,
       icon: IconFileDescription,
     },
-  ]
+  ].filter(() => canAccessAdmin)
 
   const navSecondary = [
     {
@@ -99,7 +109,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       url: `${orgBasePath}/settings`,
       icon: IconSettings,
     },
-  ]
+  ].filter(() => canAccessAdmin)
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>

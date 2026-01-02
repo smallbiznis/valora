@@ -1,9 +1,21 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { IconPlus } from "@tabler/icons-react"
 
+import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   Empty,
   EmptyContent,
@@ -20,11 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  findInvoiceTemplate,
-  invoiceTemplates,
-  type InvoiceTemplate,
-} from "@/features/invoice/data/invoice-template-data"
+import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
 
 const formatDate = (value?: string) => {
   if (!value) return "-"
@@ -37,53 +45,96 @@ const formatDate = (value?: string) => {
   }).format(date)
 }
 
-const formatStatus = (status: InvoiceTemplate["status"]) => {
-  switch (status) {
-    case "ACTIVE":
-      return "Active"
-    case "DRAFT":
-      return "Draft"
-    default:
-      return status
-  }
-}
-
-const statusVariant = (status: InvoiceTemplate["status"]) => {
-  switch (status) {
-    case "ACTIVE":
-      return "secondary"
-    case "DRAFT":
-      return "outline"
-    default:
-      return "secondary"
-  }
+type InvoiceTemplate = {
+  id: string
+  name: string
+  is_default: boolean
+  locale: string
+  currency: string
+  header?: Record<string, unknown>
+  footer?: Record<string, unknown>
+  style?: Record<string, unknown>
+  created_at?: string
+  updated_at?: string
 }
 
 export default function OrgInvoiceTemplatesPage() {
   const { orgId } = useParams()
   const [searchQuery, setSearchQuery] = useState("")
+  const [templates, setTemplates] = useState<InvoiceTemplate[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isForbidden, setIsForbidden] = useState(false)
+  const [pendingDefault, setPendingDefault] = useState<InvoiceTemplate | null>(null)
+  const [isSettingDefault, setIsSettingDefault] = useState(false)
+  const [setDefaultError, setSetDefaultError] = useState<string | null>(null)
   const orgBasePath = orgId ? `/orgs/${orgId}` : "/orgs"
+
+  useEffect(() => {
+    let active = true
+    setIsLoading(true)
+    setError(null)
+    setIsForbidden(false)
+
+    admin
+      .get("/invoice-templates")
+      .then((response) => {
+        if (!active) return
+        setTemplates(response.data?.data ?? [])
+      })
+      .catch((err) => {
+        if (!active) return
+        if (isForbiddenError(err)) {
+          setIsForbidden(true)
+          return
+        }
+        setError(getErrorMessage(err, "Unable to load templates."))
+      })
+      .finally(() => {
+        if (!active) return
+        setIsLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   const filteredTemplates = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
-    if (!query) return invoiceTemplates
-    return invoiceTemplates.filter((template) => {
-      const memo = template.memo?.toLowerCase() ?? ""
-      const footer = template.footer?.toLowerCase() ?? ""
+    if (!query) return templates
+    return templates.filter((template) => {
+      const footer = String(template.footer?.notes ?? "").toLowerCase()
+      const header = String(template.header?.company_name ?? "").toLowerCase()
       return (
         template.name.toLowerCase().includes(query) ||
-        memo.includes(query) ||
+        header.includes(query) ||
         footer.includes(query)
       )
     })
-  }, [searchQuery])
+  }, [searchQuery, templates])
 
   const countLabel = useMemo(() => {
     const total = filteredTemplates.length
     return `${total} template${total === 1 ? "" : "s"}`
   }, [filteredTemplates.length])
 
-  const defaultTemplate = findInvoiceTemplate("default")
+  const defaultTemplate = useMemo(
+    () => templates.find((template) => template.is_default),
+    [templates]
+  )
+
+  if (isLoading) {
+    return <div className="text-text-muted text-sm">Loading templates...</div>
+  }
+
+  if (error) {
+    return <div className="text-status-error text-sm">{error}</div>
+  }
+
+  if (isForbidden) {
+    return <ForbiddenState description="You do not have access to invoice templates." />
+  }
 
   return (
     <div className="space-y-6">
@@ -136,7 +187,7 @@ export default function OrgInvoiceTemplatesPage() {
           <EmptyHeader>
             <EmptyTitle>No templates yet</EmptyTitle>
             <EmptyDescription>
-              Create an invoice template to standardize memo, footer, and line item grouping.
+              Create an invoice template to standardize branding and layout.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
@@ -155,9 +206,8 @@ export default function OrgInvoiceTemplatesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Template</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Custom fields</TableHead>
-                <TableHead>Grouping</TableHead>
+                <TableHead>Locale</TableHead>
+                <TableHead>Currency</TableHead>
                 <TableHead>Updated</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -169,37 +219,44 @@ export default function OrgInvoiceTemplatesPage() {
                     <div className="flex flex-col gap-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium">{template.name}</span>
-                        {template.isDefault && (
+                        {template.is_default && (
                           <Badge variant="secondary">Default</Badge>
                         )}
                       </div>
                       <span className="text-text-muted text-sm">
-                        {template.memo}
+                        {template.header?.company_name ? String(template.header.company_name) : ""}
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant={statusVariant(template.status)}>
-                      {formatStatus(template.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {template.customFields?.length ?? 0}
-                  </TableCell>
-                  <TableCell>{template.lineItemGrouping ?? "-"}</TableCell>
-                  <TableCell>{formatDate(template.updatedAt)}</TableCell>
+                  <TableCell>{template.locale?.toUpperCase()}</TableCell>
+                  <TableCell>{template.currency?.toUpperCase()}</TableCell>
+                  <TableCell>{formatDate(template.updated_at)}</TableCell>
                   <TableCell className="text-right">
-                    {orgId ? (
-                      <Button asChild variant="ghost" size="sm">
-                        <Link to={`${orgBasePath}/invoice-templates/${template.id}`}>
+                    <div className="flex items-center justify-end gap-2">
+                      {orgId ? (
+                        <Button asChild variant="ghost" size="sm">
+                          <Link to={`${orgBasePath}/invoice-templates/${template.id}`}>
+                            Edit
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button variant="ghost" size="sm" disabled>
                           Edit
-                        </Link>
-                      </Button>
-                    ) : (
-                      <Button variant="ghost" size="sm" disabled>
-                        Edit
-                      </Button>
-                    )}
+                        </Button>
+                      )}
+                      {!template.is_default && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setPendingDefault(template)
+                            setSetDefaultError(null)
+                          }}
+                        >
+                          Set default
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -207,6 +264,49 @@ export default function OrgInvoiceTemplatesPage() {
           </Table>
         </div>
       )}
+
+      <AlertDialog
+        open={Boolean(pendingDefault)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDefault(null)
+            setSetDefaultError(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Set default template</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will make the selected template the default for future invoices.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {setDefaultError && <div className="text-status-error text-sm">{setDefaultError}</div>}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSettingDefault}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isSettingDefault}
+              onClick={async () => {
+                if (!pendingDefault) return
+                setIsSettingDefault(true)
+                setSetDefaultError(null)
+                try {
+                  await admin.post(`/invoice-templates/${pendingDefault.id}/set-default`)
+                  const response = await admin.get("/invoice-templates")
+                  setTemplates(response.data?.data ?? [])
+                  setPendingDefault(null)
+                } catch (err) {
+                  setSetDefaultError(getErrorMessage(err, "Unable to set default template."))
+                } finally {
+                  setIsSettingDefault(false)
+                }
+              }}
+            >
+              {isSettingDefault ? "Setting..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

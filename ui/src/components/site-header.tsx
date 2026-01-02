@@ -23,7 +23,7 @@ export function SiteHeader() {
   const orgName = currentOrg?.name ?? "Workspace"
   const userInitial = orgName.slice(0, 1).toUpperCase()
 
-  const handleOrgSwitch = async (org: { id: string; name: string }) => {
+  const handleOrgSwitch = async (org: { id: string; name: string; role?: string }) => {
     try {
       await admin.post(`/user/using/${org.id}`)
       setCurrentOrg(org)

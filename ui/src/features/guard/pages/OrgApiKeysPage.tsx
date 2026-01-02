@@ -3,6 +3,7 @@ import { IconCopy, IconEye, IconPlus, IconRefresh, IconTrash } from "@tabler/ico
 import { useParams } from "react-router-dom"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -37,6 +38,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
+import { canManageBilling, isOrgOwner } from "@/lib/roles"
+import { useOrgStore } from "@/stores/orgStore"
 
 const formatDateTime = (value?: string | null) => {
   if (!value) return "-"
@@ -96,10 +100,14 @@ const formatScopes = (key: ApiKey) => {
 
 export default function OrgApiKeysPage() {
   const { orgId } = useParams()
+  const role = useOrgStore((state) => state.currentOrg?.role)
+  const canManage = canManageBilling(role)
+  const isOwner = isOrgOwner(role)
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [listError, setListError] = useState<string | null>(null)
   const [availableScopes, setAvailableScopes] = useState<string[]>([])
+  const [isForbidden, setIsForbidden] = useState(false)
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [createName, setCreateName] = useState("")
@@ -126,11 +134,16 @@ export default function OrgApiKeysPage() {
 
     setIsLoading(true)
     setListError(null)
+    setIsForbidden(false)
     try {
       const res = await admin.get<ApiKey[]>("/api-keys")
       setApiKeys(Array.isArray(res.data) ? res.data : [])
     } catch (err: any) {
-      setListError(err?.message ?? "Unable to load API keys.")
+      if (isForbiddenError(err)) {
+        setIsForbidden(true)
+      } else {
+        setListError(getErrorMessage(err, "Unable to load API keys."))
+      }
       setApiKeys([])
     } finally {
       setIsLoading(false)
@@ -144,12 +157,12 @@ export default function OrgApiKeysPage() {
   useEffect(() => {
     const loadScopes = async () => {
       if (!orgId) return
-      try {
-        const res = await admin.get<string[]>("/api-keys/scopes")
-        setAvailableScopes(Array.isArray(res.data) ? res.data : [])
-      } catch {
-        setAvailableScopes([])
-      }
+    try {
+      const res = await admin.get<string[]>("/api-keys/scopes")
+      setAvailableScopes(Array.isArray(res.data) ? res.data : [])
+    } catch {
+      setAvailableScopes([])
+    }
     }
     void loadScopes()
   }, [orgId])
@@ -173,7 +186,7 @@ export default function OrgApiKeysPage() {
       setCreateScopes([])
       await loadKeys()
     } catch (err: any) {
-      setCreateError(err?.message ?? "Unable to create API key.")
+      setCreateError(getErrorMessage(err, "Unable to create API key."))
     } finally {
       setIsCreating(false)
     }
@@ -198,7 +211,7 @@ export default function OrgApiKeysPage() {
       setRevealPassword("")
       await loadKeys()
     } catch (err: any) {
-      setRevealError(err?.message ?? "Unable to reveal API key.")
+      setRevealError(getErrorMessage(err, "Unable to reveal API key."))
     } finally {
       setIsRevealing(false)
     }
@@ -215,7 +228,7 @@ export default function OrgApiKeysPage() {
       setRevokeKey(null)
       await loadKeys()
     } catch (err: any) {
-      setRevokeError(err?.message ?? "Unable to revoke API key.")
+      setRevokeError(getErrorMessage(err, "Unable to revoke API key."))
     } finally {
       setIsRevoking(false)
     }
@@ -225,6 +238,14 @@ export default function OrgApiKeysPage() {
     if (!revealKey) return "Reveal API key"
     return `Reveal ${revealKey.name}`
   }, [revealKey])
+
+  if (!canManage) {
+    return <ForbiddenState description="You do not have access to API keys." />
+  }
+
+  if (isForbidden) {
+    return <ForbiddenState description="You do not have access to API keys." />
+  }
 
   return (
     <div className="space-y-6">
@@ -425,6 +446,7 @@ export default function OrgApiKeysPage() {
                           setRevokeKey(key)
                           setRevokeError(null)
                         }}
+                        disabled={!isOwner}
                       >
                         <IconTrash />
                         Revoke

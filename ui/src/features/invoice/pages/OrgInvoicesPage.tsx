@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useParams, useSearchParams } from "react-router-dom"
-import {
-  IconDotsVertical,
-  IconPlus,
-} from "@tabler/icons-react"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -39,6 +36,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
 
 export default function OrgInvoicesPage() {
   const { orgId } = useParams()
@@ -47,6 +45,7 @@ export default function OrgInvoicesPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isForbidden, setIsForbidden] = useState(false)
   const statusParam = searchParams.get("status") ?? "ALL"
   const statusFilter = statusTabs.some((tab) => tab.value === statusParam)
     ? statusParam
@@ -85,6 +84,7 @@ export default function OrgInvoicesPage() {
     let isMounted = true
     setIsLoading(true)
     setError(null)
+    setIsForbidden(false)
 
     Promise.allSettled([
       admin.get("/invoices", {
@@ -111,9 +111,11 @@ export default function OrgInvoicesPage() {
         if (invoiceResult.status === "fulfilled") {
           setInvoices(invoiceResult.value.data?.data ?? [])
         } else {
-          setError(
-            invoiceResult.reason?.message ?? "Unable to load invoices."
-          )
+          if (isForbiddenError(invoiceResult.reason)) {
+            setIsForbidden(true)
+          } else {
+            setError(getErrorMessage(invoiceResult.reason, "Unable to load invoices."))
+          }
         }
         if (customerResult.status === "fulfilled") {
           const payload = customerResult.value.data?.data ?? {}
@@ -121,6 +123,8 @@ export default function OrgInvoicesPage() {
             ? payload.customers
             : []
           setCustomers(list)
+        } else if (isForbiddenError(customerResult.reason)) {
+          setIsForbidden(true)
         }
       })
       .finally(() => {
@@ -162,6 +166,10 @@ export default function OrgInvoicesPage() {
     return `${total} item${total === 1 ? "" : "s"}`
   }, [invoices.length])
 
+  if (isForbidden) {
+    return <ForbiddenState description="You do not have access to invoices." />
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -179,13 +187,6 @@ export default function OrgInvoicesPage() {
               </Link>
             </Button>
           )}
-          <Button size="sm">
-            <IconPlus />
-            Create invoice
-          </Button>
-          <Button variant="outline" size="icon-sm" aria-label="Invoice actions">
-            <IconDotsVertical />
-          </Button>
         </div>
       </div>
 
@@ -446,17 +447,6 @@ export default function OrgInvoicesPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-text-muted text-sm">{countLabel}</div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm">
-            Export
-          </Button>
-          <Button variant="outline" size="sm">
-            Analyze
-          </Button>
-          <Button variant="outline" size="sm">
-            Edit columns
-          </Button>
-        </div>
       </div>
 
       {isLoading && (
@@ -471,12 +461,7 @@ export default function OrgInvoicesPage() {
               Generate invoices from subscriptions or create an invoice to preview billing.
             </EmptyDescription>
           </EmptyHeader>
-          <EmptyContent>
-            <Button size="sm">
-              <IconPlus />
-              Create invoice
-            </Button>
-          </EmptyContent>
+          <EmptyContent />
         </Empty>
       )}
       {!isLoading && !error && invoices.length > 0 && (

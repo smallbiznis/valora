@@ -14,7 +14,13 @@ const SignupPage = lazy(() => import("@/pages/signup"))
 
 const OrgDashboard = lazy(() => import("@/features/billing/pages/OrgDashboard"))
 const OrgCustomersPage = lazy(() => import("@/features/billing/pages/OrgCustomersPage"))
+const OrgCustomerDetailPage = lazy(
+  () => import("@/features/billing/pages/OrgCustomerDetailPage")
+)
 const OrgSubscriptionsPage = lazy(() => import("@/features/billing/pages/OrgSubscriptionsPage"))
+const OrgSubscriptionDetailPage = lazy(
+  () => import("@/features/billing/pages/OrgSubscriptionDetailPage")
+)
 const OrgSubscriptionCreatePage = lazy(
   () => import("@/features/billing/pages/OrgSubscriptionCreatePage")
 )
@@ -35,6 +41,23 @@ const CreateProduct = lazy(() => import("@/features/pricing/pages/CreateProduct"
 const CreatePrice = lazy(() => import("@/features/pricing/pages/CreatePrice"))
 const OrgProductDetailPage = lazy(
   () => import("@/features/pricing/pages/OrgProductDetailPage")
+)
+const OrgPricesPage = lazy(() => import("@/features/pricing/pages/OrgPricesPage"))
+const OrgPricingsPage = lazy(() => import("@/features/pricing/pages/OrgPricingsPage"))
+const OrgPricingDetailPage = lazy(
+  () => import("@/features/pricing/pages/OrgPricingDetailPage")
+)
+const OrgPriceAmountsPage = lazy(
+  () => import("@/features/pricing/pages/OrgPriceAmountsPage")
+)
+const OrgPriceAmountDetailPage = lazy(
+  () => import("@/features/pricing/pages/OrgPriceAmountDetailPage")
+)
+const OrgPriceTiersPage = lazy(
+  () => import("@/features/pricing/pages/OrgPriceTiersPage")
+)
+const OrgPriceTierDetailPage = lazy(
+  () => import("@/features/pricing/pages/OrgPriceTierDetailPage")
 )
 
 const OrgInvoicesPage = lazy(() => import("@/features/invoice/pages/OrgInvoicesPage"))
@@ -179,19 +202,31 @@ export const router = createBrowserRouter([
           },
           {
             path: "prices",
-            element: <Navigate to="../products" replace />,
+            element: withFeatureBoundary(<OrgPricesPage />),
           },
           {
             path: "pricings",
-            element: <Navigate to="../products" replace />,
+            element: withFeatureBoundary(<OrgPricingsPage />),
+          },
+          {
+            path: "pricings/:pricingId",
+            element: withFeatureBoundary(<OrgPricingDetailPage />),
           },
           {
             path: "price-amounts",
-            element: <Navigate to="../products" replace />,
+            element: withFeatureBoundary(<OrgPriceAmountsPage />),
+          },
+          {
+            path: "price-amounts/:amountId",
+            element: withFeatureBoundary(<OrgPriceAmountDetailPage />),
           },
           {
             path: "price-tiers",
-            element: <Navigate to="../products" replace />,
+            element: withFeatureBoundary(<OrgPriceTiersPage />),
+          },
+          {
+            path: "price-tiers/:tierId",
+            element: withFeatureBoundary(<OrgPriceTierDetailPage />),
           },
           {
             path: "meter",
@@ -222,8 +257,16 @@ export const router = createBrowserRouter([
             element: withFeatureBoundary(<OrgCustomersPage />),
           },
           {
+            path: "customers/:customerId",
+            element: withFeatureBoundary(<OrgCustomerDetailPage />),
+          },
+          {
             path: "subscriptions",
             element: withFeatureBoundary(<OrgSubscriptionsPage />),
+          },
+          {
+            path: "subscriptions/:subscriptionId",
+            element: withFeatureBoundary(<OrgSubscriptionDetailPage />),
           },
           {
             path: "subscriptions/create",

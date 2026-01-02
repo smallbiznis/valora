@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useParams, useSearchParams } from "react-router-dom"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -30,6 +31,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
+import { canManageBilling } from "@/lib/roles"
+import { useOrgStore } from "@/stores/orgStore"
 
 type Subscription = {
   id?: string | number
@@ -134,10 +138,13 @@ const PAGE_SIZE = 20
 
 export default function OrgSubscriptionsPage() {
   const { orgId } = useParams()
+  const role = useOrgStore((state) => state.currentOrg?.role)
+  const canManage = canManageBilling(role)
   const [searchParams, setSearchParams] = useSearchParams()
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isForbidden, setIsForbidden] = useState(false)
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null)
   const [pageTokens, setPageTokens] = useState<string[]>([""])
   const [pageIndex, setPageIndex] = useState(0)
@@ -187,6 +194,7 @@ export default function OrgSubscriptionsPage() {
     let isMounted = true
     setIsLoading(true)
     setError(null)
+    setIsForbidden(false)
 
     admin
       .get("/subscriptions", {
@@ -206,7 +214,11 @@ export default function OrgSubscriptionsPage() {
       })
       .catch((err) => {
         if (!isMounted) return
-        setError(err?.message ?? "Unable to load subscriptions.")
+        if (isForbiddenError(err)) {
+          setIsForbidden(true)
+          return
+        }
+        setError(getErrorMessage(err, "Unable to load subscriptions."))
       })
       .finally(() => {
         if (!isMounted) return
@@ -221,6 +233,10 @@ export default function OrgSubscriptionsPage() {
   const hasPrevious = pageIndex > 0
   const hasNext = Boolean(pageInfo?.has_more && pageInfo?.next_page_token)
 
+  if (isForbidden) {
+    return <ForbiddenState description="You do not have access to subscriptions." />
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -231,15 +247,15 @@ export default function OrgSubscriptionsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm">
-            Export
-          </Button>
-          <Button variant="outline" size="sm">
-            Analyze
-          </Button>
-          <Button size="sm" asChild>
-            <Link to={createPath}>Create subscription</Link>
-          </Button>
+          {canManage ? (
+            <Button size="sm" asChild>
+              <Link to={createPath}>Create subscription</Link>
+            </Button>
+          ) : (
+            <Button size="sm" disabled>
+              Create subscription
+            </Button>
+          )}
         </div>
       </div>
 
@@ -330,11 +346,7 @@ export default function OrgSubscriptionsPage() {
             </div>
           </CardContent>
         </Card>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button variant="outline" size="sm">
-            Edit columns
-          </Button>
-        </div>
+        <div />
       </div>
 
       {isLoading && (
@@ -396,13 +408,22 @@ export default function OrgSubscriptionsPage() {
                 )
 
                 return (
-                  <TableRow key={rowKey}>
-                    <TableCell className="font-medium">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm">Subscription</span>
+                <TableRow key={rowKey}>
+                  <TableCell className="font-medium">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm">Subscription</span>
+                      {id ? (
+                        <Link
+                          className="text-text-muted text-xs hover:text-accent-primary"
+                          to={`/orgs/${orgId}/subscriptions/${id}`}
+                        >
+                          {displayID}
+                        </Link>
+                      ) : (
                         <span className="text-text-muted text-xs">{displayID}</span>
-                      </div>
-                    </TableCell>
+                      )}
+                    </div>
+                  </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         <span className="text-sm">{customerID}</span>
@@ -420,13 +441,22 @@ export default function OrgSubscriptionsPage() {
                     <TableCell>{formatDate(startAt)}</TableCell>
                     <TableCell>{formatDate(updatedAt)}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="Open subscription actions"
-                      >
-                        ...
-                      </Button>
+                      {id ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          aria-label="Open subscription actions"
+                        >
+                          <Link to={`/orgs/${orgId}/subscriptions/${id}`}>
+                            View
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button variant="ghost" size="icon-sm" aria-label="Open subscription actions">
+                          ...
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 )

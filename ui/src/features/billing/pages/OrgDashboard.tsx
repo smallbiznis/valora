@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link, Navigate } from "react-router-dom"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Alert } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useOrgStore } from "@/stores/orgStore"
+import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
 
 type CustomerBalance = {
   customer_id: string
@@ -211,6 +213,7 @@ export default function OrgDashboard() {
   const org = useOrgStore((s) => s.currentOrg)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isForbidden, setIsForbidden] = useState(false)
   const [customerBalances, setCustomerBalances] = useState<CustomerBalance[]>([])
   const [billingCycles, setBillingCycles] = useState<BillingCycleSummary[]>([])
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([])
@@ -223,6 +226,7 @@ export default function OrgDashboard() {
     }
     setIsLoading(true)
     setError(null)
+    setIsForbidden(false)
     try {
       const [customersRes, cyclesRes, invoicesRes, activityRes] = await Promise.all([
         admin.get("/billing/customers"),
@@ -245,7 +249,11 @@ export default function OrgDashboard() {
       setInvoices(Array.isArray(invoicePayload) ? invoicePayload : [])
       setActivity(Array.isArray(activityPayload) ? activityPayload : [])
     } catch (err: any) {
-      setError(err?.message ?? "Unable to load billing dashboard.")
+      if (isForbiddenError(err)) {
+        setIsForbidden(true)
+      } else {
+        setError(getErrorMessage(err, "Unable to load billing dashboard."))
+      }
       setCustomerBalances([])
       setBillingCycles([])
       setInvoices([])
@@ -296,6 +304,10 @@ export default function OrgDashboard() {
 
   if (!org) {
     return <Navigate to="/orgs" replace />
+  }
+
+  if (isForbidden) {
+    return <ForbiddenState description="You do not have access to billing dashboards." />
   }
 
   return (

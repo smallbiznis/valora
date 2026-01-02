@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { useFieldArray, useForm } from "react-hook-form"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -27,6 +28,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Spinner } from "@/components/ui/spinner"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
+import { canManageBilling } from "@/lib/roles"
+import { useOrgStore } from "@/stores/orgStore"
 
 type PricingModel = "FLAT" | "USAGE_BASED"
 type BillingInterval = "DAY" | "WEEK" | "MONTH" | "YEAR"
@@ -150,6 +153,8 @@ const formatStepStatus = (status: StepStatus) => {
 export default function CreateProduct() {
   const { orgId } = useParams()
   const navigate = useNavigate()
+  const role = useOrgStore((state) => state.currentOrg?.role)
+  const canManage = canManageBilling(role)
   const [stepStatus, setStepStatus] = useState<StepState>(defaultStepState)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [orchestrationError, setOrchestrationError] =
@@ -366,6 +371,13 @@ export default function CreateProduct() {
   }
 
   const runCreateFlow = async (values: CreateProductFormValues) => {
+    if (!canManage) {
+      setOrchestrationError({
+        kind: "unknown",
+        message: "You do not have permission to create products.",
+      })
+      return
+    }
     if (createdProductId || createdPriceId) {
       setOrchestrationError({
         kind: "unknown",
@@ -436,6 +448,10 @@ export default function CreateProduct() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (!canManage) {
+    return <ForbiddenState description="You do not have access to create products." />
   }
 
   const retryPricing = async () => {

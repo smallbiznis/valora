@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { IconDotsVertical } from "@tabler/icons-react"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Badge } from "@/components/ui/badge"
 import {
   Breadcrumb,
@@ -19,6 +19,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import {
   Table,
@@ -28,6 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
 
 type Invoice = {
   id?: string | number
@@ -83,6 +92,13 @@ export default function OrgInvoiceDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [customerError, setCustomerError] = useState<string | null>(null)
+  const [isForbidden, setIsForbidden] = useState(false)
+  const [isRenderOpen, setIsRenderOpen] = useState(false)
+  const [isRenderLoading, setIsRenderLoading] = useState(false)
+  const [renderError, setRenderError] = useState<string | null>(null)
+  const [renderedHtml, setRenderedHtml] = useState<string | null>(null)
+  const [renderedPdfUrl, setRenderedPdfUrl] = useState<string | null>(null)
+  const [renderIsSnapshot, setRenderIsSnapshot] = useState(false)
 
   useEffect(() => {
     if (!invoiceId) {
@@ -93,6 +109,7 @@ export default function OrgInvoiceDetailPage() {
     let isMounted = true
     setIsLoading(true)
     setError(null)
+    setIsForbidden(false)
 
     admin
       .get(`/invoices/${invoiceId}`)
@@ -102,7 +119,11 @@ export default function OrgInvoiceDetailPage() {
       })
       .catch((err) => {
         if (!isMounted) return
-        setError(err?.message ?? "Unable to load invoice.")
+        if (isForbiddenError(err)) {
+          setIsForbidden(true)
+          return
+        }
+        setError(getErrorMessage(err, "Unable to load invoice."))
       })
       .finally(() => {
         if (!isMounted) return
@@ -130,7 +151,7 @@ export default function OrgInvoiceDetailPage() {
       })
       .catch((err) => {
         if (!active) return
-        setCustomerError(err?.message ?? "Unable to load customer.")
+        setCustomerError(getErrorMessage(err, "Unable to load customer."))
       })
 
     return () => {
@@ -210,6 +231,10 @@ export default function OrgInvoiceDetailPage() {
     return <div className="text-status-error text-sm">{error}</div>
   }
 
+  if (isForbidden) {
+    return <ForbiddenState description="You do not have access to this invoice." />
+  }
+
   if (!invoice) {
     return <div className="text-text-muted text-sm">Invoice not found.</div>
   }
@@ -252,15 +277,31 @@ export default function OrgInvoiceDetailPage() {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm">
-            Edit draft
-          </Button>
-          <Button size="sm">Send invoice</Button>
-          <Button variant="outline" size="sm" disabled>
-            Charge customer
-          </Button>
-          <Button variant="outline" size="icon-sm" aria-label="Invoice actions">
-            <IconDotsVertical />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setIsRenderOpen(true)
+              if (renderedHtml) return
+              setIsRenderLoading(true)
+              setRenderError(null)
+              admin
+                .get(`/invoices/${invoiceId}/render`)
+                .then((response) => {
+                  const payload = response.data?.data ?? {}
+                  setRenderedHtml(payload.rendered_html ?? "")
+                  setRenderedPdfUrl(payload.rendered_pdf_url ?? null)
+                  setRenderIsSnapshot(Boolean(payload.is_snapshot))
+                })
+                .catch((err) => {
+                  setRenderError(getErrorMessage(err, "Unable to render invoice."))
+                })
+                .finally(() => {
+                  setIsRenderLoading(false)
+                })
+            }}
+          >
+            Preview render
           </Button>
         </div>
       </div>
@@ -268,12 +309,9 @@ export default function OrgInvoiceDetailPage() {
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-6">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Recent activity</CardTitle>
-              <Button variant="outline" size="sm">
-                Add note
-              </Button>
-            </CardHeader>
+          <CardHeader>
+            <CardTitle>Recent activity</CardTitle>
+          </CardHeader>
             <CardContent>
               <div className="rounded-lg border border-dashed p-6 text-center text-text-muted text-sm">
                 No recent activity
@@ -408,15 +446,12 @@ export default function OrgInvoiceDetailPage() {
             <CardHeader>
               <CardTitle>Accounting</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-wrap items-center justify-between gap-3 text-sm">
-              <div className="text-text-muted">
-                Use Revenue Recognition to automate accrual accounting for invoices.
-              </div>
-              <Button variant="link" size="sm">
-                Go to Revenue Recognition
-              </Button>
-            </CardContent>
-          </Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 text-sm">
+            <div className="text-text-muted">
+              Use Revenue Recognition to automate accrual accounting for invoices.
+            </div>
+          </CardContent>
+        </Card>
 
           <Card>
             <CardHeader>
@@ -471,12 +506,9 @@ export default function OrgInvoiceDetailPage() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Metadata</CardTitle>
-              <Button variant="outline" size="icon-sm" aria-label="Edit metadata">
-                ...
-              </Button>
-            </CardHeader>
+          <CardHeader>
+            <CardTitle>Metadata</CardTitle>
+          </CardHeader>
             <CardContent>
               {hasMetadata(invoice) ? (
                 <div className="space-y-2 text-sm">
@@ -498,6 +530,51 @@ export default function OrgInvoiceDetailPage() {
           </Card>
         </div>
       </div>
+
+      <Dialog
+        open={isRenderOpen}
+        onOpenChange={(open) => {
+          setIsRenderOpen(open)
+          if (!open) {
+            setRenderError(null)
+          }
+        }}
+      >
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Invoice preview</DialogTitle>
+            <DialogDescription>
+              {renderIsSnapshot
+                ? "This preview is the finalized snapshot stored on the invoice."
+                : "This preview is rendered from the latest template configuration."}
+            </DialogDescription>
+          </DialogHeader>
+          {isRenderLoading && (
+            <div className="text-text-muted text-sm">Rendering invoice...</div>
+          )}
+          {renderError && <div className="text-status-error text-sm">{renderError}</div>}
+          {!isRenderLoading && !renderError && renderedHtml && (
+            <div className="max-h-[70vh] overflow-auto rounded-md border bg-white p-4 text-black">
+              <div dangerouslySetInnerHTML={{ __html: renderedHtml }} />
+            </div>
+          )}
+          {!isRenderLoading && !renderError && !renderedHtml && (
+            <div className="text-text-muted text-sm">No render available.</div>
+          )}
+          <DialogFooter>
+            {renderedPdfUrl && (
+              <Button variant="outline" asChild>
+                <a href={renderedPdfUrl} target="_blank" rel="noreferrer">
+                  Open PDF
+                </a>
+              </Button>
+            )}
+            <Button type="button" onClick={() => setIsRenderOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

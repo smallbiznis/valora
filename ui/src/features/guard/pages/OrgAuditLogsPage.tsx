@@ -6,6 +6,7 @@ import {
 } from "@tabler/icons-react"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
 
 type AuditLog = Record<string, unknown>
 
@@ -168,6 +170,7 @@ export default function OrgAuditLogsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isForbidden, setIsForbidden] = useState(false)
   const [pageToken, setPageToken] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
 
@@ -192,6 +195,7 @@ export default function OrgAuditLogsPage() {
 
       setIsLoading(true)
       setError(null)
+      setIsForbidden(false)
 
       const params: Record<string, string | number> = {
         page_size: 50,
@@ -239,7 +243,11 @@ export default function OrgAuditLogsPage() {
         setHasMore(Boolean(more))
         setLogs((prev) => (append ? [...prev, ...data] : data))
       } catch (err: any) {
-        setError(err?.message ?? "Unable to load audit logs.")
+        if (isForbiddenError(err)) {
+          setIsForbidden(true)
+        } else {
+          setError(getErrorMessage(err, "Unable to load audit logs."))
+        }
         if (!append) {
           setLogs([])
         }
@@ -287,6 +295,10 @@ export default function OrgAuditLogsPage() {
     const value = detailMetadata.billing_cycle_id
     return typeof value === "string" ? value : ""
   }, [detailMetadata])
+
+  if (isForbidden) {
+    return <ForbiddenState description="You do not have access to audit logs." />
+  }
 
   return (
     <div className="space-y-6">

@@ -1,13 +1,39 @@
 import { useEffect, useMemo, useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { Plus } from "lucide-react"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch"
+import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
+import { canManageBilling } from "@/lib/roles"
+import { useOrgStore } from "@/stores/orgStore"
 
 type Meter = {
   id: string
@@ -40,9 +66,23 @@ const formatAggregation = (value: string) => {
 
 export default function OrgMeterDetailPage() {
   const { orgId, meterId } = useParams()
+  const navigate = useNavigate()
+  const role = useOrgStore((state) => state.currentOrg?.role)
+  const canManage = canManageBilling(role)
   const [meter, setMeter] = useState<Meter | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isForbidden, setIsForbidden] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [editName, setEditName] = useState("")
+  const [editAggregation, setEditAggregation] = useState("")
+  const [editUnit, setEditUnit] = useState("")
+  const [editActive, setEditActive] = useState(true)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!orgId || !meterId) {
@@ -53,6 +93,7 @@ export default function OrgMeterDetailPage() {
     let isMounted = true
     setIsLoading(true)
     setError(null)
+    setIsForbidden(false)
 
     admin
       .get(`/meters/${meterId}`)
@@ -62,7 +103,11 @@ export default function OrgMeterDetailPage() {
       })
       .catch((err) => {
         if (!isMounted) return
-        setError(err?.message ?? "Unable to load meter.")
+        if (isForbiddenError(err)) {
+          setIsForbidden(true)
+          return
+        }
+        setError(getErrorMessage(err, "Unable to load meter."))
       })
       .finally(() => {
         if (!isMounted) return
@@ -98,6 +143,10 @@ export default function OrgMeterDetailPage() {
     return <div className="text-status-error text-sm">{error}</div>
   }
 
+  if (isForbidden) {
+    return <ForbiddenState description="You do not have access to this meter." />
+  }
+
   if (!meter) {
     return <div className="text-text-muted text-sm">Meter not found.</div>
   }
@@ -118,9 +167,30 @@ export default function OrgMeterDetailPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline">Copy meter to live mode</Button>
-          <Button variant="default">Edit meter</Button>
-          <Button variant="outline">Create alert</Button>
+          <Button
+            variant="default"
+            onClick={() => {
+              setEditName(meter.name)
+              setEditAggregation(meter.aggregation)
+              setEditUnit(meter.unit)
+              setEditActive(meter.active)
+              setEditError(null)
+              setIsEditOpen(true)
+            }}
+            disabled={!canManage}
+          >
+            Edit meter
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setDeleteError(null)
+              setIsDeleteOpen(true)
+            }}
+            disabled={!canManage}
+          >
+            Delete meter
+          </Button>
         </div>
       </div>
 
@@ -198,6 +268,148 @@ export default function OrgMeterDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog
+        open={isEditOpen}
+        onOpenChange={(open) => {
+          setIsEditOpen(open)
+          if (!open) {
+            setEditError(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit meter</DialogTitle>
+            <DialogDescription>
+              Changes apply immediately and affect future usage ingestion.
+            </DialogDescription>
+          </DialogHeader>
+          {editError && <div className="text-status-error text-sm">{editError}</div>}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="meter-edit-name">Display name</Label>
+              <Input
+                id="meter-edit-name"
+                value={editName}
+                onChange={(event) => setEditName(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="meter-edit-aggregation">Aggregation</Label>
+              <Select value={editAggregation} onValueChange={setEditAggregation}>
+                <SelectTrigger id="meter-edit-aggregation">
+                  <SelectValue placeholder="Select aggregation method" />
+                </SelectTrigger>
+                <SelectContent>
+                  {["SUM", "COUNT", "MAX", "MIN", "AVG"].map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="meter-edit-unit">Unit</Label>
+              <Input
+                id="meter-edit-unit"
+                value={editUnit}
+                onChange={(event) => setEditUnit(event.target.value)}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="space-y-1">
+                <Label htmlFor="meter-edit-active">Active</Label>
+                <p className="text-text-muted text-xs">
+                  Disable to stop ingesting usage events.
+                </p>
+              </div>
+              <Switch
+                id="meter-edit-active"
+                checked={editActive}
+                onCheckedChange={setEditActive}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsEditOpen(false)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={isSaving}
+              onClick={async () => {
+                if (!meterId) return
+                setIsSaving(true)
+                setEditError(null)
+                try {
+                  const payload = {
+                    name: editName.trim(),
+                    aggregation_type: editAggregation.trim(),
+                    unit: editUnit.trim(),
+                    active: editActive,
+                  }
+                  const res = await admin.patch(`/meters/${meterId}`, payload)
+                  setMeter(res.data?.data ?? meter)
+                  setIsEditOpen(false)
+                } catch (err) {
+                  setEditError(getErrorMessage(err, "Unable to update meter."))
+                } finally {
+                  setIsSaving(false)
+                }
+              }}
+            >
+              {isSaving ? "Saving..." : "Confirm update"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={isDeleteOpen}
+        onOpenChange={(open) => {
+          setIsDeleteOpen(open)
+          if (!open) {
+            setDeleteError(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete meter</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the meter and cannot be undone. Billing events tied to this meter will stop ingesting.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteError && <div className="text-status-error text-sm">{deleteError}</div>}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={async () => {
+                if (!meterId || !orgId) return
+                setIsDeleting(true)
+                setDeleteError(null)
+                try {
+                  await admin.delete(`/meters/${meterId}`)
+                  navigate(`/orgs/${orgId}/meter`, { replace: true })
+                } catch (err) {
+                  setDeleteError(getErrorMessage(err, "Unable to delete meter."))
+                  setIsDeleting(false)
+                }
+              }}
+            >
+              {isDeleting ? "Deleting..." : "Delete meter"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

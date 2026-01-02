@@ -34,7 +34,7 @@ export default function DashboardLayout() {
         const match = list.find(
           (item: any) => String(item?.id ?? item?.ID ?? item?.org_id ?? "") === orgId
         )
-        setCurrentOrg(match ?? { id: orgId, name: `Org ${orgId}` })
+        setCurrentOrg(match ?? { id: orgId, name: `Org ${orgId}`, role: "MEMBER" })
         setIsLoading(false)
       })
       .catch(() => {

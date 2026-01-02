@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
-import { Plus, MoreHorizontal } from "lucide-react"
+import { Plus } from "lucide-react"
 
 import { admin } from "@/api/client"
+import { ForbiddenState } from "@/components/forbidden-state"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,6 +15,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
+import { canManageBilling } from "@/lib/roles"
+import { useOrgStore } from "@/stores/orgStore"
 
 type Meter = {
   id: string
@@ -46,9 +50,12 @@ const formatTimestamp = (value: string) => {
 
 export default function OrgMeterPage() {
   const { orgId } = useParams()
+  const role = useOrgStore((state) => state.currentOrg?.role)
+  const canManage = canManageBilling(role)
   const [meters, setMeters] = useState<Meter[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isForbidden, setIsForbidden] = useState(false)
 
   const rows = useMemo(() => meters, [meters])
 
@@ -61,6 +68,7 @@ export default function OrgMeterPage() {
     let isMounted = true
     setIsLoading(true)
     setError(null)
+    setIsForbidden(false)
 
     admin
       .get("/meters")
@@ -70,7 +78,11 @@ export default function OrgMeterPage() {
       })
       .catch((err) => {
         if (!isMounted) return
-        setError(err?.message ?? "Unable to load meters.")
+        if (isForbiddenError(err)) {
+          setIsForbidden(true)
+          return
+        }
+        setError(getErrorMessage(err, "Unable to load meters."))
       })
       .finally(() => {
         if (!isMounted) return
@@ -82,6 +94,10 @@ export default function OrgMeterPage() {
     }
   }, [orgId])
 
+  if (isForbidden) {
+    return <ForbiddenState description="You do not have access to meters." />
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -92,7 +108,7 @@ export default function OrgMeterPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {orgId && (
+          {orgId && canManage && (
             <Button size="sm" asChild>
               <Link to={`/orgs/${orgId}/meter/create`}>
                 <Plus className="size-4" />
@@ -100,9 +116,12 @@ export default function OrgMeterPage() {
               </Link>
             </Button>
           )}
-          <Button size="icon-sm" variant="outline" aria-label="More actions">
-            <MoreHorizontal className="size-4" />
-          </Button>
+          {orgId && !canManage && (
+            <Button size="sm" disabled>
+              <Plus className="size-4" />
+              Create meter
+            </Button>
+          )}
         </div>
       </div>
 
