@@ -59,7 +59,17 @@ func main() {
 			}
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
+					ctx, cancel := context.WithCancel(context.Background())
+
 					go sched.RunForever(ctx)
+
+					lc.Append(fx.Hook{
+						OnStop: func(context.Context) error {
+							cancel()
+							return nil
+						},
+					})
+
 					return nil
 				},
 			})

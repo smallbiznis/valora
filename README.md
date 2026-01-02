@@ -152,6 +152,20 @@ Releases are tag-driven and backed by a curated changelog.
 
 ---
 
+## Observability
+
+Grafana dashboard expects these metrics names:
+
+- valora_scheduler_job_runs_total
+- valora_scheduler_job_duration_seconds
+- valora_scheduler_job_timeouts_total
+- valora_scheduler_job_errors_total
+- valora_scheduler_batch_processed_total
+- valora_scheduler_batch_deferred_total
+- valora_scheduler_runloop_lag_seconds
+
+---
+
 ## License
 
 Valora OSS is open-source.
