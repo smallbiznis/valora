@@ -26,6 +26,7 @@ import (
 	ratingdomain "github.com/smallbiznis/valora/internal/rating/domain"
 	signupdomain "github.com/smallbiznis/valora/internal/signup/domain"
 	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
+	usagedomain "github.com/smallbiznis/valora/internal/usage/domain"
 	"gorm.io/gorm"
 )
 
@@ -235,6 +236,7 @@ func isValidationError(err error) bool {
 		isInvoiceValidationError(err),
 		isInvoiceTemplateValidationError(err),
 		isRatingValidationError(err),
+		isUsageValidationError(err),
 		isPaymentValidationError(err),
 		isProductValidationError(err),
 		isPriceValidationError(err),
@@ -248,6 +250,23 @@ func isValidationError(err error) bool {
 		isAuthorizationValidationError(err),
 		isPaymentProviderValidationError(err),
 		isScopeValidationError(err):
+		return true
+	default:
+		return false
+	}
+}
+
+func isUsageValidationError(err error) bool {
+	switch err {
+	case usagedomain.ErrInvalidOrganization,
+		usagedomain.ErrInvalidCustomer,
+		usagedomain.ErrInvalidSubscription,
+		usagedomain.ErrInvalidSubscriptionItem,
+		usagedomain.ErrInvalidMeter,
+		usagedomain.ErrInvalidMeterCode,
+		usagedomain.ErrInvalidValue,
+		usagedomain.ErrInvalidRecordedAt,
+		usagedomain.ErrInvalidIdempotencyKey:
 		return true
 	default:
 		return false

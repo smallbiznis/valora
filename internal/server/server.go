@@ -53,6 +53,7 @@ import (
 	pricetierdomain "github.com/smallbiznis/valora/internal/pricetier/domain"
 	"github.com/smallbiznis/valora/internal/product"
 	productdomain "github.com/smallbiznis/valora/internal/product/domain"
+	"github.com/smallbiznis/valora/internal/ratelimit"
 	"github.com/smallbiznis/valora/internal/rating"
 	ratingdomain "github.com/smallbiznis/valora/internal/rating/domain"
 	"github.com/smallbiznis/valora/internal/reference"
@@ -94,6 +95,7 @@ var Module = fx.Module("http.server",
 	paymentprovider.Module,
 	reference.Module,
 	rating.Module,
+	ratelimit.Module,
 	subscription.Module,
 	usage.Module,
 	fx.Invoke(NewServer),
@@ -167,6 +169,8 @@ type Server struct {
 	ratingSvc           ratingdomain.Service
 	subscriptionSvc     subscriptiondomain.Service
 	usagesvc            usagedomain.Service
+	obsMetrics          *obsmetrics.Metrics
+	usageLimiter        *ratelimit.UsageIngestLimiter
 
 	scheduler *scheduler.Scheduler `optional:"true"`
 }
@@ -201,6 +205,8 @@ type ServerParams struct {
 	RatingSvc           ratingdomain.Service
 	SubscriptionSvc     subscriptiondomain.Service
 	Usagesvc            usagedomain.Service
+	ObsMetrics          *obsmetrics.Metrics           `optional:"true"`
+	UsageLimiter        *ratelimit.UsageIngestLimiter `optional:"true"`
 
 	Scheduler *scheduler.Scheduler
 }
@@ -235,6 +241,8 @@ func NewServer(p ServerParams) *Server {
 		ratingSvc:           p.RatingSvc,
 		subscriptionSvc:     p.SubscriptionSvc,
 		usagesvc:            p.Usagesvc,
+		obsMetrics:          p.ObsMetrics,
+		usageLimiter:        p.UsageLimiter,
 		scheduler:           p.Scheduler,
 	}
 
@@ -328,7 +336,7 @@ func (s *Server) registerAPIRoutes() {
 	// -------- Payment Webhooks --------
 	api.POST("/payments/webhooks/:provider", s.HandlePaymentWebhook)
 
-	api.POST("/usage", s.APIKeyRequired(), s.IngestUsage)
+	api.POST("/usage", s.APIKeyRequired(), s.UsageIngestRateLimit(), s.IngestUsage)
 
 	if s.cfg.Environment != "production" {
 		api.POST("/test/cleanup", s.TestCleanup)

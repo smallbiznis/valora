@@ -39,6 +39,8 @@ type Config struct {
 
 	OAuth2ClientID     string
 	OAuth2ClientSecret string
+
+	RateLimit RateLimitConfig
 }
 
 type CloudConfig struct {
@@ -61,6 +63,20 @@ type BootstrapConfig struct {
 	AllowAssignUserRole     string
 	AutoAssignOrgID         string
 	AutoAssignOrgRole       string
+}
+
+type RateLimitConfig struct {
+	Enabled bool
+
+	RedisAddr     string
+	RedisPassword string
+	RedisDB       int
+
+	UsageIngestOrgRate               float64
+	UsageIngestOrgBurst              int
+	UsageIngestEndpointRate          float64
+	UsageIngestEndpointBurst         int
+	UsageIngestConcurrencyTTLSeconds int
 }
 
 // Load loads configuration from environment variables and .env file.
@@ -102,15 +118,36 @@ func Load() Config {
 			AutoAssignOrgID:         strings.TrimSpace(getenv("AUTO_ASSIGN_ORG_ID", "")),
 			AutoAssignOrgRole:       strings.TrimSpace(getenv("AUTO_ASSIGN_ORG_ROLE", "")),
 		},
-		DBType:             getenv("DB_TYPE", "postgres"),
-		DBHost:             getenv("DB_HOST", "localhost"),
-		DBPort:             getenv("DB_PORT", "5433"),
-		DBName:             getenv("DB_NAME", "postgres"),
-		DBUser:             getenv("DB_USER", "postgres"),
-		DBPassword:         getenv("DB_PASSWORD", "35411231"),
-		DBSSLMode:          getenv("DB_SSL_MODE", "disable"),
+		DBType:     getenv("DB_TYPE", "postgres"),
+		DBHost:     getenv("DB_HOST", "localhost"),
+		DBPort:     getenv("DB_PORT", "5433"),
+		DBName:     getenv("DB_NAME", "postgres"),
+		DBUser:     getenv("DB_USER", "postgres"),
+		DBPassword: getenv("DB_PASSWORD", "35411231"),
+		DBSSLMode:  getenv("DB_SSL_MODE", "disable"),
+
+		// Database connection pool settings
+		DBMaxIdleConn:     getenvInt("DB_MAX_IDLE_CONN", 10),
+		DBMaxOpenConn:     getenvInt("DB_MAX_OPEN_CONN", 50),
+		DBConnMaxLifetime: getenvInt("DB_CONN_MAX_LIFETIME", 300),
+		DBConnMaxIdleTime: getenvInt("DB_CONN_MAX_IDLE_TIME", 60),
+
+		// OAuth2 settings
 		OAuth2ClientID:     strings.TrimSpace(getenv("OAUTH2_CLIENT_ID", "")),
 		OAuth2ClientSecret: strings.TrimSpace(getenv("OAUTH2_CLIENT_SECRET", "")),
+
+		// Ratelimit settings
+		RateLimit: RateLimitConfig{
+			Enabled:                          getenvBool("USAGE_INGEST_RATE_LIMIT_ENABLED", true),
+			RedisAddr:                        strings.TrimSpace(getenv("RATE_LIMIT_REDIS_ADDR", "")),
+			RedisPassword:                    strings.TrimSpace(getenv("RATE_LIMIT_REDIS_PASSWORD", "")),
+			RedisDB:                          getenvInt("RATE_LIMIT_REDIS_DB", 0),
+			UsageIngestOrgRate:               getenvFloat("USAGE_INGEST_ORG_RATE", 25),
+			UsageIngestOrgBurst:              getenvInt("USAGE_INGEST_ORG_BURST", 50),
+			UsageIngestEndpointRate:          getenvFloat("USAGE_INGEST_ENDPOINT_RATE", 15),
+			UsageIngestEndpointBurst:         getenvInt("USAGE_INGEST_ENDPOINT_BURST", 30),
+			UsageIngestConcurrencyTTLSeconds: clampInt(getenvInt("USAGE_INGEST_CONCURRENCY_TTL_SECONDS", 3), 2, 5),
+		},
 	}
 
 	return cfg
@@ -170,6 +207,40 @@ func getenvInt64(key string, def int64) int64 {
 		return def
 	}
 	return parsed
+}
+
+func getenvInt(key string, def int) int {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return def
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return def
+	}
+	return parsed
+}
+
+func getenvFloat(key string, def float64) float64 {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return def
+	}
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return def
+	}
+	return parsed
+}
+
+func clampInt(value, min, max int) int {
+	if value < min {
+		return min
+	}
+	if value > max {
+		return max
+	}
+	return value
 }
 
 func parseServices(raw string) []string {
