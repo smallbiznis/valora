@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/smallbiznis/valora/internal/config"
+	obslogger "github.com/smallbiznis/valora/internal/observability/logger"
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -14,6 +15,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 	"gorm.io/plugin/prometheus"
 )
 
@@ -28,6 +30,14 @@ var Module = fx.Module("database",
 func New(cfg config.Config, dialector gorm.Dialector, opts ...gorm.Option) (*gorm.DB, error) {
 	var db *gorm.DB
 	var err error
+
+	gormLogCfg := obslogger.DefaultGormLoggerConfig()
+	if strings.ToLower(strings.TrimSpace(cfg.Environment)) != "production" {
+		gormLogCfg.Level = gormlogger.Info
+	}
+	opts = append(opts, &gorm.Config{
+		Logger: obslogger.NewGormLogger(gormLogCfg),
+	})
 
 	for i := 0; i < 5; i++ {
 		db, err = gorm.Open(dialector, opts...)

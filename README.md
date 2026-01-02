@@ -1,4 +1,3 @@
-
 # Valora OSS
 
 **Valora OSS** is an open-source **deterministic billing engine** for modern SaaS and platform products.
@@ -12,6 +11,20 @@ Valora extracts billing concerns—usage metering, pricing, subscriptions, and i
 
 > **Valora determines what should be billed.
 > It does not execute payments.**
+
+## Why Valora Exists
+
+Valora was created as a deliberate response to a common gap in many organizations:
+the desire for innovation without sufficient space to experiment, validate,
+and evolve systems responsibly.
+
+Rather than continuously giving more within constrained structures,
+Valora represents a conscious decision to establish clear professional boundaries—
+to build, test, and learn in an environment that values clarity,
+determinism, and accountability.
+
+This project is developed independently, outside of employment responsibilities,
+and is not intended to replicate or compete with any internal company systems.
 
 ---
 
@@ -150,9 +163,7 @@ See the `LICENSE` file for details.
 
 📚 Documentation:
 
-- Local: http://localhost:3000 (after `pnpm start` in `/docs`)
 - Source: `./docs/docs/index.md`
 
 > Valora aims to make billing **boring, predictable, and explainable**—
 > so teams can focus on building their products.
->
