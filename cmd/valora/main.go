@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/bwmarrin/snowflake"
+	"github.com/smallbiznis/valora/internal/clock"
 	"github.com/smallbiznis/valora/internal/migration"
 	"github.com/smallbiznis/valora/internal/observability"
 	"github.com/smallbiznis/valora/internal/scheduler"
@@ -15,6 +16,7 @@ func main() {
 		observability.Module,
 		fx.Provide(RegisterSnowflake),
 		db.Module,
+		clock.Module,
 		scheduler.Module,
 		migration.Module,
 		server.Module,
