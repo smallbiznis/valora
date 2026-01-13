@@ -7,8 +7,8 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
-	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
-	"github.com/smallbiznis/valora/pkg/db/pagination"
+	subscriptiondomain "github.com/smallbiznis/railzway/internal/subscription/domain"
+	"github.com/smallbiznis/railzway/pkg/db/pagination"
 )
 
 func (s *Server) CreateSubscription(c *gin.Context) {

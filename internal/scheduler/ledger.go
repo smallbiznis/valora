@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
-	ledgerdomain "github.com/smallbiznis/valora/internal/ledger/domain"
+	invoicedomain "github.com/smallbiznis/railzway/internal/invoice/domain"
+	ledgerdomain "github.com/smallbiznis/railzway/internal/ledger/domain"
 )
 
 // Note: Deprecated

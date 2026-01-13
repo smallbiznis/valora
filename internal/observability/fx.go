@@ -1,9 +1,9 @@
 package observability
 
 import (
-	"github.com/smallbiznis/valora/internal/observability/logger"
-	"github.com/smallbiznis/valora/internal/observability/metrics"
-	"github.com/smallbiznis/valora/internal/observability/tracing"
+	"github.com/smallbiznis/railzway/internal/observability/logger"
+	"github.com/smallbiznis/railzway/internal/observability/metrics"
+	"github.com/smallbiznis/railzway/internal/observability/tracing"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/fx"
 )

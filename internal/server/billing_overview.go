@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	billingoverviewdomain "github.com/smallbiznis/valora/internal/billingoverview/domain"
+	billingoverviewdomain "github.com/smallbiznis/railzway/internal/billingoverview/domain"
 )
 
 func (s *Server) GetBillingOverviewMRR(c *gin.Context) {

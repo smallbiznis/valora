@@ -3,8 +3,8 @@ package log
 import (
 	"context"
 
-	"github.com/smallbiznis/valora/internal/config"
-	"github.com/smallbiznis/valora/pkg/log/ctxlogger"
+	"github.com/smallbiznis/railzway/internal/config"
+	"github.com/smallbiznis/railzway/pkg/log/ctxlogger"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

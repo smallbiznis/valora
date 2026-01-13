@@ -1,8 +1,8 @@
 package migration
 
 import (
-	"github.com/smallbiznis/valora/internal/config"
-	"github.com/smallbiznis/valora/internal/seed"
+	"github.com/smallbiznis/railzway/internal/config"
+	"github.com/smallbiznis/railzway/internal/seed"
 	"go.uber.org/fx"
 	"gorm.io/gorm"
 )

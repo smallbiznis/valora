@@ -8,7 +8,7 @@ import (
 	"time"
 
 	redis "github.com/redis/go-redis/v9"
-	"github.com/smallbiznis/valora/internal/config"
+	"github.com/smallbiznis/railzway/internal/config"
 )
 
 const (

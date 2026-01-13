@@ -9,11 +9,11 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
-	authdomain "github.com/smallbiznis/valora/internal/auth/domain"
-	"github.com/smallbiznis/valora/internal/config"
-	orgdomain "github.com/smallbiznis/valora/internal/organization/domain"
-	"github.com/smallbiznis/valora/internal/signup"
-	signupdomain "github.com/smallbiznis/valora/internal/signup/domain"
+	authdomain "github.com/smallbiznis/railzway/internal/auth/domain"
+	"github.com/smallbiznis/railzway/internal/config"
+	orgdomain "github.com/smallbiznis/railzway/internal/organization/domain"
+	"github.com/smallbiznis/railzway/internal/signup"
+	signupdomain "github.com/smallbiznis/railzway/internal/signup/domain"
 )
 
 type fakeSignupService struct {

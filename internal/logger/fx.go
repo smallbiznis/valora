@@ -3,7 +3,7 @@ package logger
 import (
 	"context"
 
-	"github.com/smallbiznis/valora/internal/config"
+	"github.com/smallbiznis/railzway/internal/config"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )

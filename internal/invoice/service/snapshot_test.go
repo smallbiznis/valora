@@ -7,9 +7,9 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/glebarez/sqlite"
-	billingcycledomain "github.com/smallbiznis/valora/internal/billingcycle/domain"
-	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
-	ratingdomain "github.com/smallbiznis/valora/internal/rating/domain"
+	billingcycledomain "github.com/smallbiznis/railzway/internal/billingcycle/domain"
+	invoicedomain "github.com/smallbiznis/railzway/internal/invoice/domain"
+	ratingdomain "github.com/smallbiznis/railzway/internal/rating/domain"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"gorm.io/gorm"

@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	obscontext "github.com/smallbiznis/valora/internal/observability/context"
-	obslogger "github.com/smallbiznis/valora/internal/observability/logger"
-	obsmetrics "github.com/smallbiznis/valora/internal/observability/metrics"
+	obscontext "github.com/smallbiznis/railzway/internal/observability/context"
+	obslogger "github.com/smallbiznis/railzway/internal/observability/logger"
+	obsmetrics "github.com/smallbiznis/railzway/internal/observability/metrics"
 	"go.uber.org/zap"
 )
 

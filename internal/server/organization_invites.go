@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	organizationdomain "github.com/smallbiznis/valora/internal/organization/domain"
+	organizationdomain "github.com/smallbiznis/railzway/internal/organization/domain"
 )
 
 type inviteMembersRequest struct {

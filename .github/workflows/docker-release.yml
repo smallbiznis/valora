@@ -19,19 +19,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: valora
+          - image: railzway
             context: .
             dockerfile: Dockerfile
-          - image: valora-admin
+          - image: railzway-admin
             context: .
             dockerfile: apps/admin/Dockerfile
-          - image: valora-invoice
+          - image: railzway-invoice
             context: .
             dockerfile: apps/invoice/Dockerfile
-          - image: valora-scheduler
+          - image: railzway-scheduler
             context: .
             dockerfile: apps/scheduler/Dockerfile
-          - image: valora-api
+          - image: railzway-api
             context: .
             dockerfile: apps/api/Dockerfile
 

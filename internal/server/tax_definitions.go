@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	taxdomain "github.com/smallbiznis/valora/internal/tax/domain"
+	taxdomain "github.com/smallbiznis/railzway/internal/tax/domain"
 )
 
 type createTaxDefinitionRequest struct {

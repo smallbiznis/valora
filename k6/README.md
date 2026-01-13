@@ -41,7 +41,7 @@ Tuning (optional):
 Usage ingest load (hot path):
 ```
 BASE_URL=http://localhost:8080 \
-API_KEY=valora_test_key \
+API_KEY=railzway_test_key \
 CUSTOMER_ID=1234567890123456 \
 METER_CODE=api_calls \
 k6 run k6/usage/ingest_load.js
@@ -50,7 +50,7 @@ k6 run k6/usage/ingest_load.js
 Usage ingest idempotency:
 ```
 BASE_URL=http://localhost:8080 \
-API_KEY=valora_test_key \
+API_KEY=railzway_test_key \
 CUSTOMER_ID=1234567890123456 \
 METER_CODE=api_calls \
 k6 run k6/usage/ingest_idempotency.js
@@ -59,7 +59,7 @@ k6 run k6/usage/ingest_idempotency.js
 Usage ingest burst:
 ```
 BASE_URL=http://localhost:8080 \
-API_KEY=valora_test_key \
+API_KEY=railzway_test_key \
 CUSTOMER_ID=1234567890123456 \
 METER_CODE=api_calls \
 BURST_VUS=40 \
@@ -69,7 +69,7 @@ k6 run k6/usage/ingest_burst.js
 API key auth performance:
 ```
 BASE_URL=http://localhost:8080 \
-API_KEY=valora_test_key \
+API_KEY=railzway_test_key \
 AUTH_COMPARE=true \
 k6 run k6/usage/api_key_auth_perf.js
 ```

@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	"github.com/smallbiznis/valora/internal/orgcontext"
-	pricedomain "github.com/smallbiznis/valora/internal/price/domain"
-	pricetierdomain "github.com/smallbiznis/valora/internal/pricetier/domain"
+	"github.com/smallbiznis/railzway/internal/orgcontext"
+	pricedomain "github.com/smallbiznis/railzway/internal/price/domain"
+	pricetierdomain "github.com/smallbiznis/railzway/internal/pricetier/domain"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/datatypes"

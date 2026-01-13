@@ -1,8 +1,8 @@
 package audit
 
 import (
-	"github.com/smallbiznis/valora/internal/audit/repository"
-	"github.com/smallbiznis/valora/internal/audit/service"
+	"github.com/smallbiznis/railzway/internal/audit/repository"
+	"github.com/smallbiznis/railzway/internal/audit/service"
 	"go.uber.org/fx"
 )
 

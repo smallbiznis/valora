@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	auditdomain "github.com/smallbiznis/valora/internal/audit/domain"
-	templatedomain "github.com/smallbiznis/valora/internal/invoicetemplate/domain"
-	"github.com/smallbiznis/valora/internal/orgcontext"
+	auditdomain "github.com/smallbiznis/railzway/internal/audit/domain"
+	templatedomain "github.com/smallbiznis/railzway/internal/invoicetemplate/domain"
+	"github.com/smallbiznis/railzway/internal/orgcontext"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/datatypes"

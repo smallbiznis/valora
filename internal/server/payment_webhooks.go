@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	paymentdomain "github.com/smallbiznis/valora/internal/payment/domain"
+	paymentdomain "github.com/smallbiznis/railzway/internal/payment/domain"
 )
 
 func (s *Server) HandlePaymentWebhook(c *gin.Context) {

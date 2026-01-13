@@ -18,7 +18,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN go build -o /app/valora ./cmd/valora
+RUN go build -o /app/railzway ./cmd/railzway
 
 # =========================
 # RUNTIME
@@ -27,7 +27,7 @@ FROM alpine:latest
 WORKDIR /app
 
 # Copy binary
-COPY --from=go-builder /app/valora .
+COPY --from=go-builder /app/railzway .
 
 # Copy UI assets (Admin Dashboard)
 COPY --from=ui-builder /app/dist ./public
@@ -38,4 +38,4 @@ ENV STATIC_DIR=./public
 ENV GIN_MODE=release
 
 EXPOSE 8080
-CMD ["./valora"]
+CMD ["./railzway"]

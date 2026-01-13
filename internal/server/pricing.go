@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	pricedomain "github.com/smallbiznis/valora/internal/price/domain"
+	pricedomain "github.com/smallbiznis/railzway/internal/price/domain"
 )
 
 func (s *Server) CreatePricing(c *gin.Context) {

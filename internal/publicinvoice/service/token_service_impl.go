@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	"github.com/smallbiznis/valora/internal/config"
-	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
+	"github.com/smallbiznis/railzway/internal/config"
+	invoicedomain "github.com/smallbiznis/railzway/internal/invoice/domain"
 
-	publicinvoicedomain "github.com/smallbiznis/valora/internal/publicinvoice/domain"
+	publicinvoicedomain "github.com/smallbiznis/railzway/internal/publicinvoice/domain"
 	"go.uber.org/fx"
 )
 

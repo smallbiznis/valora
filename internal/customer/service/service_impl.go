@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	"github.com/smallbiznis/valora/internal/customer/domain"
-	"github.com/smallbiznis/valora/internal/orgcontext"
-	"github.com/smallbiznis/valora/pkg/db/pagination"
+	"github.com/smallbiznis/railzway/internal/customer/domain"
+	"github.com/smallbiznis/railzway/internal/orgcontext"
+	"github.com/smallbiznis/railzway/pkg/db/pagination"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/datatypes"

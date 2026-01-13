@@ -1,7 +1,7 @@
 package email
 
 import (
-	"github.com/smallbiznis/valora/internal/config"
+	"github.com/smallbiznis/railzway/internal/config"
 	"go.uber.org/fx"
 )
 

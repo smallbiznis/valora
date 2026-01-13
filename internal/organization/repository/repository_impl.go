@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/bwmarrin/snowflake"
-	"github.com/smallbiznis/valora/internal/organization/domain"
+	"github.com/smallbiznis/railzway/internal/organization/domain"
 	"gorm.io/gorm"
 )
 

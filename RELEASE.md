@@ -44,11 +44,11 @@ On tag push:
 - Title: `Valora OSS vX.Y.Z`
 - Body: release notes from `CHANGELOG.md`
 - Include Docker image references:
-  - `ghcr.io/<org>/valora:vX.Y.Z` (Monolith)
-  - `ghcr.io/<org>/valora-admin:vX.Y.Z` (Control Plane)
-  - `ghcr.io/<org>/valora-invoice:vX.Y.Z` (Customer Plane)
-  - `ghcr.io/<org>/valora-scheduler:vX.Y.Z` (Background Plane)
-  - `ghcr.io/<org>/valora-api:vX.Y.Z` (Data Plane)
+  - `ghcr.io/<org>/railzway:vX.Y.Z` (Monolith)
+  - `ghcr.io/<org>/railzway-admin:vX.Y.Z` (Control Plane)
+  - `ghcr.io/<org>/railzway-invoice:vX.Y.Z` (Customer Plane)
+  - `ghcr.io/<org>/railzway-scheduler:vX.Y.Z` (Background Plane)
+  - `ghcr.io/<org>/railzway-api:vX.Y.Z` (Data Plane)
 
 ## Guarantees
 

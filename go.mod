@@ -1,4 +1,4 @@
-module github.com/smallbiznis/valora
+module github.com/smallbiznis/railzway
 
 go 1.25.3
 

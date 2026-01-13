@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	productdomain "github.com/smallbiznis/valora/internal/product/domain"
+	productdomain "github.com/smallbiznis/railzway/internal/product/domain"
 )
 
 type createProductRequest struct {

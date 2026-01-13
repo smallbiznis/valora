@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	auditdomain "github.com/smallbiznis/valora/internal/audit/domain"
-	billingoverviewdomain "github.com/smallbiznis/valora/internal/billingoverview/domain"
-	"github.com/smallbiznis/valora/internal/orgcontext"
-	"github.com/smallbiznis/valora/pkg/db/pagination"
+	auditdomain "github.com/smallbiznis/railzway/internal/audit/domain"
+	billingoverviewdomain "github.com/smallbiznis/railzway/internal/billingoverview/domain"
+	"github.com/smallbiznis/railzway/internal/orgcontext"
+	"github.com/smallbiznis/railzway/pkg/db/pagination"
 )
 
 type HomeDashboardResponse struct {

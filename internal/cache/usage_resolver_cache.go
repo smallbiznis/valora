@@ -4,8 +4,8 @@ import (
 	"strings"
 	"time"
 
-	meterdomain "github.com/smallbiznis/valora/internal/meter/domain"
-	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
+	meterdomain "github.com/smallbiznis/railzway/internal/meter/domain"
+	subscriptiondomain "github.com/smallbiznis/railzway/internal/subscription/domain"
 )
 
 const (

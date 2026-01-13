@@ -3,7 +3,7 @@ package adapters
 import (
 	"strings"
 
-	"github.com/smallbiznis/valora/internal/payment/domain"
+	"github.com/smallbiznis/railzway/internal/payment/domain"
 )
 
 type Registry struct {

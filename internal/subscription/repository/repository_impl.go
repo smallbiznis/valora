@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
+	subscriptiondomain "github.com/smallbiznis/railzway/internal/subscription/domain"
 	"gorm.io/gorm"
 )
 

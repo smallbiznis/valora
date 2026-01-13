@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	auditcontext "github.com/smallbiznis/valora/internal/auditcontext"
-	obscontext "github.com/smallbiznis/valora/internal/observability/context"
+	auditcontext "github.com/smallbiznis/railzway/internal/auditcontext"
+	obscontext "github.com/smallbiznis/railzway/internal/observability/context"
 	"go.uber.org/zap"
 )
 

@@ -1,8 +1,8 @@
 package publicinvoice
 
 import (
-	"github.com/smallbiznis/valora/internal/publicinvoice/repository"
-	"github.com/smallbiznis/valora/internal/publicinvoice/service"
+	"github.com/smallbiznis/railzway/internal/publicinvoice/repository"
+	"github.com/smallbiznis/railzway/internal/publicinvoice/service"
 	"go.uber.org/fx"
 )
 

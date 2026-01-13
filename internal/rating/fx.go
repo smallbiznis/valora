@@ -1,7 +1,7 @@
 package rating
 
 import (
-	"github.com/smallbiznis/valora/internal/rating/service"
+	"github.com/smallbiznis/railzway/internal/rating/service"
 	"go.uber.org/fx"
 )
 

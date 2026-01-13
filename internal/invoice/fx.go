@@ -1,9 +1,9 @@
 package invoice
 
 import (
-	"github.com/smallbiznis/valora/internal/invoice/render"
-	"github.com/smallbiznis/valora/internal/invoice/service"
-	"github.com/smallbiznis/valora/internal/tax"
+	"github.com/smallbiznis/railzway/internal/invoice/render"
+	"github.com/smallbiznis/railzway/internal/invoice/service"
+	"github.com/smallbiznis/railzway/internal/tax"
 	"go.uber.org/fx"
 )
 

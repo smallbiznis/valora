@@ -106,9 +106,9 @@ At no point does Railzway store or process payment credentials.
 Railzway supports two primary deployment models using the same codebase:
 
 ### 1. Monolith (All-in-One)
-A single binary (`cmd/valora`) containing all logic and the Admin UI.
+A single binary (`cmd/railzway`) containing all logic and the Admin UI.
 - **Best for**: Development, small-scale deployments, low complexity.
-- **Docker Image**: `ghcr.io/smallbiznis/valora`
+- **Docker Image**: `ghcr.io/smallbiznis/railzway`
 
 ### 2. Microservices (Granular Planes)
 The monolith is sliced into 4 discrete planes for independent scaling:

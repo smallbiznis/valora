@@ -7,7 +7,7 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
-	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
+	invoicedomain "github.com/smallbiznis/railzway/internal/invoice/domain"
 )
 
 func (s *Server) ListInvoices(c *gin.Context) {

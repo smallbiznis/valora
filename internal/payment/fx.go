@@ -1,13 +1,13 @@
 package payment
 
 import (
-	"github.com/smallbiznis/valora/internal/payment/adapters"
-	"github.com/smallbiznis/valora/internal/payment/adapters/stripe"
-	disputerepo "github.com/smallbiznis/valora/internal/payment/dispute/repository"
-	disputeservice "github.com/smallbiznis/valora/internal/payment/dispute/service"
-	"github.com/smallbiznis/valora/internal/payment/repository"
-	paymentservice "github.com/smallbiznis/valora/internal/payment/service"
-	"github.com/smallbiznis/valora/internal/payment/webhook"
+	"github.com/smallbiznis/railzway/internal/payment/adapters"
+	"github.com/smallbiznis/railzway/internal/payment/adapters/stripe"
+	disputerepo "github.com/smallbiznis/railzway/internal/payment/dispute/repository"
+	disputeservice "github.com/smallbiznis/railzway/internal/payment/dispute/service"
+	"github.com/smallbiznis/railzway/internal/payment/repository"
+	paymentservice "github.com/smallbiznis/railzway/internal/payment/service"
+	"github.com/smallbiznis/railzway/internal/payment/webhook"
 	"go.uber.org/fx"
 )
 

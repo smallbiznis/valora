@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	meterdomain "github.com/smallbiznis/valora/internal/meter/domain"
-	"github.com/smallbiznis/valora/internal/orgcontext"
+	meterdomain "github.com/smallbiznis/railzway/internal/meter/domain"
+	"github.com/smallbiznis/railzway/internal/orgcontext"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"

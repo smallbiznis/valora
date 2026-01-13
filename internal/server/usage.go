@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	usagedomain "github.com/smallbiznis/valora/internal/usage/domain"
+	usagedomain "github.com/smallbiznis/railzway/internal/usage/domain"
 )
 
 func (s *Server) IngestUsage(c *gin.Context) {

@@ -1,8 +1,8 @@
 package invoicetemplate
 
 import (
-	"github.com/smallbiznis/valora/internal/invoicetemplate/repository"
-	"github.com/smallbiznis/valora/internal/invoicetemplate/service"
+	"github.com/smallbiznis/railzway/internal/invoicetemplate/repository"
+	"github.com/smallbiznis/railzway/internal/invoicetemplate/service"
 	"go.uber.org/fx"
 )
 

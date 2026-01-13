@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/bwmarrin/snowflake"
-	meterdomain "github.com/smallbiznis/valora/internal/meter/domain"
-	"github.com/smallbiznis/valora/pkg/db/option"
+	meterdomain "github.com/smallbiznis/railzway/internal/meter/domain"
+	"github.com/smallbiznis/railzway/pkg/db/option"
 	"gorm.io/gorm"
 )
 
