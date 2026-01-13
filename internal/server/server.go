@@ -121,7 +121,7 @@ var Module = fx.Module("http.server",
 	ratelimit.Module,
 	subscription.Module,
 	usage.Module,
-	fx.Invoke(NewServer),
+	fx.Provide(NewServer),
 	fx.Invoke(RunHTTP),
 )
 
