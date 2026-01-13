@@ -62,8 +62,10 @@ jobs:
           set -euo pipefail
           tag="${{ inputs.tag }}"
 
-          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid tag '${tag}'. Expected vX.Y.Z."
+          # Enforce SemVer tags for auditability and tool compatibility.
+          # Relaxed regex to allow pre-release suffixes (e.g., -rc.1)
+          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "Invalid tag '${tag}'. Expected vX.Y.Z or vX.Y.Z-rc.N."
             exit 1
           fi
 
