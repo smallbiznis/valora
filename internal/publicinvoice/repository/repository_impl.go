@@ -32,7 +32,7 @@ func (r *repo) FindInvoiceByToken(
 	tokenHash := hashToken(token)
 
 	query := `
-		SELECT i.id, i.org_id, i.invoice_number, i.status, i.subtotal_amount, i.currency,
+		SELECT i.id, i.org_id, i.invoice_number, i.status, i.subtotal_amount, i.tax_amount, i.total_amount, i.currency,
 			i.issued_at, i.due_at, i.paid_at, i.customer_id, i.metadata,
 			o.name AS org_name, c.name AS customer_name, c.email AS customer_email
 		FROM invoice_public_tokens t

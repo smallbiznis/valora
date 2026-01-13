@@ -1,21 +1,20 @@
+# Railzway
 
-# Valora OSS
-
-**Valora OSS** is an open-source **deterministic billing computation engine** for modern SaaS and platform products.
+**Railzway** is a **deterministic billing computation engine** for modern SaaS and platform products.
 
 ![Release CI](https://github.com/smallbiznis/valora/actions/workflows/github-release.yml/badge.svg)
-![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)
+![License](https://img.shields.io/badge/license-Proprietary-red.svg)
 ![Release](https://img.shields.io/github/v/release/smallbiznis/valora)
 ![Go Version](https://img.shields.io/badge/go-1.23+-00ADD8?logo=go)
 
-Valora extracts billing concerns—usage metering, pricing, subscriptions, and invoicing—out of application code and into a **dedicated, self-hosted engine** with explicit boundaries.
+Railzway extracts billing concerns—usage metering, pricing, subscriptions, and invoicing—out of application code and into a **dedicated, self-hosted engine** with explicit boundaries.
 
-> **Valora determines what should be billed.
+> **Railzway determines what should be billed.
 > It does not execute payments.**
 
 ---
 
-## Why Valora Exists
+## Why Railzway Exists
 
 Billing is a **financial truth system**, not a convenience feature.
 
@@ -26,16 +25,16 @@ In many systems, billing logic is:
 - tightly coupled with payments and entitlements,
 - fragile under scale and change.
 
-Valora takes a deliberate approach:
+Railzway takes a deliberate approach:
 **make billing boring, deterministic, and explainable.**
 
 This project is developed independently, outside of any employment responsibilities, as a space to design systems with clear boundaries, correctness, and accountability.
 
 ---
 
-## What Valora Is
+## What Railzway Is
 
-Valora is a **billing computation engine**, not an all-in-one billing platform.
+Railzway is a **billing computation engine**, not an all-in-one billing platform.
 
 ### Core Capabilities (v1.0 Target)
 
@@ -51,7 +50,7 @@ Valora is a **billing computation engine**, not an all-in-one billing platform.
 
 ## Design Principles
 
-Valora is built around strict principles:
+Railzway is built around strict principles:
 
 - **Deterministic by Design**Billing outputs are derived solely from persisted inputs and configuration.
 - **Explicit Boundaries**Billing logic is separated from payments, identity, and infrastructure concerns.
@@ -63,12 +62,12 @@ Valora is built around strict principles:
 
 ## Scope & Non-Goals
 
-### What Valora Is
+### What Railzway Is
 
-Valora is a **deterministic billing computation engine** designed for modern SaaS and platform systems.
+Railzway is a **deterministic billing computation engine** designed for modern SaaS and platform systems.
 It extracts billing logic from application code into a dedicated, auditable system with explicit boundaries.
 
-### What Valora Is Not (v1.0)
+### What Railzway Is Not (v1.0)
 
 To preserve correctness and clarity, the following are **intentionally out of scope** for v1.0:
 
@@ -122,7 +121,7 @@ To preserve correctness and clarity, the following are **intentionally out of sc
 
 - No MRR/ARR dashboards or cohort analysis
 - Raw data available via API
-- *Post-v1.0*: Valora Cloud analytics layer
+- *Post-v1.0*: Railzway Cloud analytics layer
 
 #### Complex Proration Models
 
@@ -136,7 +135,7 @@ To preserve correctness and clarity, the following are **intentionally out of sc
 
 Billing errors cost money, trust, and legal risk.
 
-By limiting scope, Valora ensures:
+By limiting scope, Railzway ensures:
 
 - reproducible and auditable billing outputs,
 - clear ownership of responsibilities,
@@ -164,7 +163,7 @@ First-class documentation is provided:
 
 ## Deployment Model
 
-Valora OSS is **self-hosted software**.
+Railzway is **self-hosted software**.
 
 The adopting organization is responsible for:
 
@@ -173,20 +172,20 @@ The adopting organization is responsible for:
 - secrets management,
 - database operations and backups.
 
-Valora makes minimal assumptions about the runtime environment.
+Railzway makes minimal assumptions about the runtime environment.
 
 ---
 
-## Who Valora Is For
+## Who Railzway Is For
 
-Valora is designed for teams that:
+Railzway is designed for teams that:
 
 - are scaling beyond hardcoded billing logic,
 - operate usage-based or hybrid pricing models,
 - build long-lived SaaS or platform systems,
 - value correctness, clarity, and auditability.
 
-Valora is **not a good fit** if you need:
+Railzway is **not a good fit** if you need:
 
 - an all-in-one billing + payments + tax solution,
 - no-code billing configuration,
@@ -210,7 +209,7 @@ Valora is **not a good fit** if you need:
 - Webhook event system
 - Multi-currency support
 - Tax metadata integration
-- Optional **Valora Cloud**
+- Optional **Railzway Cloud**
 
 ---
 
@@ -218,20 +217,19 @@ Valora is **not a good fit** if you need:
 
 Grafana dashboards expect the following metrics:
 
-- `valora_scheduler_job_runs_total`
-- `valora_scheduler_job_duration_seconds`
-- `valora_scheduler_job_timeouts_total`
-- `valora_scheduler_job_errors_total`
-- `valora_scheduler_batch_processed_total`
-- `valora_scheduler_batch_deferred_total`
-- `valora_scheduler_runloop_lag_seconds`
+- `railzway_scheduler_job_runs_total`
+- `railzway_scheduler_job_duration_seconds`
+- `railzway_scheduler_job_timeouts_total`
+- `railzway_scheduler_job_errors_total`
+- `railzway_scheduler_batch_processed_total`
+- `railzway_scheduler_batch_deferred_total`
+- `railzway_scheduler_runloop_lag_seconds`
 
 ---
 
 ## License
 
-Valora OSS is released under the Apache 2.0 License.
-See the `LICENSE` file for details.
+Railzway is proprietary software. See the `LICENSE` file for details.
 
 ---
 
@@ -239,6 +237,6 @@ See the `LICENSE` file for details.
 
 📚 Documentation source: `./docs/docs/index.md`
 
-> **Valora aims to make billing boring, predictable, and explainable**
+> **Railzway aims to make billing boring, predictable, and explainable**
 > so teams can focus on building their products.
 >

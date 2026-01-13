@@ -10,7 +10,7 @@
 
 ## Context
 
-Valora processes usage-based billing through multiple stages:
+Railzway processes usage-based billing through multiple stages:
 
 * Usage ingestion (`usage_events`)
 * Context resolution / snapshotting (meter, subscription, item)
@@ -46,7 +46,7 @@ At the same time, the system must:
 
 ## Decision
 
-**`rating_results` is the sole source of billing truth in Valora.**
+**`rating_results` is the sole source of billing truth in Railzway.**
 
 * All financial correctness (quantities, prices, amounts) **lives exclusively in `rating_results`.**
 * `usage_events` is **not** a billing record.
@@ -66,7 +66,7 @@ Billing truth refers to data that:
 * is used to generate invoices or ledger entries
 * must be correct, atomic, and auditable
 
-In Valora, billing truth is represented by:
+In Railzway, billing truth is represented by:
 
 * `rating_results`
 * (and later: invoice lines, ledger entries)
@@ -75,7 +75,7 @@ In Valora, billing truth is represented by:
 
 The **source of record** for billing is the dataset that downstream systems must trust  **without reinterpretation** .
 
-In Valora:
+In Railzway:
 
 * `rating_results` is the billing source of record
 * all other data models are upstream inputs or pipeline artifacts
@@ -159,5 +159,5 @@ No future change may shift billing truth away from `rating_results`.
 
 ## Summary (One-line)
 
-> Valora intentionally separates data-processing state from financial truth: usage events describe  *what happened* , while rating results define  *what is billed* .
+> Railzway intentionally separates data-processing state from financial truth: usage events describe  *what happened* , while rating results define  *what is billed* .
 >

@@ -1,5 +1,8 @@
 ALTER TABLE invoices
-    RENAME COLUMN total_amount TO subtotal_amount;
+    ADD COLUMN IF NOT EXISTS subtotal_amount BIGINT NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS tax_rate NUMERIC(6,4),
+    ADD COLUMN IF NOT EXISTS tax_code TEXT,
+    ADD COLUMN IF NOT EXISTS tax_amount BIGINT NOT NULL DEFAULT 0;
 
 ALTER TABLE invoices
     ADD COLUMN IF NOT EXISTS invoice_number BIGINT,

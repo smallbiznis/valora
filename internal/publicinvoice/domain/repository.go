@@ -24,6 +24,8 @@ type InvoiceRecord struct {
 	InvoiceNumber  string            `gorm:"column:invoice_number"`
 	Status         string            `gorm:"column:status"`
 	SubtotalAmount int64             `gorm:"column:subtotal_amount"`
+	TaxAmount      int64             `gorm:"column:tax_amount"`
+	TotalAmount    int64             `gorm:"column:total_amount"`
 	Currency       string            `gorm:"column:currency"`
 	IssuedAt       *time.Time        `gorm:"column:issued_at"`
 	DueAt          *time.Time        `gorm:"column:due_at"`

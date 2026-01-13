@@ -85,6 +85,45 @@ func (r *repo) InsertItems(ctx context.Context, db *gorm.DB, items []subscriptio
 	return nil
 }
 
+func (r *repo) ReplaceItems(ctx context.Context, db *gorm.DB, orgID, subscriptionID snowflake.ID, items []subscriptiondomain.SubscriptionItem) error {
+	if err := db.WithContext(ctx).Exec(
+		`DELETE FROM subscription_items WHERE org_id = ? AND subscription_id = ?`,
+		orgID,
+		subscriptionID,
+	).Error; err != nil {
+		return err
+	}
+	return r.InsertItems(ctx, db, items)
+}
+
+func (r *repo) InsertEntitlements(ctx context.Context, db *gorm.DB, entitlements []subscriptiondomain.SubscriptionEntitlement) error {
+	if len(entitlements) == 0 {
+		return nil
+	}
+
+	for _, item := range entitlements {
+		if err := db.WithContext(ctx).Exec(
+			`INSERT INTO subscription_entitlements (
+				id, subscription_id, feature_code, feature_name, feature_type, meter_id,
+				effective_from, effective_to, created_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			item.ID,
+			item.SubscriptionID,
+			item.FeatureCode,
+			item.FeatureName,
+			item.FeatureType,
+			item.MeterID,
+			item.EffectiveFrom,
+			item.EffectiveTo,
+			item.CreatedAt,
+		).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (r *repo) FindByID(ctx context.Context, db *gorm.DB, orgID, id snowflake.ID) (*subscriptiondomain.Subscription, error) {
 	var subscription subscriptiondomain.Subscription
 	err := db.WithContext(ctx).Raw(
@@ -272,4 +311,28 @@ func (r *repo) FindSubscriptionItemByMeterIDAt(ctx context.Context, db *gorm.DB,
 		return nil, nil
 	}
 	return &item, nil
+}
+
+func (r *repo) FindEntitlement(ctx context.Context, db *gorm.DB, subscriptionID snowflake.ID, meterID snowflake.ID, at time.Time) (*subscriptiondomain.SubscriptionEntitlement, error) {
+	var entitlement subscriptiondomain.SubscriptionEntitlement
+	err := db.WithContext(ctx).Raw(
+		`SELECT id, subscription_id, feature_code, feature_name, feature_type, meter_id,
+		 effective_from, effective_to, created_at
+		 FROM subscription_entitlements
+		 WHERE subscription_id = ? AND meter_id = ?
+		   AND effective_from <= ?
+		   AND (effective_to IS NULL OR effective_to > ?)
+		 LIMIT 1`,
+		subscriptionID,
+		meterID,
+		at,
+		at,
+	).Scan(&entitlement).Error
+	if err != nil {
+		return nil, err
+	}
+	if entitlement.ID == 0 {
+		return nil, nil
+	}
+	return &entitlement, nil
 }

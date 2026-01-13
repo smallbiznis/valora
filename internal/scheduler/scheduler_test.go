@@ -8,6 +8,7 @@ import (
 	"github.com/bwmarrin/snowflake"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/smallbiznis/valora/internal/clock"
 	obsmetrics "github.com/smallbiznis/valora/internal/observability/metrics"
 	"go.uber.org/zap"
 )
@@ -28,7 +29,7 @@ func TestRunJobTimeoutDoesNotReturnErrorAndIncrementsTimeout(t *testing.T) {
 		t.Fatalf("snowflake node: %v", err)
 	}
 
-	s := &Scheduler{log: zap.NewNop(), genID: node}
+	s := &Scheduler{log: zap.NewNop(), genID: node, clock: clock.NewFakeClock(time.Time{})}
 	err = s.runJob(context.Background(), "timeout_job", 0, 5*time.Millisecond, func(ctx context.Context) error {
 		<-ctx.Done()
 		return ctx.Err()

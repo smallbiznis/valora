@@ -9,11 +9,31 @@ on:
         type: string
 
 jobs:
-  docker-release:
+  build-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: valora
+            context: .
+            dockerfile: Dockerfile
+          - image: valora-admin
+            context: .
+            dockerfile: apps/admin/Dockerfile
+          - image: valora-invoice
+            context: .
+            dockerfile: apps/invoice/Dockerfile
+          - image: valora-scheduler
+            context: .
+            dockerfile: apps/scheduler/Dockerfile
+          - image: valora-api
+            context: .
+            dockerfile: apps/api/Dockerfile
 
     steps:
       - name: Checkout repository at tag
@@ -55,16 +75,17 @@ jobs:
       - name: Build and push multi-arch image
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           push: true
           platforms: linux/amd64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
           build-args: |
             VERSION=${{ steps.version.outputs.tag }}
           tags: |
-            ghcr.io/${{ github.repository_owner }}/valora:${{ steps.version.outputs.tag }}
-            ghcr.io/${{ github.repository_owner }}/valora:latest
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ steps.version.outputs.tag }}
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:latest
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.tag }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}

@@ -14,6 +14,7 @@ type RatingResult struct {
 	SubscriptionID snowflake.ID  `gorm:"not null;index"`
 	BillingCycleID snowflake.ID  `gorm:"not null;index"`
 	PriceID        snowflake.ID  `gorm:"not null"`
+	FeatureCode    string        `gorm:"type:text"`
 	MeterID        *snowflake.ID `gorm:"index"`
 	Quantity       float64       `gorm:"not null"`
 	UnitPrice      int64         `gorm:"not null"`

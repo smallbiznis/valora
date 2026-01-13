@@ -17,149 +17,238 @@ const invoiceHTMLTemplate = `<!doctype html>
   <style>
     :root {
       --primary: {{.Template.PrimaryColor}};
-      --font: "{{.Template.FontFamily}}";
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      padding: 32px;
-      font-family: var(--font), "Helvetica Neue", Arial, sans-serif;
-      color: #111827;
-      background: #ffffff;
+      padding: 40px;
+      font-family: var(--font);
+      color: #1a1f36;
+      background: #f7f9fc;
+      -webkit-font-smoothing: antialiased;
     }
-    .invoice {
-      max-width: 820px;
+    .invoice-card {
+      background: #ffffff;
+      max-width: 760px;
       margin: 0 auto;
+      padding: 60px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+      border-radius: 4px;
     }
     .header {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      border-bottom: 2px solid var(--primary);
-      padding-bottom: 16px;
-      margin-bottom: 24px;
+      margin-bottom: 40px;
     }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+    .header-left h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: #1a1f36;
     }
-    .brand img {
-      max-height: 48px;
-    }
-    .meta {
+    .header-right {
       text-align: right;
-      font-size: 14px;
+      font-weight: 600;
+      color: #8792a2;
+      font-size: 16px;
     }
-    .meta .label {
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+    
+    .meta-grid {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 40px;
+    }
+    .col {
+      flex: 1;
+    }
+    .label {
       font-size: 11px;
+      text-transform: uppercase;
+      color: #8792a2;
+      margin-bottom: 6px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
     }
-    .section {
-      margin-bottom: 24px;
+    .value {
+      font-size: 14px;
+      line-height: 1.5;
+      color: #1a1f36;
     }
+    
+    .amount-section {
+      margin-bottom: 40px;
+    }
+    .amount-large {
+      font-size: 32px;
+      font-weight: 700;
+      color: #1a1f36;
+      margin-bottom: 4px;
+    }
+    .pay-link {
+      font-size: 13px;
+      color: #006aff;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 14px;
-    }
-    th, td {
-      padding: 10px;
-      border-bottom: 1px solid #e5e7eb;
-      text-align: left;
+      margin-bottom: 30px;
     }
     th {
+      text-align: left;
       text-transform: uppercase;
       font-size: 11px;
-      letter-spacing: 0.04em;
-      color: #6b7280;
+      color: #8792a2;
+      border-bottom: 1px solid #e3e8ee;
+      padding: 10px 0;
+      font-weight: 600;
+      letter-spacing: 0.3px;
     }
+    td {
+      padding: 16px 0;
+      border-bottom: 1px solid #e3e8ee;
+      font-size: 14px;
+      color: #1a1f36;
+      vertical-align: top;
+    }
+    .td-right { text-align: right; }
+    
+    .item-title { font-weight: 600; margin-bottom: 2px; }
+    .item-sub { font-size: 12px; color: #697386; }
+    
     .totals {
-      margin-top: 12px;
+      width: 100%;
       display: flex;
-      justify-content: flex-end;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      width: 250px;
+      padding: 6px 0;
+      font-size: 14px;
+    }
+    .total-label { color: #697386; }
+    .total-value { color: #1a1f36; text-align: right; font-weight: 500; }
+    .total-final {
+      border-top: 1px solid #e3e8ee;
+      margin-top: 10px;
+      padding-top: 10px;
+      font-weight: 700;
       font-size: 16px;
+      color: #1a1f36;
     }
-    .totals strong {
-      margin-left: 12px;
-    }
+    
     .footer {
-      border-top: 1px solid #e5e7eb;
-      padding-top: 16px;
+      margin-top: 60px;
       font-size: 12px;
-      color: #6b7280;
+      color: #8792a2;
+      border-top: 1px solid #e3e8ee;
+      padding-top: 20px;
     }
+    
+    /* Spacer utility */
+    .mt-4 { margin-top: 4px; }
   </style>
 </head>
 <body>
-  <div class="invoice">
+  <div class="invoice-card">
+    <!-- Header -->
     <div class="header">
-      <div class="brand">
+      <div class="header-left">
+        <h1>Invoice</h1>
+        <div class="label mt-4" style="margin-top: 12px;">Invoice number</div>
+        <div class="value">{{.Invoice.Number}}</div>
+      </div>
+      <div class="header-right">
         {{if .Template.LogoURL}}
-        <img src="{{.Template.LogoURL}}" alt="Company logo" />
+          <img src="{{.Template.LogoURL}}" style="max-height: 40px;" alt="{{.Template.CompanyName}}">
+        {{else}}
+          {{.Template.CompanyName}}
         {{end}}
-        <div>
-          <div><strong>{{.Template.CompanyName}}</strong></div>
-          <div>{{.Customer.Name}}</div>
-          <div>{{.Customer.Email}}</div>
+      </div>
+    </div>
+
+    <!-- Metadata Grid -->
+    <div class="meta-grid">
+      <div class="col">
+        <div class="label">Bill to</div>
+        <div class="value">
+          <strong>{{.Customer.Name}}</strong><br>
+          {{.Customer.Email}}<br>
+          <!-- Address would go here -->
         </div>
       </div>
-      <div class="meta">
-        <div class="label">Invoice</div>
-        <div><strong>{{.Invoice.Number}}</strong></div>
-        <div>Status: {{.Invoice.Status}}</div>
-        <div>Issued: {{formatDate .Invoice.IssuedAt}}</div>
-        <div>Due: {{formatDate .Invoice.DueAt}}</div>
+      <div class="col" style="flex: 0 0 200px;">
+        <div class="label">Date due</div>
+        <div class="value">{{formatDate .Invoice.DueAt}}</div>
+        
+        <div class="label" style="margin-top: 16px;">Date issued</div>
+        <div class="value">{{formatDate .Invoice.IssuedAt}}</div>
       </div>
     </div>
 
-    <div class="section">
-      <div class="label">Billing Period</div>
-      <div>{{formatDate .Invoice.PeriodStart}} - {{formatDate .Invoice.PeriodEnd}}</div>
+    <!-- Amount Due -->
+    <div class="amount-section">
+      <div class="amount-large">{{formatMoney .Invoice.SubtotalAmount .Invoice.Currency}}</div>
+      <div class="value" style="color: #697386; margin-bottom: 8px;">due {{formatDate .Invoice.DueAt}}</div>
+      <a href="#" class="pay-link" onclick="return false;">Pay online &rarr;</a>
     </div>
 
-    <div class="section">
-      <table>
-        <thead>
-          <tr>
-            <th>Description</th>
-            <th>Quantity</th>
-            <th>Unit Price</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{range .Items}}
-          <tr>
-            <td>
-              <div style="font-weight: 600;">
-                {{.Title}}
-              </div>
-              {{if .SubTitle}}
-              <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
-                {{.SubTitle}}
-              </div>
-              {{end}}
-            </td>
-            <td>{{.Quantity}}</td>
-            <td>{{.UnitPrice}}</td>
-            <td>{{.Amount}}</td>
-          </tr>
-          {{end}}
-        </tbody>
-      </table>
-      <div class="totals">
-        <span>Total</span>
-        <strong>{{formatMoney .Invoice.SubtotalAmount .Invoice.Currency}}</strong>
+    <!-- Line Items -->
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 50%;">Description</th>
+          <th class="td-right">Qty</th>
+          <th class="td-right">Unit Price</th>
+          <th class="td-right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Items}}
+        <tr>
+          <td>
+            <div class="item-title">{{.Title}}</div>
+            {{if .SubTitle}}<div class="item-sub">{{.SubTitle}}</div>{{end}}
+          </td>
+          <td class="td-right">{{formatQuantity .Quantity}}</td>
+          <td class="td-right">{{formatMoney .UnitPrice $.Invoice.Currency}}</td>
+          <td class="td-right" style="font-weight: 500;">{{formatMoney .Amount $.Invoice.Currency}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+
+    <!-- Totals -->
+    <div class="totals">
+      <div class="total-row">
+        <span class="total-label">Subtotal</span>
+        <span class="total-value">{{formatMoney .Invoice.SubtotalAmount .Invoice.Currency}}</span>
+      </div>
+       <!-- Tax/Discounts would go here if available in view -->
+      <div class="total-row total-final">
+        <span class="total-label" style="color: #1a1f36;">Total</span>
+        <span class="total-value">{{formatMoney .Invoice.SubtotalAmount .Invoice.Currency}}</span>
+      </div>
+      <div class="total-row">
+        <span class="total-label">Amount due</span>
+        <span class="total-value">{{formatMoney .Invoice.SubtotalAmount .Invoice.Currency}}</span>
       </div>
     </div>
 
+    <!-- Footer -->
+    {{if .Template.FooterNotes}}
     <div class="footer">
-      {{if .Template.FooterNotes}}<div>{{.Template.FooterNotes}}</div>{{end}}
-      {{if .Template.FooterLegal}}<div>{{.Template.FooterLegal}}</div>{{end}}
+      {{.Template.FooterNotes}}
+      {{if .Template.FooterLegal}}<br><br>{{.Template.FooterLegal}}{{end}}
     </div>
+    {{end}}
+    
   </div>
 </body>
 </html>

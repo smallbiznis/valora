@@ -12,6 +12,7 @@ import (
 	"github.com/smallbiznis/valora/internal/orgcontext"
 	pricedomain "github.com/smallbiznis/valora/internal/price/domain"
 	priceamount "github.com/smallbiznis/valora/internal/priceamount/domain"
+	productfeaturedomain "github.com/smallbiznis/valora/internal/productfeature/domain"
 	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
 	"github.com/smallbiznis/valora/pkg/db/option"
 	"github.com/smallbiznis/valora/pkg/db/pagination"
@@ -32,8 +33,9 @@ type Service struct {
 	billingCycleRepo repository.Repository[billingcycledomain.BillingCycle]
 	subscriptionRepo repository.Repository[subscriptiondomain.Subscription]
 
-	pricesvc       pricedomain.Service
-	priceamountsvc priceamount.Service
+	pricesvc           pricedomain.Service
+	priceamountsvc     priceamount.Service
+	productFeatureRepo productfeaturedomain.Repository
 }
 
 type ServiceParam struct {
@@ -45,8 +47,9 @@ type ServiceParam struct {
 	Clock clock.Clock
 	Repo  subscriptiondomain.Repository
 
-	Pricesvc       pricedomain.Service
-	PriceAmountsvc priceamount.Service
+	Pricesvc           pricedomain.Service
+	PriceAmountsvc     priceamount.Service
+	ProductFeatureRepo productfeaturedomain.Repository
 }
 
 func NewService(p ServiceParam) subscriptiondomain.Service {
@@ -60,8 +63,9 @@ func NewService(p ServiceParam) subscriptiondomain.Service {
 		billingCycleRepo: repository.ProvideStore[billingcycledomain.BillingCycle](p.DB),
 		subscriptionRepo: repository.ProvideStore[subscriptiondomain.Subscription](p.DB),
 
-		pricesvc:       p.Pricesvc,
-		priceamountsvc: p.PriceAmountsvc,
+		pricesvc:           p.Pricesvc,
+		priceamountsvc:     p.PriceAmountsvc,
+		productFeatureRepo: p.ProductFeatureRepo,
 	}
 }
 
@@ -254,7 +258,7 @@ func (s *Service) Create(ctx context.Context, req subscriptiondomain.CreateSubsc
 		return subscriptiondomain.CreateSubscriptionResponse{}, err
 	}
 
-	now := time.Now().UTC()
+	now := s.clock.Now()
 	subscription := subscriptiondomain.Subscription{
 		ID:               s.genID.Generate(),
 		OrgID:            orgID,
@@ -270,17 +274,31 @@ func (s *Service) Create(ctx context.Context, req subscriptiondomain.CreateSubsc
 		subscription.Metadata = datatypes.JSONMap(req.Metadata)
 	}
 
-	subscriptionItems, err := s.buildSubscriptionItems(ctx, orgID, subscription.ID, req.Items, billingCycleType, now)
+	subscriptionItems, productIDs, err := s.buildSubscriptionItems(ctx, orgID, subscription.ID, req.Items, billingCycleType, now)
 	if err != nil {
 		return subscriptiondomain.CreateSubscriptionResponse{}, err
 	}
 
 	if err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := s.ensureProductsActive(ctx, tx, orgID, productIDs); err != nil {
+			return err
+		}
+
+		entitlements, err := s.buildSubscriptionEntitlements(ctx, tx, orgID, subscription.ID, productIDs, now)
+		if err != nil {
+			return err
+		}
+
 		if err := s.repo.Insert(ctx, tx, &subscription); err != nil {
 			return err
 		}
 		if err := s.repo.InsertItems(ctx, tx, subscriptionItems); err != nil {
 			return err
+		}
+		if len(entitlements) > 0 {
+			if err := s.repo.InsertEntitlements(ctx, tx, entitlements); err != nil {
+				return err
+			}
 		}
 		return nil
 	}); err != nil {
@@ -288,6 +306,77 @@ func (s *Service) Create(ctx context.Context, req subscriptiondomain.CreateSubsc
 	}
 
 	return s.toCreateResponse(&subscription, subscriptionItems), nil
+}
+
+func (s *Service) ReplaceItems(ctx context.Context, req subscriptiondomain.ReplaceSubscriptionItemsRequest) (subscriptiondomain.CreateSubscriptionResponse, error) {
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return subscriptiondomain.CreateSubscriptionResponse{}, subscriptiondomain.ErrInvalidOrganization
+	}
+
+	subscriptionID, err := s.parseID(req.SubscriptionID, subscriptiondomain.ErrInvalidSubscription)
+	if err != nil {
+		return subscriptiondomain.CreateSubscriptionResponse{}, err
+	}
+
+	if len(req.Items) == 0 {
+		return subscriptiondomain.CreateSubscriptionResponse{}, subscriptiondomain.ErrInvalidItems
+	}
+
+	subscription, err := s.repo.FindByID(ctx, s.db, orgID, subscriptionID)
+	if err != nil {
+		return subscriptiondomain.CreateSubscriptionResponse{}, err
+	}
+	if subscription == nil {
+		return subscriptiondomain.CreateSubscriptionResponse{}, subscriptiondomain.ErrSubscriptionNotFound
+	}
+	if subscription.Status != subscriptiondomain.SubscriptionStatusActive {
+		return subscriptiondomain.CreateSubscriptionResponse{}, subscriptiondomain.ErrInvalidStatus
+	}
+
+	now := time.Now().UTC()
+	subscriptionItems, productIDs, err := s.buildSubscriptionItems(ctx, orgID, subscriptionID, req.Items, subscription.BillingCycleType, now)
+	if err != nil {
+		return subscriptiondomain.CreateSubscriptionResponse{}, err
+	}
+
+	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := s.ensureProductsActive(ctx, tx, orgID, productIDs); err != nil {
+			return err
+		}
+
+		entitlements, err := s.buildSubscriptionEntitlements(ctx, tx, orgID, subscriptionID, productIDs, now)
+		if err != nil {
+			return err
+		}
+
+		if err := s.closeActiveEntitlements(ctx, tx, subscriptionID, now); err != nil {
+			return err
+		}
+
+		if err := s.repo.ReplaceItems(ctx, tx, orgID, subscriptionID, subscriptionItems); err != nil {
+			return err
+		}
+		if len(entitlements) > 0 {
+			if err := s.repo.InsertEntitlements(ctx, tx, entitlements); err != nil {
+				return err
+			}
+		}
+		if err := tx.Exec(
+			`UPDATE subscriptions SET updated_at = ? WHERE org_id = ? AND id = ?`,
+			now,
+			orgID,
+			subscriptionID,
+		).Error; err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return subscriptiondomain.CreateSubscriptionResponse{}, err
+	}
+
+	subscription.UpdatedAt = now
+	return s.toCreateResponse(subscription, subscriptionItems), nil
 }
 
 func (s *Service) GetByID(ctx context.Context, id string) (subscriptiondomain.Subscription, error) {
@@ -497,6 +586,36 @@ func (s *Service) countSubscriptionItemsWithPrice(ctx context.Context, tx *gorm.
 	return count, nil
 }
 
+func (s *Service) countActiveSubscriptionEntitlements(ctx context.Context, tx *gorm.DB, subscriptionID snowflake.ID, now time.Time) (int64, error) {
+	var count int64
+	if err := tx.WithContext(ctx).Raw(
+		`SELECT COUNT(1)
+		 FROM subscription_entitlements
+		 WHERE subscription_id = ?
+		   AND effective_from <= ?
+		   AND (effective_to IS NULL OR effective_to > ?)`,
+		subscriptionID,
+		now,
+		now,
+	).Scan(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (s *Service) closeActiveEntitlements(ctx context.Context, tx *gorm.DB, subscriptionID snowflake.ID, now time.Time) error {
+	if err := tx.WithContext(ctx).Exec(
+		`UPDATE subscription_entitlements
+		 SET effective_to = ?
+		 WHERE subscription_id = ? AND effective_to IS NULL`,
+		now,
+		subscriptionID,
+	).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *Service) countSubscriptionItemsWithMeter(ctx context.Context, tx *gorm.DB, orgID, subscriptionID snowflake.ID) (int64, error) {
 	var count int64
 	if err := tx.WithContext(ctx).Raw(
@@ -509,6 +628,26 @@ func (s *Service) countSubscriptionItemsWithMeter(ctx context.Context, tx *gorm.
 		return 0, err
 	}
 	return count, nil
+}
+
+func (s *Service) ensureProductsActive(ctx context.Context, tx *gorm.DB, orgID snowflake.ID, productIDs []snowflake.ID) error {
+	if len(productIDs) == 0 {
+		return subscriptiondomain.ErrInvalidProduct
+	}
+	var count int64
+	if err := tx.WithContext(ctx).Raw(
+		`SELECT COUNT(1)
+		 FROM products
+		 WHERE org_id = ? AND id IN ? AND active = true`,
+		orgID,
+		productIDs,
+	).Scan(&count).Error; err != nil {
+		return err
+	}
+	if count != int64(len(productIDs)) {
+		return subscriptiondomain.ErrInvalidProduct
+	}
+	return nil
 }
 
 func (s *Service) hasCustomer(ctx context.Context, tx *gorm.DB, orgID, customerID snowflake.ID) (bool, error) {
@@ -656,46 +795,48 @@ func (s *Service) buildSubscriptionItems(
 	items []subscriptiondomain.CreateSubscriptionItemRequest,
 	expectedCycleType string,
 	now time.Time,
-) ([]subscriptiondomain.SubscriptionItem, error) {
+) ([]subscriptiondomain.SubscriptionItem, []snowflake.ID, error) {
 	priceCache := make(map[string]*pricedomain.Response, len(items))
 	flatCount := 0
 	subscriptionItems := make([]subscriptiondomain.SubscriptionItem, 0, len(items))
+	productIDs := make([]snowflake.ID, 0, len(items))
+	seenProducts := make(map[snowflake.ID]struct{})
 
 	expectedCycleType = strings.ToLower(strings.TrimSpace(expectedCycleType))
 	if expectedCycleType == "" {
-		return nil, subscriptiondomain.ErrInvalidBillingCycleType
+		return nil, nil, subscriptiondomain.ErrInvalidBillingCycleType
 	}
 
 	for _, item := range items {
 		price, err := s.loadPrice(ctx, item.PriceID, priceCache)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if price == nil {
-			return nil, pricedomain.ErrInvalidID
+			return nil, nil, pricedomain.ErrInvalidID
 		}
 
 		if err := validateSubscriptionPricingModel(price, &flatCount); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		quantity := normalizeSubscriptionQuantity(item.Quantity)
 		if err := validateSubscriptionBillingMode(price, quantity); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		parsedPriceID, err := s.parseID(price.ID.String(), subscriptiondomain.ErrInvalidPrice)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		cycleType, err := billingCycleTypeForInterval(price.BillingInterval)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if cycleType != expectedCycleType {
-			return nil, subscriptiondomain.ErrInvalidBillingCycleType
+			return nil, nil, subscriptiondomain.ErrInvalidBillingCycleType
 		}
 
 		var (
@@ -705,7 +846,7 @@ func (s *Service) buildSubscriptionItems(
 		if price.PricingModel != pricedomain.Flat {
 			priceAmounts, err := s.loadPriceAmount(ctx, price.ID.String())
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			if priceAmounts[0].MeterID == nil {
@@ -720,7 +861,7 @@ func (s *Service) buildSubscriptionItems(
 					priceAmounts[0].MeterID,
 				)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 			}
 		}
@@ -745,9 +886,14 @@ func (s *Service) buildSubscriptionItems(
 			CreatedAt:        now,
 			UpdatedAt:        now,
 		})
+
+		if _, ok := seenProducts[price.ProductID]; !ok {
+			seenProducts[price.ProductID] = struct{}{}
+			productIDs = append(productIDs, price.ProductID)
+		}
 	}
 
-	return subscriptionItems, nil
+	return subscriptionItems, productIDs, nil
 }
 
 func (s *Service) loadPrice(
@@ -774,6 +920,68 @@ func (s *Service) loadPrice(
 
 	cache[trimmed] = loaded
 	return loaded, nil
+}
+
+func (s *Service) buildSubscriptionEntitlements(
+	ctx context.Context,
+	db *gorm.DB,
+	orgID snowflake.ID,
+	subscriptionID snowflake.ID,
+	productIDs []snowflake.ID,
+	now time.Time,
+) ([]subscriptiondomain.SubscriptionEntitlement, error) {
+	if len(productIDs) == 0 {
+		return nil, subscriptiondomain.ErrMissingEntitlements
+	}
+
+	features, err := s.productFeatureRepo.ListByProducts(ctx, db, orgID, productIDs)
+	if err != nil {
+		return nil, err
+	}
+	if len(features) == 0 {
+		return nil, nil
+	}
+
+	entitlements := make([]subscriptiondomain.SubscriptionEntitlement, 0, len(features))
+	seen := make(map[string]struct{})
+	for _, feature := range features {
+		if !feature.Active {
+			return nil, productfeaturedomain.ErrFeatureInactive
+		}
+
+		if string(feature.FeatureType) == "metered" && feature.MeterID == nil {
+			return nil, productfeaturedomain.ErrInvalidMeterID
+		}
+
+		code := strings.TrimSpace(feature.Code)
+		if code == "" {
+			continue
+		}
+		if _, ok := seen[code]; ok {
+			continue
+		}
+		seen[code] = struct{}{}
+
+		var meterID *snowflake.ID
+		if feature.MeterID != nil {
+			meterID = feature.MeterID
+		}
+
+		entitlements = append(entitlements, subscriptiondomain.SubscriptionEntitlement{
+			ID:             s.genID.Generate(),
+			OrgID:          orgID,
+			SubscriptionID: subscriptionID,
+			ProductID:      feature.ProductID,
+			FeatureCode:    code,
+			FeatureName:    feature.Name,
+			FeatureType:    string(feature.FeatureType),
+			MeterID:        meterID,
+			EffectiveFrom:  now,
+			CreatedAt:      now,
+		})
+	}
+
+	return entitlements, nil
 }
 
 func (s *Service) loadPriceAmount(ctx context.Context, priceID string) ([]priceamount.Response, error) {

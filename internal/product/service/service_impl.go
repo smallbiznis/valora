@@ -139,6 +139,87 @@ func (s *Service) Get(ctx context.Context, id string) (*domain.Response, error) 
 	return &resp, nil
 }
 
+func (s *Service) Update(ctx context.Context, req domain.UpdateRequest) (*domain.Response, error) {
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, domain.ErrInvalidOrganization
+	}
+	orgIDValue := int64(orgID)
+
+	productID, err := snowflake.ParseString(strings.TrimSpace(req.ID))
+	if err != nil {
+		return nil, domain.ErrInvalidID
+	}
+
+	item, err := s.repo.FindByID(ctx, s.db, orgIDValue, productID.Int64())
+	if err != nil {
+		return nil, err
+	}
+	if item == nil {
+		return nil, domain.ErrNotFound
+	}
+
+	if req.Name != nil {
+		name := strings.TrimSpace(*req.Name)
+		if name == "" {
+			return nil, domain.ErrInvalidName
+		}
+		item.Name = name
+	}
+	if req.Description != nil {
+		description := strings.TrimSpace(*req.Description)
+		if description == "" {
+			item.Description = nil
+		} else {
+			item.Description = &description
+		}
+	}
+	if req.Active != nil {
+		item.Active = *req.Active
+	}
+	if req.Metadata != nil {
+		item.Metadata = datatypes.JSONMap(req.Metadata)
+	}
+
+	item.UpdatedAt = time.Now().UTC()
+	if err := s.repo.Update(ctx, s.db, item); err != nil {
+		return nil, err
+	}
+
+	resp := s.toResponse(item)
+	return &resp, nil
+}
+
+func (s *Service) Archive(ctx context.Context, id string) (*domain.Response, error) {
+	orgID, ok := orgcontext.OrgIDFromContext(ctx)
+	if !ok || orgID == 0 {
+		return nil, domain.ErrInvalidOrganization
+	}
+	orgIDValue := int64(orgID)
+
+	productID, err := snowflake.ParseString(strings.TrimSpace(id))
+	if err != nil {
+		return nil, domain.ErrInvalidID
+	}
+
+	item, err := s.repo.FindByID(ctx, s.db, orgIDValue, productID.Int64())
+	if err != nil {
+		return nil, err
+	}
+	if item == nil {
+		return nil, domain.ErrNotFound
+	}
+
+	item.Active = false
+	item.UpdatedAt = time.Now().UTC()
+	if err := s.repo.Update(ctx, s.db, item); err != nil {
+		return nil, err
+	}
+
+	resp := s.toResponse(item)
+	return &resp, nil
+}
+
 func (s *Service) toResponse(p *domain.Product) domain.Response {
 	resp := domain.Response{
 		ID:             snowflake.ID(p.ID).String(),

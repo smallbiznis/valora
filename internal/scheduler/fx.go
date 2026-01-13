@@ -8,7 +8,7 @@ import (
 )
 
 var Module = fx.Module("scheduler",
-	fx.Provide(DefaultConfig),
+	fx.Provide(ProvideConfig),
 	fx.Provide(New),
 	fx.Invoke(NewScheduler),
 )

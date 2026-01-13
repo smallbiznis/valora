@@ -11,6 +11,7 @@ import (
 	"github.com/smallbiznis/valora/internal/cache"
 	meterdomain "github.com/smallbiznis/valora/internal/meter/domain"
 	"github.com/smallbiznis/valora/internal/orgcontext"
+	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
 	usagedomain "github.com/smallbiznis/valora/internal/usage/domain"
 	"go.uber.org/zap"
 	"gorm.io/driver/sqlite"
@@ -179,15 +180,17 @@ func TestIngestDoesNotResolveMeter(t *testing.T) {
 	if _, err := service.Ingest(ctx, req); err != nil {
 		t.Fatalf("ingest cache miss: %v", err)
 	}
-	if meter.Calls() != 0 {
-		t.Fatalf("expected no meter lookup during ingest, got %d", meter.Calls())
+	// Expect 1 call because we enforce resolution
+	if meter.Calls() != 1 {
+		t.Fatalf("expected 1 meter lookup during ingest, got %d", meter.Calls())
 	}
 
 	if _, err := service.Ingest(ctx, req); err != nil {
 		t.Fatalf("ingest cache hit: %v", err)
 	}
-	if meter.Calls() != 0 {
-		t.Fatalf("expected no meter lookup during ingest, got %d", meter.Calls())
+	// Expect 1 call because cache hit means no new lookup
+	if meter.Calls() != 1 {
+		t.Fatalf("expected 1 meter lookup during ingest, got %d", meter.Calls())
 	}
 }
 
@@ -221,10 +224,47 @@ func setupUsageService(
 		Log:           zap.NewNop(),
 		GenID:         node,
 		MeterSvc:      meterSvc,
+		SubSvc:        &subscriptionStub{node: node},
 		ResolverCache: resolverCache,
 	})
 
 	return service, db
+}
+
+type subscriptionStub struct {
+	node *snowflake.Node
+}
+
+func (s *subscriptionStub) GetActiveByCustomerID(ctx context.Context, req subscriptiondomain.GetActiveByCustomerIDRequest) (subscriptiondomain.Subscription, error) {
+	// Return a dummy valid subscription
+	return subscriptiondomain.Subscription{ID: s.node.Generate()}, nil
+}
+
+func (s *subscriptionStub) ValidateUsageEntitlement(ctx context.Context, subID, meterID snowflake.ID, at time.Time) error {
+	// Allow all
+	return nil
+}
+
+func (s *subscriptionStub) List(context.Context, subscriptiondomain.ListSubscriptionRequest) (subscriptiondomain.ListSubscriptionResponse, error) {
+	return subscriptiondomain.ListSubscriptionResponse{}, nil
+}
+func (s *subscriptionStub) Create(context.Context, subscriptiondomain.CreateSubscriptionRequest) (subscriptiondomain.CreateSubscriptionResponse, error) {
+	return subscriptiondomain.CreateSubscriptionResponse{}, nil
+}
+func (s *subscriptionStub) ReplaceItems(context.Context, subscriptiondomain.ReplaceSubscriptionItemsRequest) (subscriptiondomain.CreateSubscriptionResponse, error) {
+	return subscriptiondomain.CreateSubscriptionResponse{}, nil
+}
+func (s *subscriptionStub) GetByID(context.Context, string) (subscriptiondomain.Subscription, error) {
+	return subscriptiondomain.Subscription{}, nil
+}
+func (s *subscriptionStub) GetSubscriptionItem(context.Context, subscriptiondomain.GetSubscriptionItemRequest) (subscriptiondomain.SubscriptionItem, error) {
+	return subscriptiondomain.SubscriptionItem{}, nil
+}
+func (s *subscriptionStub) TransitionSubscription(ctx context.Context, id string, status subscriptiondomain.SubscriptionStatus, reason subscriptiondomain.TransitionReason) error {
+	return nil
+}
+func (s *subscriptionStub) ChangePlan(ctx context.Context, req subscriptiondomain.ChangePlanRequest) error {
+	return nil
 }
 
 func prepareUsageSchema(t *testing.T, db *gorm.DB) {

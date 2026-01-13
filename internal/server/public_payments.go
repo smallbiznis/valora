@@ -10,7 +10,7 @@ import (
 	publicinvoicedomain "github.com/smallbiznis/valora/internal/publicinvoice/domain"
 )
 
-func (s *Server) registerPublicRoutes() {
+func (s *Server) RegisterPublicRoutes() {
 	public := s.engine.Group("/public")
 	public.Use(RequestID())
 

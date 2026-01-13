@@ -12,21 +12,25 @@ import (
 	authscope "github.com/smallbiznis/valora/internal/auth/scope"
 	"github.com/smallbiznis/valora/internal/authorization"
 	billingdashboarddomain "github.com/smallbiznis/valora/internal/billingdashboard/domain"
+	billingoperationsdomain "github.com/smallbiznis/valora/internal/billingoperations/domain"
 	billingoverviewdomain "github.com/smallbiznis/valora/internal/billingoverview/domain"
 	customerdomain "github.com/smallbiznis/valora/internal/customer/domain"
+	featuredomain "github.com/smallbiznis/valora/internal/feature/domain"
 	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
 	invoicetemplatedomain "github.com/smallbiznis/valora/internal/invoicetemplate/domain"
 	meterdomain "github.com/smallbiznis/valora/internal/meter/domain"
 	organizationdomain "github.com/smallbiznis/valora/internal/organization/domain"
 	paymentdomain "github.com/smallbiznis/valora/internal/payment/domain"
-	paymentproviderdomain "github.com/smallbiznis/valora/internal/paymentprovider/domain"
 	pricedomain "github.com/smallbiznis/valora/internal/price/domain"
 	priceamountdomain "github.com/smallbiznis/valora/internal/priceamount/domain"
 	pricetierdomain "github.com/smallbiznis/valora/internal/pricetier/domain"
 	productdomain "github.com/smallbiznis/valora/internal/product/domain"
+	productfeaturedomain "github.com/smallbiznis/valora/internal/productfeature/domain"
+	paymentproviderdomain "github.com/smallbiznis/valora/internal/providers/payment/domain"
 	ratingdomain "github.com/smallbiznis/valora/internal/rating/domain"
 	signupdomain "github.com/smallbiznis/valora/internal/signup/domain"
 	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
+	taxdomain "github.com/smallbiznis/valora/internal/tax/domain"
 	usagedomain "github.com/smallbiznis/valora/internal/usage/domain"
 	"gorm.io/gorm"
 )
@@ -240,6 +244,7 @@ func isValidationError(err error) bool {
 	case isOrganizationValidationError(err),
 		isCustomerValidationError(err),
 		isBillingDashboardValidationError(err),
+		isBillingOperationsValidationError(err),
 		isBillingOverviewValidationError(err),
 		isInvoiceValidationError(err),
 		isInvoiceTemplateValidationError(err),
@@ -247,6 +252,7 @@ func isValidationError(err error) bool {
 		isUsageValidationError(err),
 		isPaymentValidationError(err),
 		isProductValidationError(err),
+		isFeatureValidationError(err),
 		isPriceValidationError(err),
 		isPricingValidationError(err),
 		isPriceAmountValidationError(err),
@@ -257,6 +263,8 @@ func isValidationError(err error) bool {
 		isAuditValidationError(err),
 		isAuthorizationValidationError(err),
 		isPaymentProviderValidationError(err),
+		isTaxValidationError(err),
+		isProductFeatureValidationError(err),
 		isScopeValidationError(err):
 		return true
 	default:
@@ -281,9 +289,51 @@ func isUsageValidationError(err error) bool {
 	}
 }
 
+func isFeatureValidationError(err error) bool {
+	switch err {
+	case featuredomain.ErrInvalidOrganization,
+		featuredomain.ErrInvalidCode,
+		featuredomain.ErrInvalidName,
+		featuredomain.ErrInvalidType,
+		featuredomain.ErrInvalidMeterID,
+		featuredomain.ErrInvalidID:
+		return true
+	default:
+		return false
+	}
+}
+
+func isProductFeatureValidationError(err error) bool {
+	switch err {
+	case productfeaturedomain.ErrInvalidOrganization,
+		productfeaturedomain.ErrInvalidProductID,
+		productfeaturedomain.ErrInvalidFeatureID,
+		productfeaturedomain.ErrInvalidMeterID,
+		productfeaturedomain.ErrFeatureInactive:
+		return true
+	default:
+		return false
+	}
+}
+
 func isBillingDashboardValidationError(err error) bool {
 	switch err {
 	case billingdashboarddomain.ErrInvalidOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
+func isBillingOperationsValidationError(err error) bool {
+	switch err {
+	case billingoperationsdomain.ErrInvalidOrganization,
+		billingoperationsdomain.ErrInvalidEntityType,
+		billingoperationsdomain.ErrInvalidEntityID,
+		billingoperationsdomain.ErrInvalidActionType,
+		billingoperationsdomain.ErrInvalidAssignee,
+		billingoperationsdomain.ErrInvalidIdempotencyKey,
+		billingoperationsdomain.ErrInvalidAssignmentTTL:
 		return true
 	default:
 		return false
@@ -299,6 +349,20 @@ func isBillingOverviewValidationError(err error) bool {
 	}
 }
 
+func isTaxValidationError(err error) bool {
+	switch err {
+	case taxdomain.ErrInvalidOrganization,
+		taxdomain.ErrInvalidName,
+		taxdomain.ErrInvalidID,
+		taxdomain.ErrInvalidTaxCode,
+		taxdomain.ErrInvalidTaxMode,
+		taxdomain.ErrInvalidTaxRate:
+		return true
+	default:
+		return false
+	}
+}
+
 func isNotFoundError(err error) bool {
 	switch {
 	case errors.Is(err, ErrNotFound),
@@ -306,9 +370,13 @@ func isNotFoundError(err error) bool {
 		errors.Is(err, invoicetemplatedomain.ErrNotFound),
 		errors.Is(err, invoicedomain.ErrInvoiceTemplateNotFound),
 		errors.Is(err, productdomain.ErrNotFound),
+		errors.Is(err, productfeaturedomain.ErrProductNotFound),
+		errors.Is(err, featuredomain.ErrNotFound),
+		errors.Is(err, productfeaturedomain.ErrFeatureNotFound),
 		errors.Is(err, pricedomain.ErrNotFound),
 		errors.Is(err, apikeydomain.ErrNotFound),
 		errors.Is(err, meterdomain.ErrMeterNotFound),
+		errors.Is(err, productfeaturedomain.ErrMeterNotFound),
 		errors.Is(err, priceamountdomain.ErrNotFound),
 		errors.Is(err, pricetierdomain.ErrNotFound),
 		errors.Is(err, invoicedomain.ErrBillingCycleNotFound),
@@ -318,6 +386,7 @@ func isNotFoundError(err error) bool {
 		errors.Is(err, subscriptiondomain.ErrSubscriptionItemNotFound),
 		errors.Is(err, paymentdomain.ErrProviderNotFound),
 		errors.Is(err, paymentproviderdomain.ErrNotFound),
+		errors.Is(err, taxdomain.ErrNotFound),
 		errors.Is(err, gorm.ErrRecordNotFound):
 		return true
 	default:

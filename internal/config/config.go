@@ -15,12 +15,14 @@ type Config struct {
 	AppVersion                  string
 	Mode                        string
 	Environment                 string
+	Port                        string
 	AuthCookieSecure            bool
 	DefaultOrgID                int64
 	AuthJWTSecret               string
 	PaymentProviderConfigSecret string
 
 	OTLPEndpoint string
+	StaticDir    string
 
 	Cloud     CloudConfig
 	Bootstrap BootstrapConfig
@@ -41,6 +43,20 @@ type Config struct {
 	OAuth2ClientSecret string
 
 	RateLimit RateLimitConfig
+	Email     EmailConfig
+	Logger    LoggerConfig
+}
+
+type EmailConfig struct {
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUsername string
+	SMTPPassword string
+	SMTPFrom     string
+}
+
+type LoggerConfig struct {
+	Level string
 }
 
 type CloudConfig struct {
@@ -79,6 +95,23 @@ type RateLimitConfig struct {
 	UsageIngestConcurrencyTTLSeconds int
 }
 
+type BillingConfig struct {
+	AgingBuckets []AgingBucket `mapstructure:"agingBuckets"`
+	RiskLevels   []RiskLevel   `mapstructure:"riskLevels"`
+}
+
+type AgingBucket struct {
+	Label   string `mapstructure:"label"`
+	MinDays int    `mapstructure:"minDays"`
+	MaxDays *int   `mapstructure:"maxDays"` // pointer = nullable
+}
+
+type RiskLevel struct {
+	Level          string `mapstructure:"level"`
+	MinOutstanding int64  `mapstructure:"minOutstanding"`
+	MinDays        int    `mapstructure:"minDays"`
+}
+
 // Load loads configuration from environment variables and .env file.
 func Load() Config {
 	_ = godotenv.Load()
@@ -95,11 +128,13 @@ func Load() Config {
 		AppVersion:                  getenv("APP_VERSION", "0.1.0"),
 		Mode:                        mode,
 		Environment:                 environment,
+		Port:                        getenv("PORT", "8080"),
 		AuthCookieSecure:            authCookieSecure,
 		DefaultOrgID:                getenvInt64("DEFAULT_ORG", 0),
 		AuthJWTSecret:               strings.TrimSpace(getenv("AUTH_JWT_SECRET", "")),
 		PaymentProviderConfigSecret: strings.TrimSpace(getenv("PAYMENT_PROVIDER_CONFIG_SECRET", "base64:Kq7N2f1Jx9yY4mFZp+u7qZb8c9d0eFQ1vS3nZk6hL2A=")),
 		OTLPEndpoint:                getenv("OTLP_ENDPOINT", "localhost:4317"),
+		StaticDir:                   getenv("STATIC_DIR", "./public"),
 		Cloud: CloudConfig{
 			OrganizationID:   strings.TrimSpace(getenv("CLOUD_ORGANIZATION_ID", "")),
 			OrganizationName: getenv("CLOUD_ORGANIZATION_NAME", ""),
@@ -149,8 +184,19 @@ func Load() Config {
 			UsageIngestConcurrencyTTLSeconds: clampInt(getenvInt("USAGE_INGEST_CONCURRENCY_TTL_SECONDS", 3), 2, 5),
 		},
 
-		// Vault settings
+		Email: EmailConfig{
+			SMTPHost:     getenv("SMTP_HOST", "localhost"),
+			SMTPPort:     getenvInt("SMTP_PORT", 1025),
+			SMTPUsername: getenv("SMTP_USERNAME", ""),
+			SMTPPassword: getenv("SMTP_PASSWORD", ""),
+			SMTPFrom:     getenv("SMTP_FROM", "no-reply@valora.test"),
+		},
 
+		Logger: LoggerConfig{
+			Level: getenv("LOG_LEVEL", "info"),
+		},
+
+		// Vault settings
 	}
 
 	return cfg

@@ -2,7 +2,7 @@
 
 Billing systems are trusted only when their outputs can be explained.
 
-In Valora, observability is not limited to metrics and logs.
+In Railzway, observability is not limited to metrics and logs.
 It includes the ability to explain **why a specific billing result exists**.
 
 ---
@@ -20,9 +20,9 @@ This opacity erodes trust.
 
 ---
 
-## Valora’s Definition of Explainability
+## Railzway’s Definition of Explainability
 
-A billing result is explainable if Valora can answer:
+A billing result is explainable if Railzway can answer:
 
 - which usage events contributed to it
 - which pricing version was applied
@@ -34,9 +34,9 @@ Explainability is treated as a **product requirement**, not a support feature.
 
 ---
 
-## Observability Layers in Valora
+## Observability Layers in Railzway
 
-Valora provides observability at multiple layers:
+Railzway provides observability at multiple layers:
 
 ### Input-Level
 
@@ -80,7 +80,7 @@ Historical billing remains explainable months or years later.
 
 ## Observability Without Mutation
 
-Valora does not rely on mutable debug state.
+Railzway does not rely on mutable debug state.
 
 Instead:
 
@@ -94,7 +94,7 @@ This avoids discrepancies between “debug” and “production” views.
 
 ## Operational Visibility
 
-Valora supports operational observability through:
+Railzway supports operational observability through:
 
 - explicit billing cycle states
 - computation progress indicators
@@ -119,7 +119,7 @@ Without explainability, billing systems become a support liability.
 
 ## Summary
 
-Valora treats observability as the ability to explain billing outcomes.
+Railzway treats observability as the ability to explain billing outcomes.
 
 > **If a billing result cannot be explained clearly,
 > it should not exist.**

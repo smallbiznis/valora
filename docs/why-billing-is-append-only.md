@@ -3,7 +3,7 @@
 Billing systems manage financial intent.
 
 Once intent is recorded, mutating it introduces ambiguity and risk.
-For this reason, Valora treats billing data as **append-only**.
+For this reason, Railzway treats billing data as **append-only**.
 
 ---
 
@@ -37,7 +37,7 @@ This makes it impossible to answer:
 
 ## Append-Only in Practice
 
-In Valora:
+In Railzway:
 
 - usage events are immutable
 - pricing versions are immutable
@@ -78,7 +78,7 @@ Changes explain themselves via new records.
 
 Append-only does not imply inefficiency.
 
-Valora relies on:
+Railzway relies on:
 
 - aggregation by period
 - indexed historical data
@@ -88,7 +88,7 @@ Performance optimizations do not compromise correctness.
 
 ---
 
-## Why Valora Enforces This
+## Why Railzway Enforces This
 
 Billing systems exist to answer questions months or years later.
 
@@ -98,7 +98,7 @@ Append-only data ensures those questions remain answerable.
 
 ## Summary
 
-Valora enforces append-only billing because:
+Railzway enforces append-only billing because:
 
 - financial intent must be preserved
 - history must remain intact

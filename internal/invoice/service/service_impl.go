@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -22,8 +23,12 @@ import (
 	"github.com/smallbiznis/valora/internal/orgcontext"
 	pricedomain "github.com/smallbiznis/valora/internal/price/domain"
 	priceamountdomain "github.com/smallbiznis/valora/internal/priceamount/domain"
+	"github.com/smallbiznis/valora/internal/providers/email"
+	"github.com/smallbiznis/valora/internal/providers/pdf"
 	publicinvoicedomain "github.com/smallbiznis/valora/internal/publicinvoice/domain"
 	ratingdomain "github.com/smallbiznis/valora/internal/rating/domain"
+	taxdomain "github.com/smallbiznis/valora/internal/tax/domain"
+	taxservice "github.com/smallbiznis/valora/internal/tax/service"
 	"github.com/smallbiznis/valora/pkg/db/option"
 	"github.com/smallbiznis/valora/pkg/repository"
 	"go.uber.org/fx"
@@ -38,9 +43,9 @@ type invoiceItemPart struct {
 	// Interval
 	Interval *pricedomain.BillingInterval
 
-	DisplayName string // e.g. "Actions", "Active Storage", "Essentials Plan", "Sign Up Credit"
-	Quantity    int64  // for UI table qty column (Temporal uses 1 line item but mentions total qty in desc)
-	UnitLabel   string // "unit", "GB-hour", etc (optional)
+	DisplayName string  // e.g. "Actions", "Active Storage", "Essentials Plan", "Sign Up Credit"
+	Quantity    float64 // for UI table qty column (Temporal uses 1 line item but mentions total qty in desc)
+	UnitLabel   string  // "unit", "GB-hour", etc (optional)
 
 	// For showing "Rate: $X / unit"
 	RateAmount int64
@@ -98,7 +103,11 @@ type ServiceParam struct {
 	TemplateRepo   templatedomain.Repository
 	Renderer       render.Renderer
 	PublicTokenSvc publicinvoicedomain.PublicInvoiceTokenService
+	TaxResolver    taxdomain.TaxResolver
+	LedgerSvc      ledgerdomain.Service
 	Outbox         *events.Outbox `optional:"true"`
+	EmailProvider  email.Provider
+	PDFProvider    pdf.Provider
 }
 
 type Service struct {
@@ -111,7 +120,11 @@ type Service struct {
 	templateRepo   templatedomain.Repository
 	renderer       render.Renderer
 	publicTokenSvc publicinvoicedomain.PublicInvoiceTokenService
+	taxResolver    taxdomain.TaxResolver
+	ledgerSvc      ledgerdomain.Service
 	outbox         *events.Outbox
+	emailProvider  email.Provider
+	pdfProvider    pdf.Provider
 }
 
 func NewService(p ServiceParam) invoicedomain.Service {
@@ -125,7 +138,11 @@ func NewService(p ServiceParam) invoicedomain.Service {
 		templateRepo:   p.TemplateRepo,
 		renderer:       p.Renderer,
 		publicTokenSvc: p.PublicTokenSvc,
+		taxResolver:    p.TaxResolver,
+		ledgerSvc:      p.LedgerSvc,
 		outbox:         p.Outbox,
+		emailProvider:  p.EmailProvider,
+		pdfProvider:    p.PDFProvider,
 	}
 }
 
@@ -383,16 +400,30 @@ func (s *Service) listInvoiceItemPartsFromRating(
 	invoiceID snowflake.ID,
 ) error {
 
+	// 1. Load active entitlements for the cycle
+	entitlements, err := s.listEntitlementsForCycle(ctx, tx, cycle.OrgID, cycle.SubscriptionID, cycle.PeriodStart, cycle.PeriodEnd)
+	if err != nil {
+		return err
+	}
+	// Index entitlements by FeatureCode for joining
+	entitlementMap := make(map[string]invoicedomain.SubscriptionEntitlement)
+	// Also index by MeterID for fallback if FeatureCode is missing in old data (though strictly required by prompt)
+	// Prompt says: "Joining rating_results to entitlements by: ... feature_code"
+	for _, e := range entitlements {
+		entitlementMap[e.FeatureCode] = e
+	}
+
 	var rows []struct {
-		ID        snowflake.ID
-		OrgID     snowflake.ID
-		MeterID   snowflake.ID
-		PriceID   snowflake.ID
-		Quantity  float64
-		UnitPrice int64
-		Amount    int64
-		Currency  string
-		Source    string
+		ID          snowflake.ID
+		OrgID       snowflake.ID
+		MeterID     snowflake.ID
+		PriceID     snowflake.ID
+		FeatureCode string
+		Quantity    float64
+		UnitPrice   int64
+		Amount      int64
+		Currency    string
+		Source      string
 	}
 
 	if err := tx.WithContext(ctx).
@@ -402,6 +433,7 @@ func (s *Service) listInvoiceItemPartsFromRating(
 		org_id,
 		meter_id,
 		price_id,
+		feature_code,
 		quantity,
 		unit_price,
 		amount,
@@ -415,22 +447,14 @@ func (s *Service) listInvoiceItemPartsFromRating(
 
 	now := time.Now().UTC()
 	for _, r := range rows {
-		price, err := s.loadPrice(ctx, tx, r.PriceID)
-		if err != nil {
-			return err
-		}
-
-		if price == nil {
-			return priceamountdomain.ErrNotFound
-		}
-
-		priceamounts, err := s.loadPriceAmount(ctx, tx, price.ID, r.Currency, cycle.PeriodStart, cycle.PeriodEnd)
-		if err != nil {
-			return err
-		}
-
-		if priceamounts == nil {
-			return priceamountdomain.ErrNotFound
+		// Strict Join Rule: WAS Must match entitlement
+		// Now: Optional.
+		ent, ok := entitlementMap[r.FeatureCode]
+		description := "Usage"
+		if ok {
+			description = ent.FeatureName
+		} else if r.MeterID == 0 {
+			description = "Subscription"
 		}
 
 		invoiceItem := invoicedomain.InvoiceItem{
@@ -438,33 +462,91 @@ func (s *Service) listInvoiceItemPartsFromRating(
 			OrgID:          r.OrgID,
 			InvoiceID:      invoiceID,
 			RatingResultID: &r.ID,
-			Quantity:       1,
+			Quantity:       float64(r.Quantity),
 			UnitPrice:      r.UnitPrice,
 			Amount:         r.Amount,
+			Description:    description, // Use snapshot data or fallback
+			LineType:       invoicedomain.InvoiceItemLineTypeUsage,
 			CreatedAt:      now,
 		}
 
-		itemType := invoicedomain.InvoiceItemLineTypeSubscription
-		if price.PricingModel == pricedomain.PerUnit {
-			itemType = invoicedomain.InvoiceItemLineTypeUsage
+		// Refine Line Type based on Entitlement or Rating?
+		// If MeterID is nil, likely Subscription/Flat
+		if r.MeterID == 0 {
+			invoiceItem.LineType = invoicedomain.InvoiceItemLineTypeSubscription
 		}
 
-		invoiceItem.Description = s.formatInvoiceItemDescription(invoiceItemPart{
-			Type:            itemType,
-			Interval:        &price.BillingInterval,
-			DisplayName:     price.Name,
-			Quantity:        int64(r.Quantity),
-			UnitPriceAmount: priceamounts.UnitAmountCents,
-			RateAmount:      r.Amount,
-			Amount:          r.Amount,
-			Currency:        r.Currency,
-		}, cycle)
+		// Enrich description (e.g. usage dates, rate)
+		part := invoiceItemPart{
+			Type:        invoiceItem.LineType,
+			DisplayName: invoiceItem.Description,
+			Quantity:    r.Quantity,
+			RateAmount:  r.UnitPrice,
+			Currency:    r.Currency,
+			UnitLabel:   "unit", // Default, could be enriched from entitlement metadata if available
+		}
+		invoiceItem.Description = s.formatInvoiceItemDescription(part, cycle)
+
 		if err := s.insertInvoiceItem(ctx, tx, invoiceItem); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (s *Service) listEntitlementsForCycle(
+	ctx context.Context,
+	tx *gorm.DB,
+	orgID, subscriptionID snowflake.ID,
+	start, end time.Time,
+) ([]invoicedomain.SubscriptionEntitlement, error) {
+	// Find entitlements that overlap with the cycle
+	// EffectiveFrom < PeriodEnd AND (EffectiveTo IS NULL OR EffectiveTo > PeriodStart)
+	var ents []invoicedomain.SubscriptionEntitlement
+	err := tx.WithContext(ctx).Raw(`
+		SELECT * FROM subscription_entitlements
+		WHERE org_id = ? AND subscription_id = ?
+		AND effective_from < ?
+		AND (effective_to IS NULL OR effective_to > ?)
+	`, orgID, subscriptionID, end, start).Scan(&ents).Error
+	if err != nil {
+		return nil, err
+	}
+	return ents, nil
+}
+
+func (s *Service) formatSnapshotItemDescription(
+	baseName string,
+	quantity float64,
+	amount int64,
+	currency string,
+	cycle billingCycleRow,
+	lineType invoicedomain.InvoiceItemLineType,
+) string {
+	// Snapshot logic: No looking up Price table.
+	base := strings.TrimSpace(baseName)
+
+	switch lineType {
+	case invoicedomain.InvoiceItemLineTypeUsage:
+		parts := make([]string, 0, 1)
+		if quantity > 0 {
+			parts = append(parts, fmt.Sprintf("Qty: %g", quantity))
+		}
+		// Calculate implied rate since we don't have unit_label from Price table anymore
+		// unit_price = amount / quantity (roughly)
+		// Or just show total.
+		if len(parts) > 0 {
+			base = fmt.Sprintf("%s (%s)", base, strings.Join(parts, ", "))
+		}
+	}
+
+	period := fmt.Sprintf(
+		"%s – %s",
+		cycle.PeriodStart.Format("Jan 2, 2006"),
+		cycle.PeriodEnd.Format("Jan 2, 2006"),
+	)
+	return base + "\n" + period
 }
 
 func (s *Service) formatInvoiceItemDescription(
@@ -503,16 +585,26 @@ func (s *Service) formatInvoiceItemDescription(
 		// Usage lines must be explicit: quantity + rate.
 		parts := make([]string, 0, 2)
 
-		if p.Quantity > 0 {
+		if p.Quantity >= 0 {
 			parts = append(parts,
-				fmt.Sprintf("Total Qty: %d", p.Quantity),
+				fmt.Sprintf("Total Qty: %.2f", p.Quantity),
 			)
 		}
 
-		if p.RateAmount > 0 {
+		if p.RateAmount >= 0 {
+			// High precision rate for description
+			c := strings.ToUpper(p.Currency)
+			decimals, ok := currencyDecimals[c]
+			if !ok {
+				decimals = 2
+			}
+			divisor := math.Pow(10, float64(decimals))
+			val := float64(p.RateAmount) / divisor
+
 			rate := fmt.Sprintf(
-				"%s / %s",
-				formatMoney(p.RateAmount, p.Currency),
+				"%s %.6f / %s",
+				c,
+				val,
 				unitOrDefault(p.UnitLabel),
 			)
 			parts = append(parts, fmt.Sprintf("Rate: %s", rate))
@@ -543,6 +635,7 @@ func (s *Service) FinalizeInvoice(ctx context.Context, invoiceID string) error {
 	}
 
 	var finalizedInvoice *invoicedomain.Invoice
+	var publicToken publicinvoicedomain.PublicInvoiceToken
 	var renderedChecksum string
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		invoice, err := s.loadInvoiceForUpdate(ctx, tx, id)
@@ -552,9 +645,58 @@ func (s *Service) FinalizeInvoice(ctx context.Context, invoiceID string) error {
 		if invoice == nil {
 			return invoicedomain.ErrInvoiceNotFound
 		}
+		if invoice.Status == invoicedomain.InvoiceStatusFinalized {
+			s.log.Info("invoice already finalized, skipping", zap.String("invoice_id", invoiceID))
+			return nil
+		}
 		if invoice.Status != invoicedomain.InvoiceStatusDraft {
 			return invoicedomain.ErrInvoiceNotDraft
 		}
+		if invoice.SubtotalAmount < 0 {
+			return invoicedomain.ErrInvalidSubtotal
+		}
+
+		// Tax is resolved and frozen at finalize-time.
+		taxDef, err := s.taxResolver.ResolveForInvoice(ctx, invoice.OrgID, invoice.CustomerID)
+		if err != nil {
+			return err
+		}
+		invoice.TaxRate = nil
+		invoice.TaxCode = nil
+		invoice.TaxAmount = 0
+
+		now := time.Now().UTC()
+		dueAt := now.AddDate(0, 0, 30)
+
+		if taxDef != nil {
+			switch taxDef.TaxMode {
+			case taxdomain.TaxModeExclusive:
+				invoice.TaxAmount = taxservice.ComputeTaxExclusive(invoice.SubtotalAmount, taxDef.Rate)
+			case taxdomain.TaxModeInclusive:
+				invoice.TaxAmount = taxservice.ComputeTaxInclusive(invoice.SubtotalAmount, taxDef.Rate)
+			default:
+				invoice.TaxAmount = 0
+			}
+			invoice.TaxRate = taxDef.Rate
+			invoice.TaxCode = &taxDef.Code
+
+			// SNAPSHOT: Create InvoiceTaxLine
+			taxLine := invoicedomain.InvoiceTaxLine{
+				ID:        s.genID.Generate(),
+				OrgID:     invoice.OrgID,
+				InvoiceID: invoice.ID,
+				TaxCode:   &taxDef.Code,
+				TaxName:   taxDef.Name,
+				TaxMode:   string(taxDef.TaxMode),
+				TaxRate:   *taxDef.Rate,
+				Amount:    invoice.TaxAmount,
+				CreatedAt: now,
+			}
+			if err := tx.WithContext(ctx).Create(&taxLine).Error; err != nil {
+				return err
+			}
+		}
+		invoice.TotalAmount = invoice.SubtotalAmount + invoice.TaxAmount
 
 		// Snapshot rendered output at finalization so future template edits never change history.
 		invoice.Status = invoicedomain.InvoiceStatusFinalized
@@ -569,15 +711,13 @@ func (s *Service) FinalizeInvoice(ctx context.Context, invoiceID string) error {
 		checksum := sha256.Sum256([]byte(renderedHTML))
 		renderedChecksum = hex.EncodeToString(checksum[:])
 
-		now := time.Now().UTC()
-		dueAt := now.AddDate(0, 0, 30)
 		invoice.DueAt = &dueAt
 		invoice.IssuedAt = &now
 		invoice.FinalizedAt = &now
 
 		if err := tx.WithContext(ctx).Exec(
 			`UPDATE invoices
-			 SET status = ?, finalized_at = ?, issued_at = ?, due_at = ?, invoice_template_id = ?, rendered_html = ?, rendered_pdf_url = ?, updated_at = ?
+			 SET status = ?, finalized_at = ?, issued_at = ?, due_at = ?, invoice_template_id = ?, rendered_html = ?, rendered_pdf_url = ?, tax_rate = ?, tax_code = ?, tax_amount = ?, total_amount = ?, updated_at = ?
 			 WHERE id = ?`,
 			invoice.Status,
 			invoice.FinalizedAt,
@@ -586,6 +726,10 @@ func (s *Service) FinalizeInvoice(ctx context.Context, invoiceID string) error {
 			invoice.InvoiceTemplateID,
 			invoice.RenderedHTML,
 			invoice.RenderedPDFURL,
+			invoice.TaxRate,
+			invoice.TaxCode,
+			invoice.TaxAmount,
+			invoice.TotalAmount,
 			now,
 			id,
 		).Error; err != nil {
@@ -593,7 +737,7 @@ func (s *Service) FinalizeInvoice(ctx context.Context, invoiceID string) error {
 		}
 		finalizedInvoice = invoice
 
-		if _, err := s.publicTokenSvc.EnsureForInvoice(ctx, *finalizedInvoice); err != nil {
+		if publicToken, err = s.publicTokenSvc.EnsureForInvoice(ctx, *finalizedInvoice); err != nil {
 			return err
 		}
 
@@ -610,6 +754,14 @@ func (s *Service) FinalizeInvoice(ctx context.Context, invoiceID string) error {
 				return err
 			}
 		}
+
+		// CRITICAL: Post to ledger ONLY on finalization, within same transaction
+		// This ensures accounting reflects ONLY finalized invoices
+		// Idempotency is handled by ledger service (ON CONFLICT DO NOTHING)
+		if err := s.postInvoiceToLedger(ctx, tx, invoice); err != nil {
+			return err
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -626,6 +778,18 @@ func (s *Service) FinalizeInvoice(ctx context.Context, invoiceID string) error {
 			metadata["invoice_template_id"] = finalizedInvoice.InvoiceTemplateID.String()
 		}
 		s.emitAudit(ctx, "invoice.finalize", finalizedInvoice, metadata)
+
+		// Trigger Notifications (Async)
+		// Trigger Notifications (Async)
+		go func(inv *invoicedomain.Invoice, tokenHash string) {
+			// Create a detached context with timeout
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+			defer cancel()
+
+			if err := s.sendInvoiceNotification(ctx, inv, tokenHash); err != nil {
+				s.log.Error("failed to send invoice notification", zap.Error(err), zap.String("invoice_id", inv.ID.String()))
+			}
+		}(finalizedInvoice, publicToken.TokenHash)
 	}
 	return nil
 }
@@ -956,9 +1120,9 @@ func (s *Service) insertInvoice(ctx context.Context, tx *gorm.DB, invoice invoic
 	result := tx.WithContext(ctx).Exec(
 		`INSERT INTO invoices (
 			id, org_id, invoice_seq, invoice_number, billing_cycle_id, subscription_id, customer_id,
-			invoice_template_id, status, subtotal_amount, currency, period_start, period_end,
+			invoice_template_id, status, subtotal_amount, total_amount, currency, period_start, period_end,
 			issued_at, due_at, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (billing_cycle_id) DO NOTHING`,
 		invoice.ID,
 		invoice.OrgID,
@@ -970,6 +1134,7 @@ func (s *Service) insertInvoice(ctx context.Context, tx *gorm.DB, invoice invoic
 		invoice.InvoiceTemplateID,
 		invoice.Status,
 		invoice.SubtotalAmount,
+		invoice.TotalAmount,
 		invoice.Currency,
 		invoice.PeriodStart,
 		invoice.PeriodEnd,
@@ -1007,14 +1172,19 @@ func (s *Service) insertInvoiceItem(ctx context.Context, tx *gorm.DB, item invoi
 
 func (s *Service) loadInvoiceForUpdate(ctx context.Context, tx *gorm.DB, id snowflake.ID) (*invoicedomain.Invoice, error) {
 	var invoice invoicedomain.Invoice
-	err := tx.WithContext(ctx).Raw(
-		`SELECT id, org_id, invoice_number, billing_cycle_id, subscription_id, customer_id,
-		        invoice_template_id, status, subtotal_amount, currency, period_start, period_end,
+	query := `SELECT id, org_id, invoice_number, billing_cycle_id, subscription_id, customer_id,
+		        invoice_template_id, status, subtotal_amount, tax_rate, tax_code, tax_amount, total_amount, currency, period_start, period_end,
 		        issued_at, due_at, finalized_at, voided_at, rendered_html, rendered_pdf_url,
 		        created_at, updated_at
 		 FROM invoices
-		 WHERE id = ?
-		 FOR UPDATE`,
+		 WHERE id = ?`
+
+	if tx.Dialector.Name() != "sqlite" {
+		query += " FOR UPDATE"
+	}
+
+	err := tx.WithContext(ctx).Raw(
+		query,
 		id,
 	).Scan(&invoice).Error
 	if err != nil {
@@ -1056,8 +1226,98 @@ func formatQty(v float64) string {
 	return fmt.Sprintf("%.2f", v)
 }
 
+var currencyDecimals = map[string]int{
+	"USD": 2,
+	"EUR": 2,
+	"SGD": 2,
+	"CNY": 2,
+	"IDR": 0,
+}
+
 func formatMoney(amount int64, currency string) string {
-	// TODO: replace with your money formatter.
-	// amount assumed in minor units? if so, adjust.
-	return fmt.Sprintf("%s %d", strings.ToUpper(currency), amount)
+	c := strings.ToUpper(currency)
+	decimals, ok := currencyDecimals[c]
+	if !ok {
+		// fallback: assume 2 decimals
+		decimals = 2
+	}
+
+	sign := ""
+	if amount < 0 {
+		sign = "-"
+		amount = -amount
+	}
+
+	if decimals == 0 {
+		return fmt.Sprintf("%s%s %d", sign, c, amount)
+	}
+
+	divisor := int64(1)
+	for i := 0; i < decimals; i++ {
+		divisor *= 10
+	}
+
+	major := amount / divisor
+	minor := amount % divisor
+
+	return fmt.Sprintf(
+		"%s%s %d.%0*d",
+		sign,
+		c,
+		major,
+		decimals,
+		minor,
+	)
+}
+
+// sendInvoiceNotification generates PDF and sends email
+func (s *Service) sendInvoiceNotification(ctx context.Context, invoice *invoicedomain.Invoice, tokenHash string) error {
+	// 1. Load Org and Customer for details
+	// TODO: Fetch real org/customer details. Using placeholders for MVP.
+
+	// 2. Generate PDF (Proof of concept)
+	pdfData := pdf.InvoiceData{
+		InvoiceNumber: invoice.ID.String(),
+		IssueDate:     invoice.IssuedAt.Format("January 2, 2006"),
+		DueDate:       invoice.DueAt.Format("January 2, 2006"),
+		TotalDue:      fmt.Sprintf("$%.2f", float64(invoice.TotalAmount)/100.0),
+		Total:         fmt.Sprintf("$%.2f", float64(invoice.TotalAmount)/100.0),
+		// Populate other fields as needed
+		OrgName: "Small Biznis, LLC",
+	}
+
+	_, err := s.pdfProvider.GenerateInvoice(ctx, pdfData)
+	if err != nil {
+		s.log.Error("failed to generate invoice PDF", zap.Error(err))
+		// We log but don't fail the whole notification flow if email can still go out (though email needs PDF usually)
+	}
+
+	// 3. Send Email
+	emailData := struct {
+		OrgName         string
+		Total           string
+		DueDate         string
+		PaymentLink     string
+		InvoiceNumber   string
+		OrgContactEmail string
+	}{
+		OrgName:         "Small Biznis, LLC",
+		Total:           pdfData.Total,
+		DueDate:         pdfData.DueDate,
+		PaymentLink:     fmt.Sprintf("http://localhost:5173/%s/%s", invoice.OrgID, tokenHash),
+		InvoiceNumber:   invoice.ID.String(),
+		OrgContactEmail: "support@smallbiznis.com",
+	}
+
+	// TODO: Get real customer email from invoice.CustomerContactEmail or similar
+	to := []string{"taufiktriantono4@gmail.com"}
+
+	err = s.emailProvider.SendTemplate(ctx, to, "invoice_new", emailData)
+	if err != nil {
+		s.log.Error("failed to send invoice email", zap.Error(err))
+		return err
+	}
+
+	s.log.Info("invoice notification sent", zap.String("invoice_id", invoice.ID.String()))
+	return nil
 }

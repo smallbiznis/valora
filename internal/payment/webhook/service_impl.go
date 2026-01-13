@@ -18,7 +18,7 @@ import (
 	disputeservice "github.com/smallbiznis/valora/internal/payment/dispute/service"
 	paymentdomain "github.com/smallbiznis/valora/internal/payment/domain"
 	paymentservice "github.com/smallbiznis/valora/internal/payment/service"
-	paymentproviderdomain "github.com/smallbiznis/valora/internal/paymentprovider/domain"
+	paymentproviderdomain "github.com/smallbiznis/valora/internal/providers/payment/domain"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/datatypes"

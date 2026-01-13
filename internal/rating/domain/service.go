@@ -18,4 +18,5 @@ var (
 	ErrMissingMeter           = errors.New("missing_meter")
 	ErrInvalidQuantity        = errors.New("invalid_quantity")
 	ErrNoSubscriptionItems    = errors.New("no_subscription_items")
+	ErrSubscriptionNotFound   = errors.New("subscription_not_found")
 )

@@ -16,6 +16,7 @@ import (
 	"github.com/smallbiznis/valora/internal/orgcontext"
 	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
 	usagedomain "github.com/smallbiznis/valora/internal/usage/domain"
+	"github.com/smallbiznis/valora/internal/usage/liveevents"
 	"github.com/smallbiznis/valora/pkg/db/option"
 	"github.com/smallbiznis/valora/pkg/db/pagination"
 	"github.com/smallbiznis/valora/pkg/repository"
@@ -37,7 +38,8 @@ type ServiceParam struct {
 	Metrics       *cloudmetrics.CloudMetrics
 	ObsMetrics    *obsmetrics.Metrics `optional:"true"`
 	ResolverCache cache.UsageResolverCache
-	Outbox        *events.Outbox `optional:"true"`
+	Outbox        *events.Outbox  `optional:"true"`
+	LiveEvents    *liveevents.Hub `optional:"true"`
 }
 
 type Service struct {
@@ -52,6 +54,7 @@ type Service struct {
 	obsMetrics    *obsmetrics.Metrics
 	resolverCache cache.UsageResolverCache
 	outbox        *events.Outbox
+	liveEvents    *liveevents.Hub
 }
 
 func NewService(p ServiceParam) usagedomain.Service {
@@ -67,6 +70,7 @@ func NewService(p ServiceParam) usagedomain.Service {
 		obsMetrics:    p.ObsMetrics,
 		resolverCache: p.ResolverCache,
 		outbox:        p.Outbox,
+		liveEvents:    p.LiveEvents,
 	}
 }
 
@@ -94,8 +98,35 @@ func (s *Service) Ingest(
 		return nil, err
 	}
 
-	if err := s.ensureCustomerExists(ctx, orgID, customerID); err != nil {
+	idempotencyKey := normalizeIdempotencyKey(req.IdempotencyKey)
+
+	// 1. Strict Idempotency: Check presence BEFORE logic
+	// If the event was already accepted, return it strictly as-is.
+	// This prevents "permission drift" on retries (e.g. sub cancelled after Event 1 but before Retry 1).
+	existing, err := s.findUsageEventByIdempotencyKey(ctx, orgID, idempotencyKey)
+	if err != nil {
 		return nil, err
+	}
+	if existing != nil {
+		s.emitLiveUsageEvent(existing, liveevents.StatusDeduplicated, liveevents.SourceAPI)
+		return existing, nil
+	}
+
+	// ... continue to resolving ...
+	sub, err := s.resolveActiveSubscription(ctx, orgID, req.CustomerID)
+	if err != nil {
+		return nil, err
+	}
+	if sub.ID == 0 {
+		return nil, usagedomain.ErrInvalidSubscription
+	}
+
+	meter, err := s.resolveMeter(ctx, orgID, meterCode)
+	if err != nil {
+		return nil, err
+	}
+	if meter == nil {
+		return nil, usagedomain.ErrInvalidMeter
 	}
 
 	now := time.Now().UTC()
@@ -104,7 +135,29 @@ func (s *Service) Ingest(
 		recordedAt = now
 	}
 
-	idempotencyKey := normalizeIdempotencyKey(req.IdempotencyKey)
+	// Entitlement Check: Validate that this usage is allowed.
+	meterID, err := snowflake.ParseString(meter.ID)
+	if err != nil {
+		return nil, usagedomain.ErrInvalidMeter
+	}
+
+	if s.subSvc != nil {
+		if err := s.subSvc.ValidateUsageEntitlement(ctx, sub.ID, meterID, recordedAt); err != nil {
+			// If feature not entitled, we must reject.
+			if errors.Is(err, subscriptiondomain.ErrFeatureNotEntitled) {
+				// Map to a new usage domain error or return explicitly
+				return nil, errors.New("usage_rejected_feature_not_entitled")
+			}
+			// For other errors (db issues), return them?
+			// Strict gating -> if we can't validate, we shouldn't accept.
+			return nil, err
+		}
+	} else {
+		// Critical: If subSvc is missing, we cannot enforce gating.
+		return nil, errors.New("usage_ingestion_gating_unavailable")
+	}
+
+	// idempotencyKey already normalized above
 
 	record := &usagedomain.UsageEvent{
 		ID:             s.genID.Generate(),
@@ -139,6 +192,7 @@ func (s *Service) Ingest(
 			return nil, err
 		}
 		if existing != nil {
+			s.emitLiveUsageEvent(existing, liveevents.StatusDeduplicated, liveevents.SourceAPI)
 			return existing, nil
 		}
 	}
@@ -153,6 +207,7 @@ func (s *Service) Ingest(
 	}
 
 	s.emitUsageIngested(record)
+	s.emitLiveUsageEvent(record, liveevents.StatusAccepted, liveevents.SourceAPI)
 
 	return record, nil
 }
@@ -399,6 +454,25 @@ func (s *Service) emitUsageIngested(record *usagedomain.UsageEvent) {
 	go func() {
 		_ = s.outbox.Publish(context.Background(), event)
 	}()
+}
+
+func (s *Service) emitLiveUsageEvent(record *usagedomain.UsageEvent, status string, source string) {
+	if s.liveEvents == nil || record == nil {
+		return
+	}
+	event := liveevents.LiveEvent{
+		MeterID:        record.MeterID.String(),
+		CustomerID:     record.CustomerID.String(),
+		Value:          record.Value,
+		RecordedAt:     record.RecordedAt.UTC().Format(time.RFC3339Nano),
+		IdempotencyKey: record.IdempotencyKey,
+		Status:         strings.TrimSpace(status),
+		Source:         strings.TrimSpace(source),
+	}
+	if event.MeterID == "0" {
+		event.MeterID = ""
+	}
+	s.liveEvents.Publish(record.MeterCode, event)
 }
 
 func buildIdempotencyConflictClause(db *gorm.DB) clause.OnConflict {

@@ -13,6 +13,7 @@ import (
 	"github.com/smallbiznis/valora/internal/authorization"
 	billingcycledomain "github.com/smallbiznis/valora/internal/billingcycle/domain"
 	"github.com/smallbiznis/valora/internal/billingdashboard/rollup"
+	billingopsdomain "github.com/smallbiznis/valora/internal/billingoperations/domain"
 	"github.com/smallbiznis/valora/internal/clock"
 	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
 	ledgerdomain "github.com/smallbiznis/valora/internal/ledger/domain"
@@ -36,26 +37,29 @@ type Params struct {
 	LedgerSvc       ledgerdomain.Service
 	SubscriptionSvc subscriptiondomain.Service
 	AuditSvc        auditdomain.Service
-	AuthzSvc        authorization.Service
-	RollupSvc       *rollup.Service `optional:"true"`
-	GenID           *snowflake.Node
-	Clock           clock.Clock
-	Config          Config `optional:"true"`
+
+	AuthzSvc             authorization.Service
+	BillingOperationsSvc billingopsdomain.Service
+	RollupSvc            *rollup.Service `optional:"true"`
+	GenID                *snowflake.Node
+	Clock                clock.Clock
+	Config               Config `optional:"true"`
 }
 
 type Scheduler struct {
-	db              *gorm.DB
-	log             *zap.Logger
-	cfg             Config
-	genID           *snowflake.Node
-	clock           clock.Clock
-	ratingSvc       ratingdomain.Service
-	invoiceSvc      invoicedomain.Service
-	ledgerSvc       ledgerdomain.Service
-	subscriptionSvc subscriptiondomain.Service
-	auditSvc        auditdomain.Service
-	authzSvc        authorization.Service
-	rollupSvc       *rollup.Service
+	db                   *gorm.DB
+	log                  *zap.Logger
+	cfg                  Config
+	genID                *snowflake.Node
+	clock                clock.Clock
+	ratingSvc            ratingdomain.Service
+	invoiceSvc           invoicedomain.Service
+	ledgerSvc            ledgerdomain.Service
+	subscriptionSvc      subscriptiondomain.Service
+	auditSvc             auditdomain.Service
+	authzSvc             authorization.Service
+	billingOperationsSvc billingopsdomain.Service
+	rollupSvc            *rollup.Service
 }
 
 type auditEvent struct {
@@ -69,23 +73,24 @@ type auditEvent struct {
 }
 
 func New(p Params) (*Scheduler, error) {
-	if p.DB == nil || p.Log == nil || p.RatingSvc == nil || p.InvoiceSvc == nil || p.LedgerSvc == nil || p.SubscriptionSvc == nil || p.GenID == nil || p.AuditSvc == nil || p.AuthzSvc == nil || p.Clock == nil {
+	if p.DB == nil || p.Log == nil || p.RatingSvc == nil || p.InvoiceSvc == nil || p.LedgerSvc == nil || p.SubscriptionSvc == nil || p.GenID == nil || p.AuditSvc == nil || p.AuthzSvc == nil || p.Clock == nil || p.BillingOperationsSvc == nil {
 		return nil, ErrInvalidConfig
 	}
 	cfg := p.Config.withDefaults()
 	return &Scheduler{
-		db:              p.DB,
-		log:             p.Log.Named("scheduler").With(zap.String("component", "scheduler")),
-		cfg:             cfg,
-		genID:           p.GenID,
-		clock:           p.Clock,
-		ratingSvc:       p.RatingSvc,
-		invoiceSvc:      p.InvoiceSvc,
-		ledgerSvc:       p.LedgerSvc,
-		subscriptionSvc: p.SubscriptionSvc,
-		auditSvc:        p.AuditSvc,
-		authzSvc:        p.AuthzSvc,
-		rollupSvc:       p.RollupSvc,
+		db:                   p.DB,
+		log:                  p.Log.Named("scheduler").With(zap.String("component", "scheduler")),
+		cfg:                  cfg,
+		genID:                p.GenID,
+		clock:                p.Clock,
+		ratingSvc:            p.RatingSvc,
+		invoiceSvc:           p.InvoiceSvc,
+		ledgerSvc:            p.LedgerSvc,
+		subscriptionSvc:      p.SubscriptionSvc,
+		auditSvc:             p.AuditSvc,
+		authzSvc:             p.AuthzSvc,
+		billingOperationsSvc: p.BillingOperationsSvc,
+		rollupSvc:            p.RollupSvc,
 	}, nil
 }
 
@@ -96,7 +101,7 @@ func (s *Scheduler) runJob(
 	timeout time.Duration,
 	fn func(ctx context.Context) error,
 ) error {
-	start := time.Now()
+	start := s.clock.Now()
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 
@@ -144,29 +149,71 @@ func (s *Scheduler) runJob(
 func (s *Scheduler) RunOnce(parent context.Context) error {
 	var err error
 
-	err = errors.Join(err,
-		s.runJob(parent, "ensure_cycles", s.cfg.BatchSize, 30*time.Second, s.EnsureBillingCyclesJob),
-		s.runJob(parent, "close_cycles", s.cfg.MaxCloseBatchSize, 30*time.Second, s.CloseCyclesJob),
-		s.runJob(parent, "rating", s.cfg.MaxRatingBatchSize, 30*time.Second, s.RatingJob),
-		s.runJob(parent, "close_after_rating", s.cfg.MaxCloseBatchSize, 30*time.Second, s.CloseAfterRatingJob),
-		s.runJob(parent, "invoice", s.cfg.MaxInvoiceBatchSize, 30*time.Second, s.InvoiceJob),
-	)
-
-	if s.rollupSvc != nil {
-		err = errors.Join(err,
-			s.runJob(parent, "rollup_rebuild", s.cfg.BatchSize, 30*time.Minute, func(ctx context.Context) error {
-				return s.rollupSvc.ProcessRebuildRequests(ctx, s.cfg.BatchSize)
-			}),
-			s.runJob(parent, "rollup_pending", s.cfg.BatchSize, 30*time.Second, func(ctx context.Context) error {
-				return s.rollupSvc.ProcessPending(ctx, s.cfg.BatchSize)
-			}),
-		)
+	jobs := []struct {
+		Name    string
+		Enabled bool
+		Run     func(context.Context) error
+	}{
+		{"ensure_cycles", s.isJobEnabled("ensure_cycles"), func(ctx context.Context) error {
+			return s.runJob(ctx, "ensure_cycles", s.cfg.BatchSize, 30*time.Second, s.EnsureBillingCyclesJob)
+		}},
+		{"close_cycles", s.isJobEnabled("close_cycles"), func(ctx context.Context) error {
+			return s.runJob(ctx, "close_cycles", s.cfg.MaxCloseBatchSize, 30*time.Second, s.CloseCyclesJob)
+		}},
+		{"rating", s.isJobEnabled("rating"), func(ctx context.Context) error {
+			return s.runJob(ctx, "rating", s.cfg.MaxRatingBatchSize, 30*time.Second, s.RatingJob)
+		}},
+		{"close_after_rating", s.isJobEnabled("close_after_rating"), func(ctx context.Context) error {
+			return s.runJob(ctx, "close_after_rating", s.cfg.MaxCloseBatchSize, 30*time.Second, s.CloseAfterRatingJob)
+		}},
+		{"invoice", s.isJobEnabled("invoice"), func(ctx context.Context) error {
+			return s.runJob(ctx, "invoice", s.cfg.MaxInvoiceBatchSize, 30*time.Second, s.InvoiceJob)
+		}},
 	}
 
-	err = errors.Join(err,
-		s.runJob(parent, "end_canceled_subs", s.cfg.BatchSize, 30*time.Second, s.EndCanceledSubscriptionsJob),
-		s.runJob(parent, "recovery_sweep", maxInt(s.cfg.MaxRatingBatchSize, s.cfg.MaxCloseBatchSize, s.cfg.MaxInvoiceBatchSize), 30*time.Second, s.RecoverySweepJob),
-	)
+	for _, job := range jobs {
+		if job.Enabled {
+			err = errors.Join(err, job.Run(parent))
+		}
+	}
+
+	if s.rollupSvc != nil {
+		if s.isJobEnabled("rollup_rebuild") {
+			err = errors.Join(err, s.runJob(parent, "rollup_rebuild", s.cfg.BatchSize, 30*time.Minute, func(ctx context.Context) error {
+				return s.rollupSvc.ProcessRebuildRequests(ctx, s.cfg.BatchSize)
+			}))
+		}
+		if s.isJobEnabled("rollup_pending") {
+			err = errors.Join(err, s.runJob(parent, "rollup_pending", s.cfg.BatchSize, 30*time.Second, func(ctx context.Context) error {
+				return s.rollupSvc.ProcessPending(ctx, s.cfg.BatchSize)
+			}))
+		}
+	}
+
+	otherJobs := []struct {
+		Name    string
+		Enabled bool
+		Run     func(context.Context) error
+	}{
+		{"end_canceled_subs", s.isJobEnabled("end_canceled_subs"), func(ctx context.Context) error {
+			return s.runJob(ctx, "end_canceled_subs", s.cfg.BatchSize, 30*time.Second, s.EndCanceledSubscriptionsJob)
+		}},
+		{"recovery_sweep", s.isJobEnabled("recovery_sweep"), func(ctx context.Context) error {
+			return s.runJob(ctx, "recovery_sweep", maxInt(s.cfg.MaxRatingBatchSize, s.cfg.MaxCloseBatchSize, s.cfg.MaxInvoiceBatchSize), 30*time.Second, s.RecoverySweepJob)
+		}},
+		{"sla_evaluation", s.isJobEnabled("sla_evaluation"), func(ctx context.Context) error {
+			return s.runJob(ctx, "sla_evaluation", s.cfg.BatchSize, 30*time.Second, s.SLAEvaluationJob)
+		}},
+		{"finops_scoring", s.isJobEnabled("finops_scoring"), func(ctx context.Context) error {
+			return s.runJob(ctx, "finops_scoring", 1, 24*time.Hour, s.FinOpsScoringJob)
+		}},
+	}
+
+	for _, job := range otherJobs {
+		if job.Enabled {
+			err = errors.Join(err, job.Run(parent))
+		}
+	}
 
 	return err
 }
@@ -174,7 +221,7 @@ func (s *Scheduler) RunOnce(parent context.Context) error {
 func (s *Scheduler) RunForever(ctx context.Context) {
 	ticker := time.NewTicker(s.cfg.RunInterval)
 	defer ticker.Stop()
-	nextRun := time.Now().Add(s.cfg.RunInterval)
+	nextRun := s.clock.Now().Add(s.cfg.RunInterval)
 	schedMetrics := obsmetrics.Scheduler()
 
 	for {
@@ -195,13 +242,26 @@ func (s *Scheduler) RunForever(ctx context.Context) {
 	}
 }
 
+func (s *Scheduler) isJobEnabled(jobName string) bool {
+	// If EnabledJobs is empty, all jobs are enabled by default (monolith mode)
+	if len(s.cfg.EnabledJobs) == 0 {
+		return true
+	}
+	for _, enabled := range s.cfg.EnabledJobs {
+		if strings.EqualFold(enabled, jobName) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Scheduler) EnsureBillingCyclesJob(ctx context.Context) error {
 	ctx, run, owner := s.ensureJobRun(ctx, "ensure_cycles", s.cfg.BatchSize)
 	if owner {
 		s.logJobStart(ctx, run)
 		defer s.logJobFinish(ctx, run)
 	}
-	now := time.Now().UTC()
+	now := s.clock.Now()
 	var jobErr error
 
 	for {
@@ -228,7 +288,8 @@ func (s *Scheduler) CloseCyclesJob(ctx context.Context) error {
 		s.logJobStart(ctx, run)
 		defer s.logJobFinish(ctx, run)
 	}
-	now := time.Now().UTC()
+	now := s.clock.Now()
+	fmt.Printf("CloseCycle: %v\n", now)
 	var jobErr error
 
 	for {
@@ -294,7 +355,7 @@ func (s *Scheduler) RatingJob(ctx context.Context) error {
 		s.logJobStart(ctx, run)
 		defer s.logJobFinish(ctx, run)
 	}
-	now := time.Now().UTC()
+	now := s.clock.Now()
 	var jobErr error
 
 	for {
@@ -398,7 +459,7 @@ func (s *Scheduler) CloseAfterRatingJob(ctx context.Context) error {
 		s.logJobStart(ctx, run)
 		defer s.logJobFinish(ctx, run)
 	}
-	now := time.Now().UTC()
+	now := s.clock.Now()
 	var jobErr error
 
 	for {
@@ -496,7 +557,7 @@ func (s *Scheduler) InvoiceJob(ctx context.Context) error {
 		defer s.logJobFinish(ctx, run)
 	}
 
-	now := time.Now().UTC()
+	now := s.clock.Now()
 	var jobErr error
 	schedMetrics := obsmetrics.Scheduler()
 
@@ -691,7 +752,7 @@ func (s *Scheduler) ensureBillingCyclesBatch(ctx context.Context, now time.Time,
 			return ctx.Err()
 		}
 		var err error
-		subs, err = s.fetchSubscriptionsForWork(ctx, tx, subscriptiondomain.SubscriptionStatusActive, s.cfg.BatchSize)
+		subs, err = s.fetchSubscriptionsNeedingCycle(ctx, tx, s.cfg.BatchSize)
 		return err
 	})
 	if err != nil {
@@ -927,4 +988,34 @@ func (s *Scheduler) authorizeSystem(ctx context.Context, orgID snowflake.ID, obj
 		return authorization.ErrForbidden
 	}
 	return s.authzSvc.Authorize(ctx, "system", orgID.String(), object, action)
+}
+
+func (s *Scheduler) SLAEvaluationJob(ctx context.Context) error {
+	ctx, run, owner := s.ensureJobRun(ctx, "sla_evaluation", s.cfg.BatchSize)
+	if owner {
+		s.logJobStart(ctx, run)
+		defer s.logJobFinish(ctx, run)
+	}
+
+	if err := s.billingOperationsSvc.EvaluateSLAs(ctx); err != nil {
+		s.logSchedulerError(ctx, run, "sla.evaluate.failed", "sla_evaluation", 0, err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *Scheduler) FinOpsScoringJob(ctx context.Context) error {
+	ctx, run, owner := s.ensureJobRun(ctx, "finops_scoring", 1)
+	if owner {
+		s.logJobStart(ctx, run)
+		defer s.logJobFinish(ctx, run)
+	}
+
+	if err := s.billingOperationsSvc.AggregateDailyPerformance(ctx); err != nil {
+		s.logSchedulerError(ctx, run, "finops.scoring.failed", "finops_scoring", 0, err)
+		return err
+	}
+
+	return nil
 }

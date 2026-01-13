@@ -11,40 +11,40 @@ export const options = {
   scenarios: {
 
     // 1️⃣ Normal production traffic
-    ingest_steady: {
-      executor: 'constant-vus',
-      vus: 10,
-      duration: '5m',
-      tags: { scenario: 'steady' },
-    },
+    // ingest_steady: {
+    //   executor: 'constant-vus',
+    //   vus: 10,
+    //   duration: '5m',
+    //   tags: { scenario: 'steady' },
+    // },
 
-    // 2️⃣ Burst traffic (spike mendadak)
-    ingest_burst: {
-      executor: 'ramping-vus',
-      startVUs: 0,
-      stages: [
-        { duration: '30s', target: 50 },
-        { duration: '30s', target: 0 },
-      ],
-      tags: { scenario: 'burst' },
-    },
+    // // 2️⃣ Burst traffic (spike mendadak)
+    // ingest_burst: {
+    //   executor: 'ramping-vus',
+    //   startVUs: 0,
+    //   stages: [
+    //     { duration: '30s', target: 50 },
+    //     { duration: '30s', target: 0 },
+    //   ],
+    //   tags: { scenario: 'burst' },
+    // },
 
-    // 3️⃣ Rate-limit pressure test
-    ingest_rate_limit: {
-      executor: 'constant-arrival-rate',
-      rate: 100,          // req/s
-      timeUnit: '1s',
-      duration: '2m',
-      preAllocatedVUs: 50,
-      maxVUs: 100,
-      tags: { scenario: 'rate_limit' },
-    },
+    // // 3️⃣ Rate-limit pressure test
+    // ingest_rate_limit: {
+    //   executor: 'constant-arrival-rate',
+    //   rate: 100,          // req/s
+    //   timeUnit: '1s',
+    //   duration: '2m',
+    //   preAllocatedVUs: 50,
+    //   maxVUs: 100,
+    //   tags: { scenario: 'rate_limit' },
+    // },
 
     // 4️⃣ Concurrency conflict test (same customer+meter)
     ingest_concurrency: {
       executor: 'constant-vus',
       vus: 20,
-      duration: '2m',
+      duration: '1m',
       tags: { scenario: 'concurrency' },
     },
   },

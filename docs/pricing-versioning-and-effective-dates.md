@@ -8,7 +8,7 @@ What matters is whether pricing changes are:
 - time-bound
 - safe to apply
 
-Valora treats pricing as **versioned configuration**, not mutable state.
+Railzway treats pricing as **versioned configuration**, not mutable state.
 
 ---
 
@@ -28,9 +28,9 @@ This leads to:
 
 ---
 
-## Valora’s Approach
+## Railzway’s Approach
 
-Valora models pricing as:
+Railzway models pricing as:
 
 - append-only versions
 - each version has an effective time range
@@ -42,7 +42,7 @@ A pricing version, once persisted, is never mutated.
 
 ## How Pricing Is Resolved
 
-When computing billing for a period, Valora:
+When computing billing for a period, Railzway:
 
 1. determines the billing period boundaries
 2. selects the pricing version effective during that period
@@ -92,7 +92,7 @@ Pricing versioning enables:
 
 ## Summary
 
-Valora treats pricing as immutable, versioned intent.
+Railzway treats pricing as immutable, versioned intent.
 
 > **Pricing should change over time,
 > but history should never change with it.**

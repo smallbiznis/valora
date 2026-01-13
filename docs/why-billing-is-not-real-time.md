@@ -1,6 +1,6 @@
 # Why Billing Is Not Real-Time
 
-Valora does not attempt to compute billing in real time.
+Railzway does not attempt to compute billing in real time.
 
 This is a deliberate trade-off.
 
@@ -38,9 +38,9 @@ These conditions are rarely satisfied at event time.
 
 ---
 
-## Valora’s Model
+## Railzway’s Model
 
-Valora separates:
+Railzway separates:
 
 - **usage ingestion** (near real-time)
 - **billing computation** (periodic and bounded)
@@ -64,7 +64,7 @@ Latency is traded for correctness.
 
 ## Observability Without Mutation
 
-Valora does not mutate billing state in real time.
+Railzway does not mutate billing state in real time.
 
 Instead, systems may:
 
@@ -84,13 +84,13 @@ Real-time billing systems often fail when:
 - usage arrives late
 - retries overlap with aggregation
 
-Valora avoids these failure modes by design.
+Railzway avoids these failure modes by design.
 
 ---
 
 ## Summary
 
-Valora avoids real-time billing because:
+Railzway avoids real-time billing because:
 
 - billing needs complete information
 - correctness must be preserved

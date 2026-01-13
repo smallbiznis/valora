@@ -4,7 +4,7 @@ Billing systems must support corrections.
 
 What matters is **how corrections are modeled**.
 
-Valora treats corrections as explicit domain events,
+Railzway treats corrections as explicit domain events,
 not as mutations of historical data.
 
 ---
@@ -25,9 +25,9 @@ This creates ambiguity:
 
 ---
 
-## Valora’s Correction Model
+## Railzway’s Correction Model
 
-Valora never mutates finalized billing results.
+Railzway never mutates finalized billing results.
 
 Instead, corrections are represented as:
 
@@ -41,7 +41,7 @@ The original billing outcome remains intact.
 
 ## Types of Corrections
 
-Valora supports corrections such as:
+Railzway supports corrections such as:
 
 - late-arriving usage adjustments
 - pricing misconfiguration corrections
@@ -90,12 +90,12 @@ Nothing is silently rewritten.
 
 ---
 
-## Why Valora Enforces This
+## Why Railzway Enforces This
 
 Corrections are inevitable.
 Silent mutation is not acceptable.
 
-By enforcing explicit corrections, Valora ensures:
+By enforcing explicit corrections, Railzway ensures:
 
 - historical integrity
 - clear accountability
@@ -105,7 +105,7 @@ By enforcing explicit corrections, Valora ensures:
 
 ## Summary
 
-Valora handles billing corrections by **adding context, not erasing history**.
+Railzway handles billing corrections by **adding context, not erasing history**.
 
 > **Correct billing systems do not hide mistakes.
 > They record and explain them.**

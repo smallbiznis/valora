@@ -37,13 +37,13 @@ type MRRResponse struct {
 }
 
 type MRRMovementResponse struct {
-	Currency      string `json:"currency"`
-	NewMRR        int64  `json:"new_mrr"`
-	ExpansionMRR  int64  `json:"expansion_mrr"`
-	ContractionMRR int64 `json:"contraction_mrr"`
-	ChurnedMRR    int64  `json:"churned_mrr"`
-	NetMRRChange  int64  `json:"net_mrr_change"`
-	HasData       bool   `json:"has_data"`
+	Currency       string `json:"currency"`
+	NewMRR         int64  `json:"new_mrr"`
+	ExpansionMRR   int64  `json:"expansion_mrr"`
+	ContractionMRR int64  `json:"contraction_mrr"`
+	ChurnedMRR     int64  `json:"churned_mrr"`
+	NetMRRChange   int64  `json:"net_mrr_change"`
+	HasData        bool   `json:"has_data"`
 }
 
 type RevenueResponse struct {
@@ -66,7 +66,7 @@ type OutstandingBalanceResponse struct {
 
 type CollectionRateResponse struct {
 	Currency        string   `json:"currency"`
-	CollectionRate *float64 `json:"collection_rate,omitempty"`
+	CollectionRate  *float64 `json:"collection_rate,omitempty"`
 	CollectedAmount int64    `json:"collected_amount"`
 	InvoicedAmount  int64    `json:"invoiced_amount"`
 	HasData         bool     `json:"has_data"`

@@ -20,14 +20,15 @@ import (
 var modelText string
 
 const (
-	ObjectSubscription     = "subscription"
-	ObjectBillingCycle     = "billing_cycle"
-	ObjectInvoice          = "invoice"
-	ObjectBillingDashboard = "billing_dashboard"
-	ObjectBillingOverview  = "billing_overview"
-	ObjectAPIKey           = "api_key"
-	ObjectAuditLog         = "audit_log"
-	ObjectPaymentProvider  = "payment_provider"
+	ObjectSubscription      = "subscription"
+	ObjectBillingCycle      = "billing_cycle"
+	ObjectInvoice           = "invoice"
+	ObjectBillingDashboard  = "billing_dashboard"
+	ObjectBillingOperations = "billing_operations"
+	ObjectBillingOverview   = "billing_overview"
+	ObjectAPIKey            = "api_key"
+	ObjectAuditLog          = "audit_log"
+	ObjectPaymentProvider   = "payment_provider"
 )
 
 const (
@@ -46,8 +47,10 @@ const (
 	ActionInvoiceFinalize = "invoice.finalize"
 	ActionInvoiceVoid     = "invoice.void"
 
-	ActionBillingDashboardView = "billing_dashboard.view"
-	ActionBillingOverviewView  = "billing_overview.view"
+	ActionBillingDashboardView  = "billing_dashboard.view"
+	ActionBillingOperationsView = "billing_operations.view"
+	ActionBillingOperationsAct  = "billing_operations.act"
+	ActionBillingOverviewView   = "billing_overview.view"
 
 	ActionAPIKeyView   = "api_key.view"
 	ActionAPIKeyCreate = "api_key.create"
@@ -297,6 +300,8 @@ func seedPolicies(enforcer *casbin.SyncedEnforcer) error {
 		{"role:admin", ObjectSubscription, ActionSubscriptionResume},
 		{"role:admin", ObjectInvoice, ActionInvoiceFinalize},
 		{"role:admin", ObjectBillingDashboard, ActionBillingDashboardView},
+		{"role:admin", ObjectBillingOperations, ActionBillingOperationsView},
+		{"role:admin", ObjectBillingOperations, ActionBillingOperationsAct},
 		{"role:admin", ObjectBillingOverview, ActionBillingOverviewView},
 		{"role:admin", ObjectAPIKey, ActionAPIKeyCreate},
 		{"role:admin", ObjectAPIKey, ActionAPIKeyRotate},
@@ -311,6 +316,8 @@ func seedPolicies(enforcer *casbin.SyncedEnforcer) error {
 		{"role:owner", ObjectInvoice, ActionInvoiceFinalize},
 		{"role:owner", ObjectInvoice, ActionInvoiceVoid},
 		{"role:owner", ObjectBillingDashboard, ActionBillingDashboardView},
+		{"role:owner", ObjectBillingOperations, ActionBillingOperationsView},
+		{"role:owner", ObjectBillingOperations, ActionBillingOperationsAct},
 		{"role:owner", ObjectBillingOverview, ActionBillingOverviewView},
 		{"role:owner", ObjectAPIKey, ActionAPIKeyView},
 		{"role:owner", ObjectAPIKey, ActionAPIKeyCreate},

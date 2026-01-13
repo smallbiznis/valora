@@ -10,7 +10,7 @@ Events can be delayed due to:
 - batch uploads
 - offline processing
 
-Valora treats late-arriving usage as a **first-class problem**, not an edge case.
+Railzway treats late-arriving usage as a **first-class problem**, not an edge case.
 
 ---
 
@@ -31,9 +31,9 @@ This leads to:
 
 ---
 
-## Valora’s Explicit Boundary
+## Railzway’s Explicit Boundary
 
-Valora defines a clear boundary:
+Railzway defines a clear boundary:
 
 > **A billing cycle owns a fixed usage window.**
 
@@ -43,7 +43,7 @@ Usage events are evaluated **based on event time**, not arrival time.
 
 ## Usage Cutoff Rules
 
-For each billing cycle, Valora defines:
+For each billing cycle, Railzway defines:
 
 - a start timestamp
 - an end timestamp
@@ -60,7 +60,7 @@ Late-arriving usage after finalization is handled explicitly.
 
 ## Explicit Handling Strategies
 
-Valora does not silently mutate closed billing cycles.
+Railzway does not silently mutate closed billing cycles.
 
 Instead, late usage can be handled by:
 
@@ -99,7 +99,7 @@ No usage event is silently ignored.
 
 ## Summary
 
-Valora handles late-arriving usage by:
+Railzway handles late-arriving usage by:
 
 - defining explicit cycle boundaries
 - evaluating usage by event time

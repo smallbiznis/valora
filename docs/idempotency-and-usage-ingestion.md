@@ -5,7 +5,7 @@ Usage ingestion is the entry point of billing correctness.
 If usage ingestion is not idempotent,
 all downstream billing guarantees are compromised.
 
-Valora treats idempotency as a **hard requirement**.
+Railzway treats idempotency as a **hard requirement**.
 
 ---
 
@@ -22,9 +22,9 @@ These failures are often silent and discovered too late.
 
 ---
 
-## Valora’s Idempotency Model
+## Railzway’s Idempotency Model
 
-Every usage event ingested by Valora must include:
+Every usage event ingested by Railzway must include:
 
 - a stable idempotency key
 - an organization or tenant scope
@@ -48,9 +48,9 @@ The same event can be sent multiple times without changing billing results.
 
 ---
 
-## What Valora Does Not Do
+## What Railzway Does Not Do
 
-Valora does not:
+Railzway does not:
 
 - deduplicate heuristically
 - infer duplicates by payload similarity
@@ -86,7 +86,7 @@ This shifts complexity away from clients.
 
 ## Summary
 
-Valora enforces idempotent usage ingestion because:
+Railzway enforces idempotent usage ingestion because:
 
 - retries are inevitable
 - correctness must survive failure
