@@ -50,5 +50,27 @@ func (p *SMTPProvider) SendTemplate(ctx context.Context, to []string, templateNa
 		return fmt.Errorf("failed to execute template: %w", err)
 	}
 
-	return p.Send(ctx, to, "Invoice from Small Biznis", body.String()) // Subject hardcoded for now or passed in context/data
+	// Extract subject from data if provided, otherwise use template-based default
+	subject := "Notification from Valora"
+	if dataMap, ok := data.(map[string]interface{}); ok {
+		if subj, exists := dataMap["subject"]; exists {
+			if subjStr, ok := subj.(string); ok {
+				subject = subjStr
+			}
+		} else {
+			// Use template-specific defaults
+			switch templateName {
+			case "invite_member":
+				if orgName, ok := dataMap["org_name"].(string); ok {
+					subject = fmt.Sprintf("You're invited to join %s", orgName)
+				} else {
+					subject = "You're invited to join a team"
+				}
+			case "invoice_new":
+				subject = "New invoice from Valora"
+			}
+		}
+	}
+
+	return p.Send(ctx, to, subject, body.String())
 }
