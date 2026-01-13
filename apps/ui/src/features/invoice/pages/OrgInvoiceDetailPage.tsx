@@ -540,7 +540,7 @@ export default function OrgInvoiceDetailPage() {
           }
         }}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl w-full">
           <DialogHeader>
             <DialogTitle>Invoice preview</DialogTitle>
             <DialogDescription>
@@ -554,8 +554,12 @@ export default function OrgInvoiceDetailPage() {
           )}
           {renderError && <div className="text-status-error text-sm">{renderError}</div>}
           {!isRenderLoading && !renderError && renderedHtml && (
-            <div className="max-h-[70vh] overflow-auto rounded-md border bg-white p-4 text-black">
-              <div dangerouslySetInnerHTML={{ __html: renderedHtml }} />
+            <div className="aspect-[8.5/11] w-full overflow-hidden rounded-md border bg-white">
+              <iframe
+                srcDoc={renderedHtml}
+                className="h-full w-full border-0"
+                title="Invoice Preview"
+              />
             </div>
           )}
           {!isRenderLoading && !renderError && !renderedHtml && (

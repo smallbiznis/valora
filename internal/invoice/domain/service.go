@@ -53,6 +53,7 @@ var (
 	ErrMissingRatingResults    = errors.New("missing_rating_results")
 	ErrCurrencyMismatch        = errors.New("currency_mismatch")
 	ErrInvalidInvoiceID        = errors.New("invalid_invoice_id")
+	ErrInvalidSubtotal         = errors.New("invalid_subtotal_amount")
 	ErrInvoiceNotFound         = errors.New("invoice_not_found")
 	ErrInvoiceNotDraft         = errors.New("invoice_not_draft")
 	ErrInvoiceNotFinalized     = errors.New("invoice_not_finalized")

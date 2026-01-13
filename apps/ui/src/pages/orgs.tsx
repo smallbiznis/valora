@@ -26,7 +26,7 @@ export default function OrgResolverPage() {
     try {
       await auth.post(`/user/using/${org.id}`)
       setCurrentOrg(org)
-      navigate(`/orgs/${org.id}/dashboard`, { replace: true })
+      navigate(`/orgs/${org.id}/home`, { replace: true })
     } catch (err: any) {
       setError(err?.message ?? "Unable to switch organizations.")
       setIsLoading(false)
@@ -41,7 +41,6 @@ export default function OrgResolverPage() {
     auth
       .get("/user/orgs")
       .then((res) => {
-        console.log("orgs: ", res.data)
         if (!isMounted) return
         const orgList: OrgResponse[] = res.data?.orgs ?? []
         setOrgs(orgList)

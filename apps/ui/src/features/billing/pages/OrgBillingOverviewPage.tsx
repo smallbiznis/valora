@@ -33,15 +33,15 @@ type MrrResponse = {
   has_data: boolean
 }
 
-// type MrrMovementResponse = {
-//   currency: string
-//   new_mrr: number
-//   expansion_mrr: number
-//   contraction_mrr: number
-//   churned_mrr: number
-//   net_mrr_change: number
-//   has_data: boolean
-// }
+type MrrMovementResponse = {
+  currency: string
+  new_mrr: number
+  expansion_mrr: number
+  contraction_mrr: number
+  churned_mrr: number
+  net_mrr_change: number
+  has_data: boolean
+}
 
 type RevenueResponse = {
   currency: string
@@ -54,20 +54,20 @@ type RevenueResponse = {
   has_data: boolean
 }
 
-// type OutstandingBalanceResponse = {
-//   currency: string
-//   outstanding: number
-//   overdue: number
-//   has_data: boolean
-// }
+type OutstandingBalanceResponse = {
+  currency: string
+  outstanding: number
+  overdue: number
+  has_data: boolean
+}
 
-// type CollectionRateResponse = {
-//   currency: string
-//   collection_rate?: number | null
-//   collected_amount: number
-//   invoiced_amount: number
-//   has_data: boolean
-// }
+type CollectionRateResponse = {
+  currency: string
+  collection_rate?: number | null
+  collected_amount: number
+  invoiced_amount: number
+  has_data: boolean
+}
 
 type SubscribersResponse = {
   current?: number | null
@@ -180,6 +180,13 @@ const formatCurrencyCompact = (amount: number | null | undefined, currency: stri
   }
 }
 
+const formatSignedCurrency = (amount: number | null | undefined, currency: string) => {
+  if (amount === null || amount === undefined) return "No data"
+  const sign = amount < 0 ? "-" : "+"
+  const value = formatCurrency(Math.abs(amount), currency)
+  return `${sign}${value}`
+}
+
 const formatCount = (value: number | null | undefined) => {
   if (value === null || value === undefined) return "No data"
   return new Intl.NumberFormat("en-US", { notation: "compact" }).format(value)
@@ -280,7 +287,11 @@ export default function OrgBillingOverviewPage() {
   const [compare, setCompare] = useState(false)
 
   const [mrr, setMrr] = useState<MrrResponse | null>(null)
+  const [mrrMovement, setMrrMovement] = useState<MrrMovementResponse | null>(null)
   const [revenue, setRevenue] = useState<RevenueResponse | null>(null)
+  const [outstandingBalance, setOutstandingBalance] =
+    useState<OutstandingBalanceResponse | null>(null)
+  const [collectionRate, setCollectionRate] = useState<CollectionRateResponse | null>(null)
   const [subscribers, setSubscribers] = useState<SubscribersResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -313,14 +324,33 @@ export default function OrgBillingOverviewPage() {
       setError(null)
       setIsForbidden(false)
       try {
-        const [mrrResp, revenueResp, subscribersResp] = await Promise.all([
+        const [
+          mrrResp,
+          mrrMovementResp,
+          revenueResp,
+          outstandingResp,
+          collectionResp,
+          subscribersResp,
+        ] = await Promise.all([
           admin.get<MrrResponse>("/billing/overview/mrr", { params: queryParams }),
+          admin.get<MrrMovementResponse>("/billing/overview/mrr-movement", {
+            params: queryParams,
+          }),
           admin.get<RevenueResponse>("/billing/overview/revenue", { params: queryParams }),
+          admin.get<OutstandingBalanceResponse>("/billing/overview/outstanding", {
+            params: queryParams,
+          }),
+          admin.get<CollectionRateResponse>("/billing/overview/collection-rate", {
+            params: queryParams,
+          }),
           admin.get<SubscribersResponse>("/billing/overview/subscribers", { params: queryParams }),
         ])
         if (!isActive) return
         setMrr(mrrResp.data)
+        setMrrMovement(mrrMovementResp.data)
         setRevenue(revenueResp.data)
+        setOutstandingBalance(outstandingResp.data)
+        setCollectionRate(collectionResp.data)
         setSubscribers(subscribersResp.data)
       } catch (err) {
         if (!isActive) return
@@ -375,6 +405,15 @@ export default function OrgBillingOverviewPage() {
       previous: subscriberCompare[index]?.value ?? null,
     }))
   }, [subscriberSeries, subscriberCompare])
+
+  const movementCurrency = mrrMovement?.currency ?? mrr?.currency ?? "USD"
+  const netMrrChange = mrrMovement?.net_mrr_change
+  const netMrrTone =
+    netMrrChange !== null && netMrrChange !== undefined && netMrrChange < 0
+      ? "text-status-error"
+      : "text-status-success"
+  const outstandingCurrency = outstandingBalance?.currency ?? mrr?.currency ?? "USD"
+  const collectionCurrency = collectionRate?.currency ?? mrr?.currency ?? "USD"
 
   if (isForbidden) {
     return <ForbiddenState />
@@ -445,7 +484,79 @@ export default function OrgBillingOverviewPage() {
 
       {error ? <Alert variant="destructive">{error}</Alert> : null}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <Card>
+        <CardHeader>
+          <CardTitle>MRR movement</CardTitle>
+          <CardDescription>Explains why recurring revenue changed.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-10 w-48" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            </div>
+          ) : mrrMovement?.has_data ? (
+            <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+              <div className="space-y-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-text-muted">
+                  Net MRR change
+                </div>
+                <div className={cn("text-3xl font-semibold", netMrrTone)}>
+                  {formatSignedCurrency(netMrrChange ?? null, movementCurrency)}
+                </div>
+                <div className="text-sm text-text-muted">
+                  New and expansion MRR increase growth, while churn and contraction reduce it.
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-text-muted">New MRR</span>
+                  <span className="font-medium text-status-success">
+                    {formatSignedCurrency(mrrMovement?.new_mrr ?? null, movementCurrency)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-text-muted">Expansion MRR</span>
+                  <span className="font-medium text-status-success">
+                    {formatSignedCurrency(mrrMovement?.expansion_mrr ?? null, movementCurrency)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-text-muted">Contraction MRR</span>
+                  <span className="font-medium text-status-error">
+                    {formatSignedCurrency(
+                      mrrMovement ? -mrrMovement.contraction_mrr : null,
+                      movementCurrency
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-text-muted">Churned MRR</span>
+                  <span className="font-medium text-status-error">
+                    {formatSignedCurrency(
+                      mrrMovement ? -mrrMovement.churned_mrr : null,
+                      movementCurrency
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-text-muted">No data</div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <MetricCard
           title="MRR"
           value={formatCurrency(mrr?.current ?? null, mrr?.currency ?? "USD")}
@@ -453,30 +564,6 @@ export default function OrgBillingOverviewPage() {
           loading={isLoading}
           hasData={Boolean(mrr?.has_data)}
         />
-        <Card className="h-full">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-sm font-medium text-text-muted">MRR growth</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {isLoading ? (
-              <Skeleton className="h-8 w-32" />
-            ) : mrr?.has_data ? (
-              <>
-                <div className="text-2xl font-semibold">
-                  {buildDeltaLabel(mrr?.growth_amount ?? null, mrr?.growth_rate ?? null, mrr?.currency ?? "USD")}
-                </div>
-                <DeltaBadge
-                  amount={mrr?.growth_amount}
-                  rate={mrr?.growth_rate}
-                  currency={mrr?.currency ?? "USD"}
-                  compact
-                />
-              </>
-            ) : (
-              <div className="text-sm text-text-muted">No data</div>
-            )}
-          </CardContent>
-        </Card>
         <MetricCard
           title="Net revenue"
           value={formatCurrency(revenue?.total ?? null, revenue?.currency ?? "USD")}
@@ -484,6 +571,53 @@ export default function OrgBillingOverviewPage() {
           loading={isLoading}
           hasData={Boolean(revenue?.has_data)}
         />
+        <Card className="h-full">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-sm font-medium text-text-muted">Outstanding balance</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {isLoading ? (
+              <Skeleton className="h-8 w-32" />
+            ) : outstandingBalance?.has_data ? (
+              <div className="space-y-1">
+                <div className="text-2xl font-semibold">
+                  {formatCurrency(outstandingBalance.outstanding ?? null, outstandingCurrency)}
+                </div>
+                <div className="text-xs text-status-warning">
+                  Overdue {formatCurrency(outstandingBalance.overdue ?? null, outstandingCurrency)}
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-text-muted">No data</div>
+            )}
+            <div className="text-xs text-text-muted">Total owed but not collected.</div>
+          </CardContent>
+        </Card>
+        <Card className="h-full">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-sm font-medium text-text-muted">Collection rate</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {isLoading ? (
+              <Skeleton className="h-8 w-32" />
+            ) : collectionRate?.has_data && collectionRate.collection_rate !== undefined ? (
+              <div className="text-2xl font-semibold">
+                {formatPercentCompact(collectionRate.collection_rate ?? null)}
+              </div>
+            ) : (
+              <div className="text-sm text-text-muted">No data</div>
+            )}
+            <div className="text-xs text-text-muted">
+              Percentage of invoiced revenue successfully collected.
+            </div>
+            {collectionRate?.has_data ? (
+              <div className="text-xs text-text-muted">
+                Collected {formatCurrency(collectionRate.collected_amount ?? null, collectionCurrency)} /{" "}
+                {formatCurrency(collectionRate.invoiced_amount ?? null, collectionCurrency)}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
         <MetricCard
           title="Active subscribers"
           value={formatCount(subscribers?.current ?? null)}

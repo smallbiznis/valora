@@ -31,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { AdminCatalogTabs } from "@/features/admin/catalog/components/AdminCatalogTabs"
 import { useCursorPagination } from "@/hooks/useCursorPagination"
 import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
 import { canManageBilling } from "@/lib/roles"
@@ -154,26 +155,29 @@ export default function OrgProductsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">Products</h1>
-          <p className="text-text-muted text-sm">
-            Create digital plans and usage-based services. Configure pricing and meters inside each product.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {orgId && canManage && (
-            <Button asChild size="sm">
-              <Link data-testid="products-create" to={`/orgs/${orgId}/products/create`}>
+      <div className="space-y-3">
+        <AdminCatalogTabs />
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold">Products</h1>
+            <p className="text-text-muted text-sm">
+              Create digital plans and usage-based services. Configure pricing and meters inside each product.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {orgId && canManage && (
+              <Button asChild size="sm">
+                <Link data-testid="products-create" to={`/orgs/${orgId}/products/create`}>
+                  Create product
+                </Link>
+              </Button>
+            )}
+            {orgId && !canManage && (
+              <Button size="sm" disabled>
                 Create product
-              </Link>
-            </Button>
-          )}
-          {orgId && !canManage && (
-            <Button size="sm" disabled>
-              Create product
-            </Button>
-          )}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

@@ -29,6 +29,10 @@ CREATE TABLE IF NOT EXISTS usage_events (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- CREATE EXTENSION IF NOT EXISTS timescaledb;
+-- Convert usage_events to a hypertable partitioned by 'recorded_at'
+-- SELECT create_hypertable('usage_events', 'recorded_at');
+
 CREATE UNIQUE INDEX IF NOT EXISTS uidx_usage_idempotency_key ON usage_events (org_id, idempotency_key) WHERE idempotency_key IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_usage_events_org_id ON usage_events(org_id);
 CREATE INDEX IF NOT EXISTS idx_usage_events_customer_id ON usage_events(customer_id);

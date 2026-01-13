@@ -103,7 +103,7 @@ export default function OnboardingPage() {
       setError("Organization missing. Please start again.")
       return
     }
-    navigate(`/orgs/${orgId}/dashboard`, { replace: true })
+    navigate(`/orgs/${orgId}/home`, { replace: true })
   }
 
   const addInvite = () => {

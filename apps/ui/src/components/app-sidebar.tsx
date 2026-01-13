@@ -1,19 +1,6 @@
 import * as React from "react"
 import {
-  IconBox,
-  IconDashboard,
-  IconChartLine,
-  IconActivity,
-  IconFileDescription,
   IconInnerShadowTop,
-  IconKey,
-  IconListDetails,
-  IconMeterCube,
-  IconPlugConnected,
-  IconTag,
-  IconShieldCheck,
-  IconSettings,
-  IconUsers,
 } from "@tabler/icons-react"
 import { NavLink, useParams } from "react-router-dom"
 
@@ -33,7 +20,17 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from "@/components/ui/sidebar"
+import { BarChart3, ChevronRight, Copy, CreditCard, Gauge, History, Home, Key, Package, Receipt, RefreshCcw, Settings, Tag, Users, Zap } from "lucide-react"
+
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 
 const data = {
   user: {
@@ -51,25 +48,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const navMain = [
     {
-      title: "Dashboard",
-      url: `${orgBasePath}/dashboard`,
-      icon: IconDashboard,
+      title: "Home",
+      url: `${orgBasePath}/home`,
+      icon: Home,
     },
     // Pricing stays within each product so navigation reflects user intent, not backend tables.
     {
       title: "Products",
       url: `${orgBasePath}/products`,
-      icon: IconBox,
+      icon: Package,
     },
     {
       title: "Pricing",
       url: `${orgBasePath}/prices`,
-      icon: IconTag,
+      icon: Tag,
     },
     {
       title: "Meters",
       url: `${orgBasePath}/meter`,
-      icon: IconMeterCube,
+      icon: Gauge,
     },
   ].filter(() => canAccessAdmin)
 
@@ -77,32 +74,38 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     {
       title: "Overview",
       url: `${orgBasePath}/billing/overview`,
-      icon: IconChartLine,
+      icon: BarChart3,
     },
     {
       title: "Operations",
       url: `${orgBasePath}/billing/operations`,
-      icon: IconActivity,
+      icon: Zap,
+      items: [
+        { title: "Inbox", url: `${orgBasePath}/billing/operations?tab=inbox` },
+        { title: "My Work", url: `${orgBasePath}/billing/operations?tab=my-work` },
+        { title: "Recently Resolved", url: `${orgBasePath}/billing/operations?tab=recently-resolved` },
+        { title: "Team View", url: `${orgBasePath}/billing/operations?tab=team`, hide: !canManageBilling(role) },
+      ].filter(i => !i.hide)
     },
     {
       title: "Invoices",
       url: `${orgBasePath}/invoices`,
-      icon: IconFileDescription,
+      icon: Receipt,
     },
     {
       title: "Customers",
       url: `${orgBasePath}/customers`,
-      icon: IconUsers,
+      icon: Users,
     },
     {
       title: "Subscriptions",
       url: `${orgBasePath}/subscriptions`,
-      icon: IconListDetails,
+      icon: RefreshCcw,
     },
     {
       title: "Invoice templates",
       url: `${orgBasePath}/invoice-templates`,
-      icon: IconFileDescription,
+      icon: Copy,
     },
   ].filter(() => canAccessAdmin)
 
@@ -110,22 +113,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     {
       title: "API Keys",
       url: `${orgBasePath}/api-keys`,
-      icon: IconKey,
+      icon: Key,
     },
     {
       title: "Payment providers",
       url: `${orgBasePath}/payment-providers`,
-      icon: IconPlugConnected,
+      icon: CreditCard,
     },
     {
       title: "Audit Logs",
       url: `${orgBasePath}/audit-logs`,
-      icon: IconShieldCheck,
+      icon: History,
     },
     {
       title: "Settings",
       url: `${orgBasePath}/settings`,
-      icon: IconSettings,
+      icon: Settings,
     },
   ].filter(() => canAccessAdmin)
 
@@ -138,7 +141,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <NavLink to={`${orgBasePath}/dashboard`}>
+              <NavLink to={`${orgBasePath}/home`}>
                 <IconInnerShadowTop className="!size-5" />
                 <span className="text-base font-semibold">Valora</span>
               </NavLink>
@@ -155,12 +158,39 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenu>
                 {billingNav.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild tooltip={item.title}>
-                      <NavLink to={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
+                    {item.items && item.items.length > 0 ? (
+                      <Collapsible asChild className="group/collapsible">
+                        <div>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton tooltip={item.title}>
+                              <item.icon />
+                              <span>{item.title}</span>
+                              <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <SidebarMenuSub>
+                              {item.items.map((subItem) => (
+                                <SidebarMenuSubItem key={subItem.title}>
+                                  <SidebarMenuSubButton asChild>
+                                    <NavLink to={subItem.url} end={false}>
+                                      <span>{subItem.title}</span>
+                                    </NavLink>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              ))}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </div>
+                      </Collapsible>
+                    ) : (
+                      <SidebarMenuButton asChild tooltip={item.title}>
+                        <NavLink to={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    )}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>

@@ -1,3 +1,4 @@
+
 CREATE TABLE IF NOT EXISTS products (
     id BIGINT PRIMARY KEY,
     org_id BIGINT NOT NULL,
@@ -12,6 +13,67 @@ CREATE TABLE IF NOT EXISTS products (
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_products_org_code ON products(org_id, code);
 CREATE INDEX IF NOT EXISTS idx_products_org_id ON products(org_id);
+
+CREATE TABLE IF NOT EXISTS tax_definitions (
+  id BIGINT PRIMARY KEY,
+  org_id BIGINT NOT NULL,
+
+  name TEXT NOT NULL,              -- "EU VAT"
+  code TEXT NOT NULL UNIQUE,       -- "EU_VAT"
+  tax_mode TEXT NOT NULL CHECK (tax_mode IN ('exclusive', 'inclusive')),
+  rate NUMERIC(6,4),               -- NULL if dynamic / placeholder
+
+  description TEXT,
+
+  is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+
+  effective_from TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  effective_to TIMESTAMPTZ,
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  UNIQUE(org_id, code)
+);
+
+CREATE TABLE IF NOT EXISTS features (
+  id BIGINT PRIMARY KEY,
+  org_id BIGINT NOT NULL,
+
+  code TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+
+  feature_type TEXT NOT NULL CHECK (
+    feature_type IN ('boolean', 'metered')
+  ),
+
+  meter_id BIGINT,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT ux_features_org_code
+    UNIQUE (org_id, code)
+);
+
+CREATE TABLE IF NOT EXISTS product_features (
+  product_id BIGINT NOT NULL,
+  feature_id BIGINT NOT NULL,
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (product_id, feature_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_features_product
+  ON product_features(product_id);
+
+CREATE INDEX IF NOT EXISTS idx_product_features_feature
+  ON product_features(feature_id);
 
 CREATE TABLE IF NOT EXISTS prices (
     id BIGINT PRIMARY KEY,

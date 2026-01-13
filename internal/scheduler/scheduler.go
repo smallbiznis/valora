@@ -13,6 +13,7 @@ import (
 	"github.com/smallbiznis/valora/internal/authorization"
 	billingcycledomain "github.com/smallbiznis/valora/internal/billingcycle/domain"
 	"github.com/smallbiznis/valora/internal/billingdashboard/rollup"
+	billingopsdomain "github.com/smallbiznis/valora/internal/billingoperations/domain"
 	"github.com/smallbiznis/valora/internal/clock"
 	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
 	ledgerdomain "github.com/smallbiznis/valora/internal/ledger/domain"
@@ -36,8 +37,10 @@ type Params struct {
 	LedgerSvc       ledgerdomain.Service
 	SubscriptionSvc subscriptiondomain.Service
 	AuditSvc        auditdomain.Service
-	AuthzSvc        authorization.Service
-	RollupSvc       *rollup.Service `optional:"true"`
+
+	AuthzSvc             authorization.Service
+	BillingOperationsSvc billingopsdomain.Service
+	RollupSvc            *rollup.Service `optional:"true"`
 	GenID           *snowflake.Node
 	Clock           clock.Clock
 	Config          Config `optional:"true"`
@@ -54,8 +57,9 @@ type Scheduler struct {
 	ledgerSvc       ledgerdomain.Service
 	subscriptionSvc subscriptiondomain.Service
 	auditSvc        auditdomain.Service
-	authzSvc        authorization.Service
-	rollupSvc       *rollup.Service
+	authzSvc             authorization.Service
+	billingOperationsSvc billingopsdomain.Service
+	rollupSvc            *rollup.Service
 }
 
 type auditEvent struct {
@@ -69,7 +73,7 @@ type auditEvent struct {
 }
 
 func New(p Params) (*Scheduler, error) {
-	if p.DB == nil || p.Log == nil || p.RatingSvc == nil || p.InvoiceSvc == nil || p.LedgerSvc == nil || p.SubscriptionSvc == nil || p.GenID == nil || p.AuditSvc == nil || p.AuthzSvc == nil || p.Clock == nil {
+	if p.DB == nil || p.Log == nil || p.RatingSvc == nil || p.InvoiceSvc == nil || p.LedgerSvc == nil || p.SubscriptionSvc == nil || p.GenID == nil || p.AuditSvc == nil || p.AuthzSvc == nil || p.Clock == nil || p.BillingOperationsSvc == nil {
 		return nil, ErrInvalidConfig
 	}
 	cfg := p.Config.withDefaults()
@@ -84,8 +88,9 @@ func New(p Params) (*Scheduler, error) {
 		ledgerSvc:       p.LedgerSvc,
 		subscriptionSvc: p.SubscriptionSvc,
 		auditSvc:        p.AuditSvc,
-		authzSvc:        p.AuthzSvc,
-		rollupSvc:       p.RollupSvc,
+		authzSvc:             p.AuthzSvc,
+		billingOperationsSvc: p.BillingOperationsSvc,
+		rollupSvc:            p.RollupSvc,
 	}, nil
 }
 
@@ -96,7 +101,7 @@ func (s *Scheduler) runJob(
 	timeout time.Duration,
 	fn func(ctx context.Context) error,
 ) error {
-	start := time.Now()
+	start := s.clock.Now()
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 
@@ -166,6 +171,8 @@ func (s *Scheduler) RunOnce(parent context.Context) error {
 	err = errors.Join(err,
 		s.runJob(parent, "end_canceled_subs", s.cfg.BatchSize, 30*time.Second, s.EndCanceledSubscriptionsJob),
 		s.runJob(parent, "recovery_sweep", maxInt(s.cfg.MaxRatingBatchSize, s.cfg.MaxCloseBatchSize, s.cfg.MaxInvoiceBatchSize), 30*time.Second, s.RecoverySweepJob),
+		s.runJob(parent, "sla_evaluation", s.cfg.BatchSize, 30*time.Second, s.SLAEvaluationJob),
+		s.runJob(parent, "finops_scoring", 1, 24*time.Hour, s.FinOpsScoringJob),
 	)
 
 	return err
@@ -174,7 +181,7 @@ func (s *Scheduler) RunOnce(parent context.Context) error {
 func (s *Scheduler) RunForever(ctx context.Context) {
 	ticker := time.NewTicker(s.cfg.RunInterval)
 	defer ticker.Stop()
-	nextRun := time.Now().Add(s.cfg.RunInterval)
+	nextRun := s.clock.Now().Add(s.cfg.RunInterval)
 	schedMetrics := obsmetrics.Scheduler()
 
 	for {
@@ -201,7 +208,7 @@ func (s *Scheduler) EnsureBillingCyclesJob(ctx context.Context) error {
 		s.logJobStart(ctx, run)
 		defer s.logJobFinish(ctx, run)
 	}
-	now := time.Now().UTC()
+	now := s.clock.Now()
 	var jobErr error
 
 	for {
@@ -228,7 +235,8 @@ func (s *Scheduler) CloseCyclesJob(ctx context.Context) error {
 		s.logJobStart(ctx, run)
 		defer s.logJobFinish(ctx, run)
 	}
-	now := time.Now().UTC()
+	now := s.clock.Now()
+	fmt.Printf("CloseCycle: %v\n", now)
 	var jobErr error
 
 	for {
@@ -294,7 +302,7 @@ func (s *Scheduler) RatingJob(ctx context.Context) error {
 		s.logJobStart(ctx, run)
 		defer s.logJobFinish(ctx, run)
 	}
-	now := time.Now().UTC()
+	now := s.clock.Now()
 	var jobErr error
 
 	for {
@@ -398,7 +406,7 @@ func (s *Scheduler) CloseAfterRatingJob(ctx context.Context) error {
 		s.logJobStart(ctx, run)
 		defer s.logJobFinish(ctx, run)
 	}
-	now := time.Now().UTC()
+	now := s.clock.Now()
 	var jobErr error
 
 	for {
@@ -496,7 +504,7 @@ func (s *Scheduler) InvoiceJob(ctx context.Context) error {
 		defer s.logJobFinish(ctx, run)
 	}
 
-	now := time.Now().UTC()
+	now := s.clock.Now()
 	var jobErr error
 	schedMetrics := obsmetrics.Scheduler()
 
@@ -691,7 +699,7 @@ func (s *Scheduler) ensureBillingCyclesBatch(ctx context.Context, now time.Time,
 			return ctx.Err()
 		}
 		var err error
-		subs, err = s.fetchSubscriptionsForWork(ctx, tx, subscriptiondomain.SubscriptionStatusActive, s.cfg.BatchSize)
+		subs, err = s.fetchSubscriptionsNeedingCycle(ctx, tx, s.cfg.BatchSize)
 		return err
 	})
 	if err != nil {
@@ -927,4 +935,34 @@ func (s *Scheduler) authorizeSystem(ctx context.Context, orgID snowflake.ID, obj
 		return authorization.ErrForbidden
 	}
 	return s.authzSvc.Authorize(ctx, "system", orgID.String(), object, action)
+}
+
+func (s *Scheduler) SLAEvaluationJob(ctx context.Context) error {
+	ctx, run, owner := s.ensureJobRun(ctx, "sla_evaluation", s.cfg.BatchSize)
+	if owner {
+		s.logJobStart(ctx, run)
+		defer s.logJobFinish(ctx, run)
+	}
+
+	if err := s.billingOperationsSvc.EvaluateSLAs(ctx); err != nil {
+		s.logSchedulerError(ctx, run, "sla.evaluate.failed", "sla_evaluation", 0, err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *Scheduler) FinOpsScoringJob(ctx context.Context) error {
+	ctx, run, owner := s.ensureJobRun(ctx, "finops_scoring", 1)
+	if owner {
+		s.logJobStart(ctx, run)
+		defer s.logJobFinish(ctx, run)
+	}
+
+	if err := s.billingOperationsSvc.AggregateDailyPerformance(ctx); err != nil {
+		s.logSchedulerError(ctx, run, "finops.scoring.failed", "finops_scoring", 0, err)
+		return err
+	}
+
+	return nil
 }

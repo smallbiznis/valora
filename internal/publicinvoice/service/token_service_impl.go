@@ -2,14 +2,18 @@ package service
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/bwmarrin/snowflake"
+	"github.com/smallbiznis/valora/internal/config"
 	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
+
 	publicinvoicedomain "github.com/smallbiznis/valora/internal/publicinvoice/domain"
 	"go.uber.org/fx"
 )
@@ -19,17 +23,27 @@ type TokenParams struct {
 
 	Repo  publicinvoicedomain.PublicInvoiceTokenRepository
 	GenID *snowflake.Node
+	Cfg   config.Config
 }
 
 type TokenService struct {
-	repo  publicinvoicedomain.PublicInvoiceTokenRepository
-	genID *snowflake.Node
+	repo   publicinvoicedomain.PublicInvoiceTokenRepository
+	genID  *snowflake.Node
+	encKey []byte
 }
 
 func NewTokenService(p TokenParams) publicinvoicedomain.PublicInvoiceTokenService {
+	secret := strings.TrimSpace(p.Cfg.PaymentProviderConfigSecret)
+	var key []byte
+	if secret != "" {
+		sum := sha256.Sum256([]byte(secret))
+		key = sum[:]
+	}
+
 	return &TokenService{
-		repo:  p.Repo,
-		genID: p.GenID,
+		repo:   p.Repo,
+		genID:  p.GenID,
+		encKey: key,
 	}
 }
 
@@ -74,11 +88,16 @@ func (s *TokenService) EnsureForInvoice(
 		ID:        s.genID.Generate(),
 		OrgID:     invoice.OrgID,
 		InvoiceID: invoice.ID,
-		TokenHash: rawToken,
 		CreatedAt: now,
 	}
 
-	fmt.Printf("raw_token: %v\n", rawToken)
+	if len(s.encKey) > 0 {
+		encrypted, err := encryptToken(s.encKey, rawToken)
+		if err == nil {
+			newToken.TokenHash = encrypted
+		}
+	}
+
 	if err := s.repo.Create(ctx, newToken); err != nil {
 		fallback, fetchErr := s.repo.FindActiveByInvoiceID(ctx, invoice.ID)
 		if fetchErr == nil && fallback != nil && strings.TrimSpace(fallback.TokenHash) != "" {
@@ -87,6 +106,7 @@ func (s *TokenService) EnsureForInvoice(
 		return publicinvoicedomain.PublicInvoiceToken{}, err
 	}
 
+	newToken.TokenHash = rawToken
 	return newToken, nil
 }
 
@@ -96,4 +116,21 @@ func generateToken() (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(buf), nil
+}
+
+func encryptToken(key []byte, text string) (string, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return "", err
+	}
+	ciphertext := gcm.Seal(nonce, nonce, []byte(text), nil)
+	return base64.RawStdEncoding.EncodeToString(ciphertext), nil
 }

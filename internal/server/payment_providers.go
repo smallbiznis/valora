@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	paymentproviderdomain "github.com/smallbiznis/valora/internal/paymentprovider/domain"
+	paymentproviderdomain "github.com/smallbiznis/valora/internal/providers/payment/domain"
 )
 
 type upsertPaymentProviderConfigRequest struct {

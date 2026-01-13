@@ -16,7 +16,7 @@ import (
 	"github.com/smallbiznis/valora/internal/config"
 	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
 	paymentdomain "github.com/smallbiznis/valora/internal/payment/domain"
-	paymentproviderdomain "github.com/smallbiznis/valora/internal/paymentprovider/domain"
+	paymentproviderdomain "github.com/smallbiznis/valora/internal/providers/payment/domain"
 	publicinvoicedomain "github.com/smallbiznis/valora/internal/publicinvoice/domain"
 	"go.uber.org/fx"
 	"gorm.io/datatypes"
@@ -85,13 +85,13 @@ func (s *Service) GetInvoiceForPublicView(
 		return nil, publicinvoicedomain.ErrInvoiceUnavailable
 	}
 
-	items, totals, err := s.loadInvoiceItems(ctx, row)
+	items, err := s.loadInvoiceItems(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
 	settledAmount := s.loadInvoiceSettledAmount(ctx, row)
-	view, status := s.buildPublicInvoiceView(row, items, totals, settledAmount)
+	view, status := s.buildPublicInvoiceView(row, items, settledAmount)
 	return &publicinvoicedomain.PublicInvoiceResponse{
 		Status:  status,
 		Invoice: view,
@@ -248,17 +248,16 @@ func (s *Service) loadPublicInvoice(
 func (s *Service) loadInvoiceItems(
 	ctx context.Context,
 	row *publicinvoicedomain.InvoiceRecord,
-) ([]publicinvoicedomain.PublicInvoiceItem, invoiceTotals, error) {
+) ([]publicinvoicedomain.PublicInvoiceItem, error) {
 	if row == nil {
-		return nil, invoiceTotals{}, nil
+		return nil, nil
 	}
 	items, err := s.repo.ListInvoiceItems(ctx, s.db, row.OrgID, row.ID)
 	if err != nil {
-		return nil, invoiceTotals{}, err
+		return nil, err
 	}
 
 	result := make([]publicinvoicedomain.PublicInvoiceItem, 0, len(items))
-	var totals invoiceTotals
 	for _, item := range items {
 		result = append(result, publicinvoicedomain.PublicInvoiceItem{
 			Description: item.Description,
@@ -267,16 +266,9 @@ func (s *Service) loadInvoiceItems(
 			Amount:      item.Amount,
 			LineType:    item.LineType,
 		})
-
-		totals.total += item.Amount
-		if strings.EqualFold(item.LineType, string(invoicedomain.InvoiceItemLineTypeTax)) {
-			totals.tax += item.Amount
-		} else {
-			totals.subtotal += item.Amount
-		}
 	}
 
-	return result, totals, nil
+	return result, nil
 }
 
 func (s *Service) loadInvoiceSettledAmount(
@@ -300,35 +292,31 @@ func (s *Service) loadInvoiceSettledAmount(
 func (s *Service) buildPublicInvoiceView(
 	row *publicinvoicedomain.InvoiceRecord,
 	items []publicinvoicedomain.PublicInvoiceItem,
-	totals invoiceTotals,
 	settledAmount int64,
 ) (publicinvoicedomain.PublicInvoiceView, publicinvoicedomain.PublicInvoiceStatus) {
-	totalAmount := row.SubtotalAmount
-	if totalAmount == 0 && totals.total > 0 {
-		totalAmount = totals.total
-	}
-
-	taxAmount := totals.tax
-	subtotalAmount := totals.subtotal
-	if totalAmount > 0 {
-		subtotalAmount = totalAmount - taxAmount
-		if subtotalAmount < 0 {
-			subtotalAmount = totalAmount
-			taxAmount = 0
-		}
-	}
+	// Strict billing: Use persisted totals only.
+	// Frontend/Service should never recompute totals.
+	totalAmount := row.TotalAmount
+	subtotalAmount := row.SubtotalAmount
+	taxAmount := row.TaxAmount
 
 	amountPaid := int64(0)
 	if row.PaidAt != nil {
 		amountPaid = totalAmount
 	} else if settledAmount > 0 {
+		// Ledgers are the source of truth for partial payments (credits)
 		amountPaid = settledAmount
 	} else {
-		// Metadata can drift; only use it as an unpaid fallback until ledger is wired in.
+		// Fallback for non-ledger systems (should be deprecated)
 		amountPaid = readMetadataAmount(row.Metadata, "amount_paid")
 	}
+
+	// Safety clamping
 	if amountPaid < 0 {
 		amountPaid = 0
+	}
+	if amountPaid > totalAmount {
+		amountPaid = totalAmount
 	}
 
 	amountDue := totalAmount - amountPaid
@@ -359,17 +347,7 @@ func (s *Service) buildPublicInvoiceView(
 }
 
 func (s *Service) resolveInvoiceAmount(ctx context.Context, row *publicinvoicedomain.InvoiceRecord) (int64, error) {
-	if row.SubtotalAmount > 0 {
-		return row.SubtotalAmount, nil
-	}
-	_, totals, err := s.loadInvoiceItems(ctx, row)
-	if err != nil {
-		return 0, err
-	}
-	if totals.total > 0 {
-		return totals.total, nil
-	}
-	return 0, nil
+	return row.TotalAmount, nil
 }
 
 func (s *Service) loadStripeConfig(ctx context.Context, orgID snowflake.ID) (*stripeConfig, error) {

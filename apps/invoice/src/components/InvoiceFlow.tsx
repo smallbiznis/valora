@@ -7,6 +7,14 @@ import {
   useElements,
   useStripe,
 } from '@stripe/react-stripe-js'
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer'
 import { useIntl, type IntlShape } from 'react-intl'
 
 type FlowState =
@@ -372,6 +380,17 @@ export function InvoiceFlow({
     await beginPaymentFlow(paymentMethod)
   }
 
+  const handleStartPaymentSelection = () => {
+    if (paymentMethods.length === 1) {
+      const method = paymentMethods[0]
+      if (method.provider === 'stripe' && method.type === 'card') {
+        handleSelectMethod(method)
+        return
+      }
+    }
+    setFlowState('select_method')
+  }
+
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900">
       <div className="mx-auto flex min-h-screen max-w-md items-start px-4 py-8">
@@ -422,7 +441,7 @@ export function InvoiceFlow({
               >
                 <PaymentSummaryScreen
                   invoice={invoice}
-                  onChooseMethod={() => setFlowState('select_method')}
+                  onChooseMethod={handleStartPaymentSelection}
                 />
               </motion.div>
             ) : null}
@@ -552,9 +571,9 @@ function InvoiceScreen({
   const canPay = badge.state === 'open' || badge.state === 'overdue'
   const ctaLabel = canPay
     ? intl.formatMessage({
-        id: 'invoice.proceedToPayment',
-        defaultMessage: 'Proceed to payment',
-      })
+      id: 'invoice.proceedToPayment',
+      defaultMessage: 'Proceed to payment',
+    })
     : badge.label
   const stickyVisible = showSticky && canPay && !isLoading
 
@@ -600,15 +619,14 @@ function InvoiceScreen({
               </p>
             </div>
             <span
-              className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ring-1 ${
-                badge.tone === 'success'
-                  ? 'bg-emerald-50 text-emerald-700 ring-emerald-100'
-                  : badge.tone === 'danger'
-                    ? 'bg-rose-50 text-rose-700 ring-rose-100'
-                    : badge.tone === 'warning'
-                      ? 'bg-amber-50 text-amber-700 ring-amber-100'
-                      : 'bg-slate-100 text-slate-700 ring-slate-200'
-              }`}
+              className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ring-1 ${badge.tone === 'success'
+                ? 'bg-emerald-50 text-emerald-700 ring-emerald-100'
+                : badge.tone === 'danger'
+                  ? 'bg-rose-50 text-rose-700 ring-rose-100'
+                  : badge.tone === 'warning'
+                    ? 'bg-amber-50 text-amber-700 ring-amber-100'
+                    : 'bg-slate-100 text-slate-700 ring-slate-200'
+                }`}
             >
               {badge.label}
             </span>
@@ -645,6 +663,23 @@ function InvoiceScreen({
                 </div>
               </motion.div>
 
+              <motion.button
+                {...headerItem(0.06)}
+                className="mt-2 flex items-center gap-1 text-sm font-medium text-neutral-500 hover:text-neutral-900"
+                onClick={() => {
+                  const trigger = document.querySelector('[data-drawer-trigger]') as HTMLButtonElement | null
+                  trigger?.click()
+                }}
+              >
+                {intl.formatMessage({
+                  id: 'invoice.viewDetails',
+                  defaultMessage: 'View invoice details',
+                })}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </motion.button>
+
               {badge.state === 'void' ? (
                 <motion.div
                   {...headerItem(0.08)}
@@ -663,16 +698,16 @@ function InvoiceScreen({
                 >
                   {invoice.paidDate
                     ? intl.formatMessage(
-                        {
-                          id: 'invoice.paidOn',
-                          defaultMessage: 'Paid on {date}.',
-                        },
-                        { date: invoice.paidDate }
-                      )
+                      {
+                        id: 'invoice.paidOn',
+                        defaultMessage: 'Paid on {date}.',
+                      },
+                      { date: invoice.paidDate }
+                    )
                     : intl.formatMessage({
-                        id: 'invoice.paidMessage',
-                        defaultMessage: 'This invoice has been paid.',
-                      })}
+                      id: 'invoice.paidMessage',
+                      defaultMessage: 'This invoice has been paid.',
+                    })}
                 </motion.div>
               ) : null}
 
@@ -712,9 +747,9 @@ function InvoiceScreen({
                   whileHover={
                     canPay
                       ? {
-                          scale: 1.02,
-                          boxShadow: '0 12px 28px -18px rgba(37, 99, 235, 0.8)',
-                        }
+                        scale: 1.02,
+                        boxShadow: '0 12px 28px -18px rgba(37, 99, 235, 0.8)',
+                      }
                       : undefined
                   }
                   whileTap={canPay ? { scale: 0.98 } : undefined}
@@ -748,120 +783,189 @@ function InvoiceScreen({
                   >
                     {copied
                       ? intl.formatMessage({
-                          id: 'invoice.copiedLink',
-                          defaultMessage: 'Copied link',
-                        })
+                        id: 'invoice.copiedLink',
+                        defaultMessage: 'Copied link',
+                      })
                       : intl.formatMessage({
-                          id: 'invoice.copyLink',
-                          defaultMessage: 'Copy invoice link',
-                        })}
+                        id: 'invoice.copyLink',
+                        defaultMessage: 'Copy invoice link',
+                      })}
                   </button>
                 </div>
               </motion.div>
             </>
           )}
         </motion.section>
-
-        <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_16px_32px_-28px_rgba(15,23,42,0.25)]">
+        <section className="flex justify-center">
           {isLoading ? (
-            <motion.div
-              className="grid gap-4"
-              animate={{ opacity: [0.45, 0.8, 0.45] }}
-              transition={{ duration: 1.6, repeat: Infinity }}
-            >
-              <div className="h-4 w-24 rounded-full bg-neutral-200" />
-              <div className="h-6 w-48 rounded-full bg-neutral-200" />
-              <div className="h-6 w-64 rounded-full bg-neutral-200" />
-              <div className="h-20 w-full rounded-xl bg-neutral-200" />
-              <div className="h-4 w-24 rounded-full bg-neutral-200" />
-              <div className="h-10 w-full rounded-xl bg-neutral-200" />
-            </motion.div>
+            <div className="h-4 w-32 animate-pulse rounded-full bg-neutral-200" />
           ) : (
-            <>
-              <section>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                  {intl.formatMessage({
-                    id: 'invoice.billTo',
-                    defaultMessage: 'Bill to',
-                  })}
-                </p>
-                <p className="mt-2 text-sm font-semibold text-neutral-900">
-                  {invoice.billToName}
-                </p>
-                <p className="text-sm text-neutral-600">{invoice.billToEmail}</p>
-              </section>
+            <Drawer direction="right">
+              <DrawerTrigger asChild>
+                <button
+                  data-drawer-trigger
+                  className="hidden"
+                  type="button"
+                >
+                  Trigger
+                </button>
+              </DrawerTrigger>
+              <DrawerContent className="flex flex-col h-full rounded-none sm:max-w-md">
+                {/* Sticky Header */}
+                <DrawerHeader className="flex-none border-b border-neutral-100 px-6 py-4 text-left">
+                  <DrawerClose asChild>
+                    <button className="group flex items-center gap-2 text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="opacity-70 group-hover:opacity-100"
+                      >
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                      </svg>
+                      {intl.formatMessage({
+                        id: 'invoice.closeDetails',
+                        defaultMessage: 'Close invoice details',
+                      })}
+                    </button>
+                  </DrawerClose>
+                </DrawerHeader>
 
-              <Divider />
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto p-6">
+                  <h2 className="mb-6 text-2xl font-bold text-neutral-900">
+                    {invoice.paidDate ? (
+                      intl.formatMessage({
+                        id: 'invoice.paidTitle',
+                        defaultMessage: 'Paid on {date}',
+                      }, { date: invoice.paidDate })
+                    ) : (
+                      intl.formatMessage({
+                        id: 'invoice.dueTitle',
+                        defaultMessage: 'Due by {date}',
+                      }, { date: invoice.dueDate })
+                    )}
+                  </h2>
 
-              <section>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                  {intl.formatMessage({
-                    id: 'invoice.lineItems',
-                    defaultMessage: 'Line items',
-                  })}
-                </p>
-                <div className="mt-3 grid gap-3">
-                  {invoice.items.map((item) => (
-                    <div key={item.name} className="flex items-start justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-neutral-900">
-                          {item.name}
-                        </p>
-                        <p className="text-xs text-neutral-500">
-                          {intl.formatMessage(
-                            {
-                              id: 'invoice.quantity',
-                              defaultMessage: 'Qty {qty} at {price}',
-                            },
-                            {
-                              qty: item.quantity,
-                              price: formatMoney(
-                                intl,
-                                invoice.currency,
-                                item.unitPrice
-                              ),
-                            }
-                          )}
-                        </p>
+                  <div className="grid gap-6">
+                    <section className="grid gap-4 text-sm">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                        {intl.formatMessage({ id: 'invoice.summary', defaultMessage: 'Summary' })}
+                      </h3>
+
+                      <div className="grid grid-cols-[100px_1fr] gap-y-3">
+                        <span className="text-neutral-500">
+                          {intl.formatMessage({ id: 'invoice.to', defaultMessage: 'To' })}
+                        </span>
+                        <span className="font-medium text-neutral-900">{invoice.billToName}</span>
+
+                        <span className="text-neutral-500">
+                          {intl.formatMessage({ id: 'invoice.from', defaultMessage: 'From' })}
+                        </span>
+                        <span className="text-neutral-900">{invoice.orgName}</span>
+
+                        <span className="text-neutral-500">
+                          {intl.formatMessage({ id: 'invoice.invoiceNo', defaultMessage: 'Invoice' })}
+                        </span>
+                        <span className="text-neutral-900">{invoice.invoiceNumber}</span>
                       </div>
-                      <span className="text-sm font-semibold text-neutral-900">
-                        {formatMoney(intl, invoice.currency, item.total)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
+                    </section>
 
-              <Divider />
+                    <Divider />
 
-              <section className="grid gap-2 text-sm text-neutral-600">
-                <KeyValue
-                  label={intl.formatMessage({
-                    id: 'invoice.subtotal',
-                    defaultMessage: 'Subtotal',
-                  })}
-                  value={formatMoney(intl, invoice.currency, invoice.subtotal)}
-                />
-                <KeyValue
-                  label={intl.formatMessage({
-                    id: 'invoice.tax',
-                    defaultMessage: 'Tax',
-                  })}
-                  value={formatMoney(intl, invoice.currency, invoice.tax)}
-                />
-                <div className="mt-2 flex items-center justify-between text-base font-semibold text-neutral-900">
-                  <span>
-                    {intl.formatMessage({
-                      id: 'invoice.total',
-                      defaultMessage: 'Total',
-                    })}
-                  </span>
-                  <span>{formatMoney(intl, invoice.currency, invoice.total)}</span>
+                    <section className="grid gap-4">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                        {intl.formatMessage({
+                          id: 'invoice.lineItems',
+                          defaultMessage: 'Line items',
+                        })}
+                      </h3>
+                      <div className="grid gap-6">
+                        {invoice.items.map((item) => (
+                          <div key={item.name} className="flex justify-between gap-4">
+                            <div className="grid gap-0.5">
+                              <p className="text-sm font-medium text-neutral-900">
+                                {item.name}
+                              </p>
+                              <p className="text-xs text-neutral-500">
+                                {intl.formatMessage(
+                                  {
+                                    id: 'invoice.quantity',
+                                    defaultMessage: 'Qty {qty} × {price}',
+                                  },
+                                  {
+                                    qty: item.quantity,
+                                    price: formatMoney(
+                                      intl,
+                                      invoice.currency,
+                                      item.unitPrice
+                                    ),
+                                  }
+                                )}
+                              </p>
+                            </div>
+                            <span className="text-sm font-semibold text-neutral-900">
+                              {formatMoney(intl, invoice.currency, item.total)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <Divider />
+
+                    <section className="grid gap-2 text-sm text-neutral-600">
+                      <div className="flex justify-between">
+                        <span>{intl.formatMessage({ id: 'invoice.subtotal', defaultMessage: 'Subtotal' })}</span>
+                        <span className="font-medium text-neutral-900">{formatMoney(intl, invoice.currency, invoice.subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>{intl.formatMessage({ id: 'invoice.tax', defaultMessage: 'Tax' })}</span>
+                        <span className="font-medium text-neutral-900">{formatMoney(intl, invoice.currency, invoice.tax)}</span>
+                      </div>
+                      <div className="mt-2 flex justify-between text-base font-bold text-neutral-900">
+                        <span>{intl.formatMessage({ id: 'invoice.total', defaultMessage: 'Total' })}</span>
+                        <span>{formatMoney(intl, invoice.currency, invoice.total)}</span>
+                      </div>
+                    </section>
+                  </div>
                 </div>
-              </section>
-            </>
+
+                {/* Sticky Footer */}
+                <div className="flex-none border-t border-neutral-100 p-6 bg-white/80 backdrop-blur">
+                  <p className="text-sm text-neutral-500">
+                    {intl.formatMessage({ id: 'invoice.questions', defaultMessage: 'Questions?' })}{' '}
+                    <a href={`mailto:support@${invoice.orgName.toLowerCase().replace(/\s+/g, '')}.com`} className="font-medium text-blue-600 hover:text-blue-700">
+                      {intl.formatMessage({ id: 'invoice.contactSupport', defaultMessage: 'Contact {orgName}' }, { orgName: invoice.orgName })}
+                    </a>
+                  </p>
+                </div>
+              </DrawerContent>
+            </Drawer>
           )}
         </section>
+
+        <footer className="text-center">
+          <p className="flex items-center justify-center gap-1 text-sm font-medium text-neutral-400">
+            {intl.formatMessage({ id: 'footer.poweredBy', defaultMessage: 'Powered by' })}
+            <span className="font-bold text-neutral-600">Railzway</span>
+          </p>
+          <div className="mt-2 flex items-center justify-center gap-4 text-xs text-neutral-400">
+            <a href="#" className="hover:text-neutral-600 hover:underline">
+              {intl.formatMessage({ id: 'footer.terms', defaultMessage: 'Terms' })}
+            </a>
+            <a href="#" className="hover:text-neutral-600 hover:underline">
+              {intl.formatMessage({ id: 'footer.privacy', defaultMessage: 'Privacy' })}
+            </a>
+          </div>
+        </footer>
       </motion.div>
 
       <AnimatePresence>
@@ -901,7 +1005,7 @@ function InvoiceScreen({
           </motion.div>
         ) : null}
       </AnimatePresence>
-    </div>
+    </div >
   )
 }
 
@@ -992,11 +1096,10 @@ function SelectMethodScreen({
                 type="button"
                 onClick={() => onSelect(method)}
                 disabled={isBusy}
-                className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-colors ${
-                  isSelected
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-neutral-200 bg-white'
-                }`}
+                className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-colors ${isSelected
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-neutral-200 bg-white'
+                  }`}
               >
                 <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100 text-sm font-semibold text-neutral-700">
                   {method.display_name.slice(0, 1)}
@@ -1008,18 +1111,18 @@ function SelectMethodScreen({
                   <span className="block text-xs text-neutral-500">
                     {method.type === 'card'
                       ? intl.formatMessage({
-                          id: 'payment.cardPayment',
-                          defaultMessage: 'Card payment',
-                        })
+                        id: 'payment.cardPayment',
+                        defaultMessage: 'Card payment',
+                      })
                       : method.type === 'bank_transfer'
                         ? intl.formatMessage({
-                            id: 'payment.bankTransfer',
-                            defaultMessage: 'Bank transfer',
-                          })
+                          id: 'payment.bankTransfer',
+                          defaultMessage: 'Bank transfer',
+                        })
                         : intl.formatMessage({
-                            id: 'payment.localPayment',
-                            defaultMessage: 'Local payment',
-                          })}
+                          id: 'payment.localPayment',
+                          defaultMessage: 'Local payment',
+                        })}
                   </span>
                 </span>
                 <span className="h-2 w-2 rotate-45 border-r-2 border-t-2 border-neutral-300" />
@@ -1049,13 +1152,13 @@ function SelectMethodScreen({
       >
         {isBusy
           ? intl.formatMessage({
-              id: 'payment.preparing',
-              defaultMessage: 'Preparing...',
-            })
+            id: 'payment.preparing',
+            defaultMessage: 'Preparing...',
+          })
           : intl.formatMessage({
-              id: 'payment.continue',
-              defaultMessage: 'Continue',
-            })}
+            id: 'payment.continue',
+            defaultMessage: 'Continue',
+          })}
       </button>
     </CardShell>
   )
@@ -1198,10 +1301,10 @@ function CardFormInner({
     if (error) {
       setSubmitError(
         error.message ??
-          intl.formatMessage({
-            id: 'payment.confirmError',
-            defaultMessage: 'Payment could not be confirmed.',
-          })
+        intl.formatMessage({
+          id: 'payment.confirmError',
+          defaultMessage: 'Payment could not be confirmed.',
+        })
       )
       setIsSubmitting(false)
       return
@@ -1229,13 +1332,13 @@ function CardFormInner({
         >
           {isSubmitting
             ? intl.formatMessage({
-                id: 'payment.processingShort',
-                defaultMessage: 'Processing...',
-              })
+              id: 'payment.processingShort',
+              defaultMessage: 'Processing...',
+            })
             : intl.formatMessage({
-                id: 'payment.payNow',
-                defaultMessage: 'Pay now',
-              })}
+              id: 'payment.payNow',
+              defaultMessage: 'Pay now',
+            })}
         </button>
         <button
           type="button"

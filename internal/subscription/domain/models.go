@@ -44,6 +44,7 @@ type Subscription struct {
 	PausedAt               *time.Time                 `gorm:"column:paused_at"`
 	ResumedAt              *time.Time                 `gorm:"column:resumed_at"`
 	EndedAt                *time.Time                 `gorm:"column:ended_at"`
+	PlanChangedAt          *time.Time                 `gorm:"column:plan_changed_at"`
 	BillingAnchorDay       *int16                     `gorm:"type:smallint"`
 	BillingCycleType       string                     `gorm:"type:text;not null"`
 	DefaultPaymentTermDays *int                       `gorm:""`
@@ -78,7 +79,7 @@ type SubscriptionItem struct {
 	SubscriptionID    snowflake.ID      `gorm:"not null;index"`
 	PriceID           snowflake.ID      `gorm:"not null;index"`
 	PriceCode         *string           `gorm:"type:text"`
-	MeterID           *snowflake.ID     `gorm:"not null;index"`
+	MeterID           *snowflake.ID     `gorm:"index"`
 	MeterCode         *string           `gorm:"type:text"`
 	Quantity          int8              `gorm:"column:quantity"`
 	BillingMode       string            `gorm:"type:text;not null"`

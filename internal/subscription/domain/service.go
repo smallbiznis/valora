@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/bwmarrin/snowflake"
 	"github.com/smallbiznis/valora/pkg/db/pagination"
 )
 
@@ -37,6 +38,11 @@ type CreateSubscriptionRequest struct {
 	Metadata         map[string]any                  `json:"metadata,omitempty"`
 }
 
+type ReplaceSubscriptionItemsRequest struct {
+	SubscriptionID string                          `json:"subscription_id"`
+	Items          []CreateSubscriptionItemRequest `json:"items"`
+}
+
 type GetActiveByCustomerIDRequest struct {
 	CustomerID string
 }
@@ -53,10 +59,18 @@ type TransitionReason string
 type Service interface {
 	List(context.Context, ListSubscriptionRequest) (ListSubscriptionResponse, error)
 	Create(context.Context, CreateSubscriptionRequest) (CreateSubscriptionResponse, error)
+	ReplaceItems(context.Context, ReplaceSubscriptionItemsRequest) (CreateSubscriptionResponse, error)
 	GetByID(context.Context, string) (Subscription, error)
 	GetActiveByCustomerID(context.Context, GetActiveByCustomerIDRequest) (Subscription, error)
 	GetSubscriptionItem(context.Context, GetSubscriptionItemRequest) (SubscriptionItem, error)
 	TransitionSubscription(ctx context.Context, subscriptionID string, targetStatus SubscriptionStatus, reason TransitionReason) error
+	ValidateUsageEntitlement(ctx context.Context, subscriptionID, meterID snowflake.ID, at time.Time) error
+	ChangePlan(ctx context.Context, req ChangePlanRequest) error
+}
+
+type ChangePlanRequest struct {
+	SubscriptionID string
+	NewProductID   string
 }
 
 type CreateSubscriptionItemResponse struct {
@@ -97,6 +111,7 @@ var (
 	ErrMissingSubscriptionItems = errors.New("missing_subscription_items")
 	ErrMissingPricing           = errors.New("missing_pricing")
 	ErrMissingCustomer          = errors.New("missing_customer")
+	ErrMissingEntitlements      = errors.New("missing_entitlements")
 	ErrBillingCyclesOpen        = errors.New("billing_cycles_open")
 	ErrInvoicesNotFinalized     = errors.New("invoices_not_finalized")
 	ErrInvalidCollectionMode    = errors.New("invalid_collection_mode")
@@ -106,7 +121,10 @@ var (
 	ErrInvalidItems             = errors.New("invalid_items")
 	ErrInvalidQuantity          = errors.New("invalid_quantity")
 	ErrInvalidPrice             = errors.New("invalid_price")
+	ErrInvalidProduct           = errors.New("invalid_product")
 	ErrMultipleFlatPrices       = errors.New("multiple_flat_prices_not_allowed")
 	ErrSubscriptionNotFound     = errors.New("subscription_not_found")
 	ErrSubscriptionItemNotFound = errors.New("subscription_item_not_found")
+	ErrFeatureNotEntitled        = errors.New("feature_not_entitled")
+	ErrInvalidSubscriptionStatus = errors.New("invalid_subscription_status")
 )

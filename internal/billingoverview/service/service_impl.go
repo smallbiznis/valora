@@ -238,7 +238,7 @@ func (s *Service) GetCollectionRate(ctx context.Context, req billingoverview.Ove
 	}
 
 	return billingoverview.CollectionRateResponse{
-		Currency:         currency,
+		Currency:        currency,
 		CollectionRate:  collectionRate,
 		CollectedAmount: collectedAmount,
 		InvoicedAmount:  invoicedAmount,
@@ -808,14 +808,14 @@ func (s *Service) loadOutstandingBalance(
 		SELECT
 			COUNT(1) AS invoice_count,
 			COALESCE(
-				SUM(GREATEST(i.total_amount - COALESCE(s.settled_amount, 0), 0)),
+				SUM(GREATEST(i.subtotal_amount - COALESCE(s.settled_amount, 0), 0)),
 				0
 			) AS outstanding,
 			COALESCE(
 				SUM(
 					CASE
 						WHEN i.due_at IS NOT NULL AND i.due_at < ?
-						THEN GREATEST(i.total_amount - COALESCE(s.settled_amount, 0), 0)
+						THEN GREATEST(i.subtotal_amount - COALESCE(s.settled_amount, 0), 0)
 						ELSE 0
 					END
 				),
@@ -852,7 +852,7 @@ func (s *Service) loadInvoicedAmount(
 	var total int64
 	if err := s.db.WithContext(ctx).Raw(
 		`
-		SELECT COALESCE(SUM(total_amount), 0) AS total
+		SELECT COALESCE(SUM(subtotal_amount), 0) AS total
 		FROM invoices
 		WHERE org_id = ?
 		  AND status = 'FINALIZED'

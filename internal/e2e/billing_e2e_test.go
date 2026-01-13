@@ -801,6 +801,8 @@ func updateBillingCycleWindow(t *testing.T, cycleID snowflake.ID, start, end tim
 	}
 }
 
+
+
 func runRatingForCycles(t *testing.T) {
 	t.Helper()
 	if err := env.scheduler.CloseCyclesJob(context.Background()); err != nil {

@@ -84,3 +84,21 @@ func (r *repo) List(ctx context.Context, db *gorm.DB, orgID int64, filter domain
 	}
 	return items, nil
 }
+
+func (r *repo) Update(ctx context.Context, db *gorm.DB, product *domain.Product) error {
+	if product == nil {
+		return gorm.ErrInvalidData
+	}
+	return db.WithContext(ctx).Exec(
+		`UPDATE products
+		 SET name = ?, description = ?, active = ?, metadata = ?, updated_at = ?
+		 WHERE org_id = ? AND id = ?`,
+		product.Name,
+		product.Description,
+		product.Active,
+		product.Metadata,
+		product.UpdatedAt,
+		product.OrgID,
+		product.ID,
+	).Error
+}

@@ -1,9 +1,9 @@
 export const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
-export const API_KEY = __ENV.API_KEY || 'vk_live_key_F8Z7GH40KA2O_e466653d93c88393d827eccc01277ba4d59bc4c43fa42f014937fb936d3ff6e9';
-export const ORG_ID = __ENV.ORG_ID || '2007115164859502592';
+export const API_KEY = __ENV.API_KEY || 'vk_live_key_F98QDZLSN9J4_f2fcf6e5ca11cd463b182956bf5d338f13186ea52ec84f1e4acd24db0d6a9d79';
+export const ORG_ID = __ENV.ORG_ID || '2008111837777760256';
 
-export const CUSTOMER_ID = __ENV.CUSTOMER_ID || '2007146434607976448';
-export const METER_CODE = __ENV.METER_CODE || 'meter-usage-1767375975478-adylf7';
+export const CUSTOMER_ID = __ENV.CUSTOMER_ID || '2008111839082188800';
+export const METER_CODE = __ENV.METER_CODE || 'hybrid-usage-meter-teste2e-ratinghybrid';
 
 export const ADMIN_SESSION = __ENV.ADMIN_SESSION || '';
 

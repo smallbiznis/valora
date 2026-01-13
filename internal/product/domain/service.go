@@ -10,6 +10,8 @@ type Service interface {
 	Create(ctx context.Context, req CreateRequest) (*Response, error)
 	List(ctx context.Context, req ListRequest) ([]Response, error)
 	Get(ctx context.Context, id string) (*Response, error)
+	Update(ctx context.Context, req UpdateRequest) (*Response, error)
+	Archive(ctx context.Context, id string) (*Response, error)
 }
 
 type ListRequest struct {
@@ -25,6 +27,14 @@ type CreateRequest struct {
 	Description *string        `json:"description"`
 	Active      *bool          `json:"active"`
 	Metadata    map[string]any `json:"metadata"`
+}
+
+type UpdateRequest struct {
+	ID          string         `json:"id"`
+	Name        *string        `json:"name,omitempty"`
+	Description *string        `json:"description,omitempty"`
+	Active      *bool          `json:"active,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 type Response struct {

@@ -16,6 +16,13 @@ type createProductRequest struct {
 	Metadata    map[string]any `json:"metadata"`
 }
 
+type updateProductRequest struct {
+	Name        *string        `json:"name,omitempty"`
+	Description *string        `json:"description,omitempty"`
+	Active      *bool          `json:"active,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
+}
+
 func (s *Server) CreateProduct(c *gin.Context) {
 	var req createProductRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -91,6 +98,60 @@ func (s *Server) GetProductByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": resp})
 }
 
+func (s *Server) UpdateProduct(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+
+	var req updateProductRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		AbortWithError(c, invalidRequestError())
+		return
+	}
+
+	resp, err := s.productSvc.Update(c.Request.Context(), productdomain.UpdateRequest{
+		ID:          id,
+		Name:        trimProductString(req.Name),
+		Description: trimProductString(req.Description),
+		Active:      req.Active,
+		Metadata:    req.Metadata,
+	})
+	if err != nil {
+		AbortWithError(c, err)
+		return
+	}
+
+	if s.auditSvc != nil {
+		targetID := resp.ID
+		_ = s.auditSvc.AuditLog(c.Request.Context(), nil, "", nil, "product.update", "product", &targetID, map[string]any{
+			"product_id": resp.ID,
+			"code":       resp.Code,
+			"name":       resp.Name,
+			"active":     resp.Active,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": resp})
+}
+
+func (s *Server) ArchiveProduct(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	resp, err := s.productSvc.Archive(c.Request.Context(), id)
+	if err != nil {
+		AbortWithError(c, err)
+		return
+	}
+
+	if s.auditSvc != nil {
+		targetID := resp.ID
+		_ = s.auditSvc.AuditLog(c.Request.Context(), nil, "", nil, "product.archive", "product", &targetID, map[string]any{
+			"product_id": resp.ID,
+			"code":       resp.Code,
+			"active":     resp.Active,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": resp})
+}
+
 func isProductValidationError(err error) bool {
 	switch err {
 	case productdomain.ErrInvalidOrganization,
@@ -101,4 +162,12 @@ func isProductValidationError(err error) bool {
 	default:
 		return false
 	}
+}
+
+func trimProductString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	return &trimmed
 }

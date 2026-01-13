@@ -7,7 +7,7 @@ import { admin } from "@/api/client"
 import { ForbiddenState } from "@/components/forbidden-state"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +46,19 @@ type Meter = {
   updated_at: string
 }
 
+type LiveMeterEvent = {
+  meter_id: string
+  customer_id: string
+  value: number
+  recorded_at: string
+  idempotency_key: string
+  status: string
+  source: string
+  receivedAt: number
+}
+
+const MAX_LIVE_EVENTS = 30
+
 const formatTimestamp = (value: string) => {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return "-"
@@ -62,6 +75,11 @@ const formatAggregation = (value: string) => {
   const trimmed = value.trim()
   if (!trimmed) return "-"
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase()
+}
+
+const formatLiveValue = (value: number) => {
+  if (!Number.isFinite(value)) return "-"
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 }).format(value)
 }
 
 export default function OrgMeterDetailPage() {
@@ -83,6 +101,11 @@ export default function OrgMeterDetailPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [liveEvents, setLiveEvents] = useState<LiveMeterEvent[]>([])
+  const [isFeedPaused, setIsFeedPaused] = useState(false)
+  const [feedStatus, setFeedStatus] = useState<"connected" | "reconnecting" | "paused">(
+    "reconnecting"
+  )
 
   useEffect(() => {
     if (!orgId || !meterId) {
@@ -119,6 +142,54 @@ export default function OrgMeterDetailPage() {
     }
   }, [orgId, meterId])
 
+  useEffect(() => {
+    setLiveEvents([])
+  }, [meterId])
+
+  useEffect(() => {
+    if (!meterId) return
+    if (isFeedPaused) {
+      setFeedStatus("paused")
+      return
+    }
+
+    let isActive = true
+    setFeedStatus("reconnecting")
+
+    const source = new EventSource(`/admin/meters/${meterId}/live-events`, {
+      withCredentials: true,
+    })
+
+    source.onopen = () => {
+      if (!isActive) return
+      setFeedStatus("connected")
+    }
+
+    source.onerror = () => {
+      if (!isActive) return
+      setFeedStatus("reconnecting")
+    }
+
+    source.onmessage = (message) => {
+      if (!isActive || !message.data) return
+      try {
+        const parsed = JSON.parse(message.data) as Omit<LiveMeterEvent, "receivedAt">
+        const nextEvent: LiveMeterEvent = {
+          ...parsed,
+          receivedAt: Date.now(),
+        }
+        setLiveEvents((previous) => [nextEvent, ...previous].slice(0, MAX_LIVE_EVENTS))
+      } catch {
+        return
+      }
+    }
+
+    return () => {
+      isActive = false
+      source.close()
+    }
+  }, [meterId, isFeedPaused])
+
   const statusBadge = useMemo(() => {
     if (!meter) return null
     return (
@@ -134,6 +205,18 @@ export default function OrgMeterDetailPage() {
       </Badge>
     )
   }, [meter])
+
+  const feedStatusLabel = useMemo(() => {
+    if (isFeedPaused) return "Feed paused"
+    if (feedStatus === "reconnecting") return "Reconnecting..."
+    return "Live"
+  }, [feedStatus, isFeedPaused])
+
+  const emptyFeedLabel = useMemo(() => {
+    if (isFeedPaused) return "Feed paused"
+    if (feedStatus === "reconnecting") return "Reconnecting..."
+    return "Waiting for usage events..."
+  }, [feedStatus, isFeedPaused])
 
   if (isLoading) {
     return <div className="text-text-muted text-sm">Loading meter...</div>
@@ -198,15 +281,88 @@ export default function OrgMeterDetailPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Live meter events</CardTitle>
+              <div className="space-y-1">
+                <CardTitle>Live meter events</CardTitle>
+                <CardDescription>
+                  Real-time preview of incoming usage events for this meter. For integration debugging and
+                  observability only.
+                </CardDescription>
+              </div>
+              <CardAction>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsFeedPaused((prev) => !prev)
+                  }}
+                >
+                  {isFeedPaused ? "Resume feed" : "Pause feed"}
+                </Button>
+              </CardAction>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="rounded-lg border border-dashed p-6 text-center text-text-muted text-sm">
-                No events.
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-muted">
+                <span>{feedStatusLabel}</span>
+                <span>Instance-local preview - Events may be dropped</span>
               </div>
-              <div className="flex justify-end">
-                <Button variant="outline">Pause feed</Button>
-              </div>
+              {liveEvents.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-6 text-center text-text-muted text-sm">
+                  {emptyFeedLabel}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {liveEvents.map((event) => {
+                    const unitLabel = meter.unit.trim()
+                    const status =
+                      event.status?.toLowerCase() === "deduplicated" ? "Deduplicated" : "Accepted"
+                    const source = event.source?.trim() ? event.source.toUpperCase() : "API"
+                    return (
+                      <div
+                        key={`${event.receivedAt}-${event.idempotency_key}`}
+                        className="animate-in fade-in-0 slide-in-from-top-1 motion-reduce:animate-none rounded-lg border p-3 shadow-sm"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-sm font-medium">
+                            {formatLiveValue(event.value)}
+                            {unitLabel ? ` ${unitLabel}` : ""}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant={status === "Deduplicated" ? "outline" : "secondary"}
+                              className={
+                                status === "Deduplicated"
+                                  ? "border-status-warning/40 text-text-muted"
+                                  : "border-status-success/30 bg-status-success/10 text-status-success"
+                              }
+                            >
+                              {status}
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                              {source}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="mt-2 space-y-1 text-xs text-text-muted">
+                          <div className="flex flex-wrap gap-2">
+                            <span>
+                              Customer{" "}
+                              <span className="font-mono text-text-primary/80">{event.customer_id}</span>
+                            </span>
+                            <span>Recorded {formatTimestamp(event.recorded_at)}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <span>
+                              Idempotency{" "}
+                              <span className="font-mono text-text-primary/80">
+                                {event.idempotency_key}
+                              </span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 

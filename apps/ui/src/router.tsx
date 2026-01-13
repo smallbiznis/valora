@@ -12,9 +12,12 @@ import { useAuthStore } from "@/stores/authStore"
 
 const SignupPage = lazy(() => import("@/pages/signup"))
 
-const OrgDashboard = lazy(() => import("@/features/billing/pages/OrgDashboard"))
+const OrgHome = lazy(() => import("@/features/billing/pages/OrgHome"))
 const OrgBillingOverviewPage = lazy(
   () => import("@/features/billing/pages/OrgBillingOverviewPage")
+)
+const OrgBillingOperationsPage = lazy(
+  () => import("@/features/billing/pages/OrgBillingOperationsPage")
 )
 const OrgCustomersPage = lazy(() => import("@/features/billing/pages/OrgCustomersPage"))
 const OrgCustomerDetailPage = lazy(
@@ -74,11 +77,11 @@ const OrgInvoiceTemplateFormPage = lazy(
   () => import("@/features/invoice/pages/OrgInvoiceTemplateFormPage")
 )
 
-const AdminPricingListPage = lazy(
-  () => import("@/features/admin/pricing/pages/AdminPricingListPage")
+const AdminFeaturesPage = lazy(
+  () => import("@/features/admin/catalog/pages/AdminFeaturesPage")
 )
-const AdminPricingDetailPage = lazy(
-  () => import("@/features/admin/pricing/pages/AdminPricingDetailPage")
+const AdminTaxDefinitionsPage = lazy(
+  () => import("@/features/admin/catalog/pages/AdminTaxDefinitionsPage")
 )
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -162,34 +165,18 @@ export const router = createBrowserRouter([
       { path: "/orgs", element: <OrgResolverPage /> },
       { path: "/onboarding", element: <OnboardingPage /> },
       {
-        path: "/admin/prices",
-        element: withFeatureBoundary(<AdminPricingListPage />),
-      },
-      {
-        path: "/admin/prices/:priceId",
-        element: withFeatureBoundary(<AdminPricingDetailPage />),
-      },
-      {
-        path: "/admin/pricing",
-        element: withFeatureBoundary(<AdminPricingListPage />),
-      },
-      {
-        path: "/admin/pricing/:priceId",
-        element: withFeatureBoundary(<AdminPricingDetailPage />),
-      },
-      {
         path: "/orgs/:orgId",
         element: <DashboardLayout />,
         children: [
-          { index: true, element: <Navigate to="dashboard" replace /> },
-          { path: "dashboard", element: withFeatureBoundary(<OrgDashboard />) },
+          { index: true, element: <Navigate to="home" replace /> },
+          { path: "home", element: withFeatureBoundary(<OrgHome />) },
           {
             path: "billing/overview",
             element: withFeatureBoundary(<OrgBillingOverviewPage />),
           },
           {
             path: "billing/operations",
-            element: withFeatureBoundary(<OrgDashboard />),
+            element: withFeatureBoundary(<OrgBillingOperationsPage />),
           },
           {
             path: "products",
@@ -200,16 +187,20 @@ export const router = createBrowserRouter([
             element: withFeatureBoundary(<CreateProduct />),
           },
           {
-            path: "products/:productId/prices/create",
-            element: withFeatureBoundary(<CreatePrice />),
-          },
-          {
             path: "products/:productId",
             element: withFeatureBoundary(<OrgProductDetailPage />),
           },
           {
-            path: "prices/:priceId",
-            element: withFeatureBoundary(<AdminPricingDetailPage />),
+            path: "products/:productId/prices/create",
+            element: withFeatureBoundary(<CreatePrice />),
+          },
+          {
+            path: "products/features",
+            element: withFeatureBoundary(<AdminFeaturesPage />),
+          },
+          {
+            path: "products/tax-definitions",
+            element: withFeatureBoundary(<AdminTaxDefinitionsPage />),
           },
           {
             path: "prices",

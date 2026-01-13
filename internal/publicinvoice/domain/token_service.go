@@ -30,7 +30,7 @@ type PublicInvoiceToken struct {
 	ID        snowflake.ID
 	OrgID     snowflake.ID
 	InvoiceID snowflake.ID
-	TokenHash     string
+	TokenHash string
 	CreatedAt time.Time
 	ExpiresAt *time.Time
 }

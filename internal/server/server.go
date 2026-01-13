@@ -24,6 +24,8 @@ import (
 	"github.com/smallbiznis/valora/internal/billingdashboard"
 	billingdashboarddomain "github.com/smallbiznis/valora/internal/billingdashboard/domain"
 	billingrollup "github.com/smallbiznis/valora/internal/billingdashboard/rollup"
+	"github.com/smallbiznis/valora/internal/billingoperations"
+	billingoperationsdomain "github.com/smallbiznis/valora/internal/billingoperations/domain"
 	"github.com/smallbiznis/valora/internal/billingoverview"
 	billingoverviewdomain "github.com/smallbiznis/valora/internal/billingoverview/domain"
 	"github.com/smallbiznis/valora/internal/cloudmetrics"
@@ -31,6 +33,8 @@ import (
 	"github.com/smallbiznis/valora/internal/customer"
 	customerdomain "github.com/smallbiznis/valora/internal/customer/domain"
 	"github.com/smallbiznis/valora/internal/events"
+	"github.com/smallbiznis/valora/internal/feature"
+	featuredomain "github.com/smallbiznis/valora/internal/feature/domain"
 	"github.com/smallbiznis/valora/internal/invoice"
 	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
 	"github.com/smallbiznis/valora/internal/invoicetemplate"
@@ -46,8 +50,6 @@ import (
 	organizationdomain "github.com/smallbiznis/valora/internal/organization/domain"
 	"github.com/smallbiznis/valora/internal/payment"
 	paymentdomain "github.com/smallbiznis/valora/internal/payment/domain"
-	"github.com/smallbiznis/valora/internal/paymentprovider"
-	paymentproviderdomain "github.com/smallbiznis/valora/internal/paymentprovider/domain"
 	"github.com/smallbiznis/valora/internal/price"
 	pricedomain "github.com/smallbiznis/valora/internal/price/domain"
 	"github.com/smallbiznis/valora/internal/priceamount"
@@ -56,6 +58,13 @@ import (
 	pricetierdomain "github.com/smallbiznis/valora/internal/pricetier/domain"
 	"github.com/smallbiznis/valora/internal/product"
 	productdomain "github.com/smallbiznis/valora/internal/product/domain"
+	"github.com/smallbiznis/valora/internal/productfeature"
+	productfeaturedomain "github.com/smallbiznis/valora/internal/productfeature/domain"
+
+	"github.com/smallbiznis/valora/internal/providers/email"
+	paymentprovider "github.com/smallbiznis/valora/internal/providers/payment"
+	paymentproviderdomain "github.com/smallbiznis/valora/internal/providers/payment/domain"
+	"github.com/smallbiznis/valora/internal/providers/pdf"
 	"github.com/smallbiznis/valora/internal/publicinvoice"
 	publicinvoicedomain "github.com/smallbiznis/valora/internal/publicinvoice/domain"
 	"github.com/smallbiznis/valora/internal/ratelimit"
@@ -67,8 +76,10 @@ import (
 	signupdomain "github.com/smallbiznis/valora/internal/signup/domain"
 	"github.com/smallbiznis/valora/internal/subscription"
 	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
+	taxdomain "github.com/smallbiznis/valora/internal/tax/domain"
 	"github.com/smallbiznis/valora/internal/usage"
 	usagedomain "github.com/smallbiznis/valora/internal/usage/domain"
+	"github.com/smallbiznis/valora/internal/usage/liveevents"
 	"go.uber.org/fx"
 	"gorm.io/gorm"
 )
@@ -87,6 +98,9 @@ var Module = fx.Module("http.server",
 	apikey.Module,
 	customer.Module,
 	billingdashboard.Module,
+	billingoperations.Module,
+	email.Module,
+	pdf.Module,
 	billingoverview.Module,
 	invoice.Module,
 	invoicetemplate.Module,
@@ -97,6 +111,8 @@ var Module = fx.Module("http.server",
 	priceamount.Module,
 	pricetier.Module,
 	product.Module,
+	productfeature.Module,
+	feature.Module,
 	payment.Module,
 	paymentprovider.Module,
 	publicinvoice.Module,
@@ -168,6 +184,7 @@ type Server struct {
 	authzSvc                    authorization.Service
 	auditSvc                    auditdomain.Service
 	billingDashboardSvc         billingdashboarddomain.Service
+	billingOperationsSvc        billingoperationsdomain.Service
 	billingOverviewSvc          billingoverviewdomain.Service
 	billingRollup               *billingrollup.Service
 	invoiceSvc                  invoicedomain.Service
@@ -178,6 +195,8 @@ type Server struct {
 	priceAmountSvc              priceamountdomain.Service
 	priceTierSvc                pricetierdomain.Service
 	productSvc                  productdomain.Service
+	productFeatureSvc           productfeaturedomain.Service
+	featureSvc                  featuredomain.Service
 	paymentSvc                  paymentdomain.Service
 	paymentProviderSvc          paymentproviderdomain.Service
 	invoiceTemplateSvc          invoicetemplatedomain.Service
@@ -186,6 +205,8 @@ type Server struct {
 	ratingSvc                   ratingdomain.Service
 	subscriptionSvc             subscriptiondomain.Service
 	usagesvc                    usagedomain.Service
+	taxSvc                      taxdomain.Service
+	liveMeterEvents             *liveevents.Hub
 	obsMetrics                  *obsmetrics.Metrics
 	usageLimiter                *ratelimit.UsageIngestLimiter
 	publicInvoiceSvc            publicinvoicedomain.Service
@@ -200,37 +221,42 @@ type Server struct {
 type ServerParams struct {
 	fx.In
 
-	Gin                 *gin.Engine
-	Cfg                 config.Config
-	DB                  *gorm.DB
-	Authsvc             authdomain.Service
-	OAuthsvc            authoauth.Service
-	Sessions            *session.Manager
-	GenID               *snowflake.Node
-	APIKeySvc           apikeydomain.Service
-	AuthzSvc            authorization.Service
-	AuditSvc            auditdomain.Service
-	BillingDashboardSvc billingdashboarddomain.Service
-	BillingOverviewSvc  billingoverviewdomain.Service
-	BillingRollup       *billingrollup.Service
-	InvoiceSvc          invoicedomain.Service
-	MeterSvc            meterdomain.Service
-	OrganizationSvc     organizationdomain.Service
-	CustomerSvc         customerdomain.Service
-	PriceSvc            pricedomain.Service
-	PriceAmountSvc      priceamountdomain.Service
-	PriceTierSvc        pricetierdomain.Service
-	ProductSvc          productdomain.Service
-	PaymentSvc          paymentdomain.Service
-	PaymentProviderSvc  paymentproviderdomain.Service
-	InvoiceTemplateSvc  invoicetemplatedomain.Service
-	Refrepo             referencedomain.Repository
-	RatingSvc           ratingdomain.Service
-	SubscriptionSvc     subscriptiondomain.Service
-	Usagesvc            usagedomain.Service
-	PublicInvoiceSvc    publicinvoicedomain.Service
-	ObsMetrics          *obsmetrics.Metrics           `optional:"true"`
-	UsageLimiter        *ratelimit.UsageIngestLimiter `optional:"true"`
+	Gin                  *gin.Engine
+	Cfg                  config.Config
+	DB                   *gorm.DB
+	Authsvc              authdomain.Service
+	OAuthsvc             authoauth.Service
+	Sessions             *session.Manager
+	GenID                *snowflake.Node
+	APIKeySvc            apikeydomain.Service
+	AuthzSvc             authorization.Service
+	AuditSvc             auditdomain.Service
+	BillingDashboardSvc  billingdashboarddomain.Service
+	BillingOperationsSvc billingoperationsdomain.Service
+	BillingOverviewSvc   billingoverviewdomain.Service
+	BillingRollup        *billingrollup.Service
+	InvoiceSvc           invoicedomain.Service
+	MeterSvc             meterdomain.Service
+	OrganizationSvc      organizationdomain.Service
+	CustomerSvc          customerdomain.Service
+	PriceSvc             pricedomain.Service
+	PriceAmountSvc       priceamountdomain.Service
+	PriceTierSvc         pricetierdomain.Service
+	ProductSvc           productdomain.Service
+	ProductFeatureSvc    productfeaturedomain.Service
+	FeatureSvc           featuredomain.Service
+	PaymentSvc           paymentdomain.Service
+	PaymentProviderSvc   paymentproviderdomain.Service
+	InvoiceTemplateSvc   invoicetemplatedomain.Service
+	Refrepo              referencedomain.Repository
+	RatingSvc            ratingdomain.Service
+	SubscriptionSvc      subscriptiondomain.Service
+	Usagesvc             usagedomain.Service
+	TaxSvc               taxdomain.Service
+	LiveMeterEvents      *liveevents.Hub `optional:"true"`
+	PublicInvoiceSvc     publicinvoicedomain.Service
+	ObsMetrics           *obsmetrics.Metrics           `optional:"true"`
+	UsageLimiter         *ratelimit.UsageIngestLimiter `optional:"true"`
 
 	Scheduler *scheduler.Scheduler
 }
@@ -249,6 +275,7 @@ func NewServer(p ServerParams) *Server {
 		authzSvc:                    p.AuthzSvc,
 		auditSvc:                    p.AuditSvc,
 		billingDashboardSvc:         p.BillingDashboardSvc,
+		billingOperationsSvc:        p.BillingOperationsSvc,
 		billingOverviewSvc:          p.BillingOverviewSvc,
 		billingRollup:               p.BillingRollup,
 		invoiceSvc:                  p.InvoiceSvc,
@@ -259,6 +286,8 @@ func NewServer(p ServerParams) *Server {
 		priceAmountSvc:              p.PriceAmountSvc,
 		priceTierSvc:                p.PriceTierSvc,
 		productSvc:                  p.ProductSvc,
+		productFeatureSvc:           p.ProductFeatureSvc,
+		featureSvc:                  p.FeatureSvc,
 		paymentSvc:                  p.PaymentSvc,
 		paymentProviderSvc:          p.PaymentProviderSvc,
 		invoiceTemplateSvc:          p.InvoiceTemplateSvc,
@@ -266,6 +295,8 @@ func NewServer(p ServerParams) *Server {
 		ratingSvc:                   p.RatingSvc,
 		subscriptionSvc:             p.SubscriptionSvc,
 		usagesvc:                    p.Usagesvc,
+		taxSvc:                      p.TaxSvc,
+		liveMeterEvents:             p.LiveMeterEvents,
 		obsMetrics:                  p.ObsMetrics,
 		usageLimiter:                p.UsageLimiter,
 		publicInvoiceSvc:            p.PublicInvoiceSvc,
@@ -344,6 +375,7 @@ func (s *Server) registerAPIRoutes() {
 	api.GET("/subscriptions", s.APIKeyRequired(), s.ListSubscriptions)
 	api.POST("/subscriptions", s.APIKeyRequired(), s.CreateSubscription)
 	api.GET("/subscriptions/:id", s.APIKeyRequired(), s.GetSubscriptionByID)
+	api.PUT("/subscriptions/:id/items", s.APIKeyRequired(), s.ReplaceSubscriptionItems)
 	api.POST("/subscriptions/:id/activate", s.APIKeyRequired(), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionActivate), s.ActivateSubscription)
 	api.POST("/subscriptions/:id/pause", s.APIKeyRequired(), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionPause), s.PauseSubscription)
 	api.POST("/subscriptions/:id/resume", s.APIKeyRequired(), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionResume), s.ResumeSubscription)
@@ -375,16 +407,40 @@ func (s *Server) registerAdminRoutes() {
 	admin.Use(s.WebAuthRequired())
 	admin.Use(s.OrgContext())
 
+	// Home / Dashboard
+	admin.GET("/home", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin, organizationdomain.RoleMember), s.GetHomeDashboard)
+
 	admin.GET("/meters", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ListMeters)
 	admin.POST("/meters", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.CreateMeter)
 	admin.GET("/meters/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.GetMeterByID)
 	admin.PATCH("/meters/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.UpdateMeter)
 	admin.DELETE("/meters/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.DeleteMeter)
 
+	admin.GET("/meters/:id/live-events",
+		s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin),
+		s.StreamMeterLiveEvents,
+	)
+
 	// -------- Product --------
 	admin.GET("/products", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ListProducts)
 	admin.POST("/products", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.CreateProduct)
 	admin.GET("/products/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.GetProductByID)
+	admin.PATCH("/products/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.UpdateProduct)
+	admin.POST("/products/:id/archive", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ArchiveProduct)
+	admin.GET("/products/:id/features", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ListProductFeatures)
+	admin.PUT("/products/:id/features", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ReplaceProductFeatures)
+
+	// -------- Features --------
+	admin.GET("/features", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ListFeatures)
+	admin.POST("/features", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.CreateFeature)
+	admin.PATCH("/features/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.UpdateFeature)
+	admin.POST("/features/:id/archive", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ArchiveFeature)
+
+	// -------- Tax Definitions --------
+	admin.GET("/tax-definitions", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ListTaxDefinitions)
+	admin.POST("/tax-definitions", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.CreateTaxDefinition)
+	admin.PATCH("/tax-definitions/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.UpdateTaxDefinition)
+	admin.POST("/tax-definitions/:id/disable", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.DisableTaxDefinition)
 
 	// -------- Pricing --------
 	admin.GET("/pricings", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ListPricings)
@@ -410,6 +466,7 @@ func (s *Server) registerAdminRoutes() {
 	admin.GET("/subscriptions", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ListSubscriptions)
 	admin.POST("/subscriptions", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.CreateSubscription)
 	admin.GET("/subscriptions/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.GetSubscriptionByID)
+	admin.PUT("/subscriptions/:id/items", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ReplaceSubscriptionItems)
 	admin.POST("/subscriptions/:id/activate", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionActivate), s.ActivateSubscription)
 	admin.POST("/subscriptions/:id/pause", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionPause), s.PauseSubscription)
 	admin.POST("/subscriptions/:id/resume", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionResume), s.ResumeSubscription)
@@ -424,12 +481,35 @@ func (s *Server) registerAdminRoutes() {
 	admin.GET("/billing/customers", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingDashboard, authorization.ActionBillingDashboardView), s.ListBillingCustomers)
 	admin.GET("/billing/cycles", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingDashboard, authorization.ActionBillingDashboardView), s.ListBillingCycles)
 	admin.GET("/billing/activity", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingDashboard, authorization.ActionBillingDashboardView), s.ListBillingActivity)
+	admin.GET("/billing/operations", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingOperations, authorization.ActionBillingOperationsView), s.GetBillingOperations)
+	admin.POST("/billing/operations/actions", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingOperations, authorization.ActionBillingOperationsAct), s.PostBillingOperationsAction)
+	admin.POST("/billing/operations/assignments", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingOperations, authorization.ActionBillingOperationsAct), s.PostBillingOperationsAssignment)
+	admin.DELETE("/billing/operations/assignments", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingOperations, authorization.ActionBillingOperationsAct), s.ReleaseBillingOperationsAssignment)
+	admin.GET("/billing/operations/overdue-invoices", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingOperations, authorization.ActionBillingOperationsView), s.GetBillingOperationsOverdueInvoices)
+	admin.GET("/billing/operations/outstanding-customers", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingOperations, authorization.ActionBillingOperationsView), s.GetBillingOperationsOutstandingCustomers)
+	admin.GET("/billing/operations/payment-issues", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingOperations, authorization.ActionBillingOperationsView), s.GetBillingOperationsPaymentIssues)
 	admin.GET("/billing/overview/mrr", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingOverview, authorization.ActionBillingOverviewView), s.GetBillingOverviewMRR)
 	admin.GET("/billing/overview/mrr-movement", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingOverview, authorization.ActionBillingOverviewView), s.GetBillingOverviewMRRMovement)
 	admin.GET("/billing/overview/revenue", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingOverview, authorization.ActionBillingOverviewView), s.GetBillingOverviewRevenue)
 	admin.GET("/billing/overview/outstanding", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingOverview, authorization.ActionBillingOverviewView), s.GetBillingOverviewOutstandingBalance)
 	admin.GET("/billing/overview/collection-rate", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingOverview, authorization.ActionBillingOverviewView), s.GetBillingOverviewCollectionRate)
 	admin.GET("/billing/overview/subscribers", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectBillingOverview, authorization.ActionBillingOverviewView), s.GetBillingOverviewSubscribers)
+	
+	// -------- FinOps Performance --------
+	admin.GET("/finops/performance/me", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin, organizationdomain.RoleMember), s.GetBillingOperationsPerformanceMe)
+	admin.GET("/finops/performance/team", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.GetBillingOperationsPerformanceTeam)
+	
+	// -------- Billing Operations IA (Task-Centric Views) --------
+	admin.GET("/billing-operations/inbox", s.RequireRole(organizationdomain.RoleMember), s.GetBillingOperationsInbox)
+	admin.GET("/billing-operations/my-work", s.RequireRole(organizationdomain.RoleMember), s.GetBillingOperationsMyWork)
+	admin.GET("/billing-operations/recently-resolved", s.RequireRole(organizationdomain.RoleMember), s.GetBillingOperationsRecentlyResolved)
+	admin.GET("/billing-operations/team", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.GetBillingOperationsTeamView)
+	
+	// -------- Billing Operations Actions --------
+	admin.POST("/billing-operations/claim", s.RequireRole(organizationdomain.RoleMember), s.PostBillingOperationsAssignment)
+	admin.POST("/billing-operations/release", s.RequireRole(organizationdomain.RoleMember), s.ReleaseBillingOperationsAssignment)
+	admin.POST("/billing-operations/resolve", s.RequireRole(organizationdomain.RoleMember), s.ResolveBillingOperationsAssignment)
+	
 	admin.POST("/internal/rebuild-billing-snapshots", s.RequireRole(organizationdomain.RoleOwner), s.RebuildBillingSnapshots)
 
 	// -------- Invoice Templates --------
@@ -473,9 +553,22 @@ func (s *Server) registerUIRoutes() {
 		orgs.GET("", serveIndex)
 		org := orgs.Group("/:id")
 		{
+			home := org.Group("/home")
+			{
+				home.GET("", serveIndex)
+			}
 			products := org.Group("/products")
 			{
 				products.GET("", serveIndex)
+				features := products.Group("/features")
+				{
+					features.GET("", serveIndex)
+				}
+			}
+
+			taxdefinition := org.Group("/tax-definitions")
+			{
+				taxdefinition.GET("", serveIndex)
 			}
 
 			customers := org.Group("/customers")

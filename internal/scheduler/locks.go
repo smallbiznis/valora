@@ -104,6 +104,39 @@ func (s *Scheduler) fetchBillingCyclesForWork(ctx context.Context, where string,
 	return cycles, nil
 }
 
+func (s *Scheduler) fetchSubscriptionsNeedingCycle(ctx context.Context, tx *gorm.DB, limit int) ([]WorkSubscription, error) {
+	var subscriptions []WorkSubscription
+	schedMetrics := obsmetrics.Scheduler()
+	lockStart := time.Now()
+
+	// Select Active subscriptions that DO NOT have an OPEN billing cycle
+	// Note: We use FOR UPDATE SKIP LOCKED on the subscription row to ensure exclusive access
+	// PostgreSQL: FOR UPDATE OF s SKIP LOCKED
+	// MySQL/SQLite: FOR UPDATE SKIP LOCKED works (or striped by test)
+	err := tx.WithContext(ctx).Raw(
+		`SELECT s.id, s.org_id, s.status, s.activated_at, s.billing_cycle_type
+		 FROM subscriptions s
+		 WHERE s.status = ?
+		   AND NOT EXISTS (
+			   SELECT 1 FROM billing_cycles bc 
+			   WHERE bc.subscription_id = s.id 
+				 AND bc.status = ?
+		   )
+		 ORDER BY s.id
+		 LIMIT ?
+		 FOR UPDATE SKIP LOCKED`,
+		subscriptiondomain.SubscriptionStatusActive,
+		billingcycledomain.BillingCycleStatusOpen,
+		limit,
+	).Scan(&subscriptions).Error
+
+	schedMetrics.ObserveDBLockWait(obsmetrics.LockResourceSubscriptionsForWork, time.Since(lockStart))
+	if err != nil {
+		return nil, err
+	}
+	return subscriptions, nil
+}
+
 func (s *Scheduler) findOpenCycle(
 	ctx context.Context,
 	tx *gorm.DB,

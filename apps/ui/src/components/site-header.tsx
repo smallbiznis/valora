@@ -27,7 +27,7 @@ export function SiteHeader() {
     try {
       await admin.post(`/user/using/${org.id}`)
       setCurrentOrg(org)
-      navigate(`/orgs/${org.id}/dashboard`)
+      navigate(`/orgs/${org.id}/home`)
     } catch (err) {
       console.error("Failed to switch org", err)
     }

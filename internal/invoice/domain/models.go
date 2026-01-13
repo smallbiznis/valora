@@ -29,6 +29,10 @@ type Invoice struct {
 	InvoiceTemplateID *snowflake.ID     `gorm:"column:invoice_template_id;index"`
 	Status            InvoiceStatus     `gorm:"type:text;not null;default:'DRAFT'"`
 	SubtotalAmount    int64             `gorm:"not null;default:0"`
+	TaxRate           *float64          `gorm:"column:tax_rate"`
+	TaxCode           *string           `gorm:"column:tax_code"`
+	TaxAmount         int64             `gorm:"not null;default:0"`
+	TotalAmount       int64             `gorm:"not null;default:0"`
 	Currency          string            `gorm:"type:text;not null"`
 	PeriodStart       *time.Time        `gorm:""`
 	PeriodEnd         *time.Time        `gorm:""`
@@ -100,3 +104,16 @@ type InvoiceSequence struct {
 }
 
 func (InvoiceSequence) TableName() string { return "invoice_sequences" }
+type SubscriptionEntitlement struct {
+	ID             snowflake.ID
+	OrgID          snowflake.ID
+	SubscriptionID snowflake.ID
+	ProductID      snowflake.ID
+	FeatureCode    string
+	FeatureName    string
+	FeatureType    string
+	EffectiveFrom  time.Time
+	EffectiveTo    *time.Time
+}
+
+func (SubscriptionEntitlement) TableName() string { return "subscription_entitlements" }

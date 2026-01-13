@@ -42,6 +42,42 @@ func (s *Server) CreateSubscription(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": resp})
 }
 
+type replaceSubscriptionItemsRequest struct {
+	Items []subscriptiondomain.CreateSubscriptionItemRequest `json:"items"`
+}
+
+func (s *Server) ReplaceSubscriptionItems(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if _, err := snowflake.ParseString(id); err != nil {
+		AbortWithError(c, newValidationError("id", "invalid_id", "invalid id"))
+		return
+	}
+
+	var req replaceSubscriptionItemsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		AbortWithError(c, invalidRequestError())
+		return
+	}
+
+	resp, err := s.subscriptionSvc.ReplaceItems(c.Request.Context(), subscriptiondomain.ReplaceSubscriptionItemsRequest{
+		SubscriptionID: id,
+		Items:          normalizeSubscriptionItems(req.Items),
+	})
+	if err != nil {
+		AbortWithError(c, err)
+		return
+	}
+
+	if s.auditSvc != nil {
+		targetID := resp.ID
+		_ = s.auditSvc.AuditLog(c.Request.Context(), nil, "", nil, "subscription.items.replace", "subscription", &targetID, map[string]any{
+			"subscription_id": resp.ID,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": resp})
+}
+
 func (s *Server) ListSubscriptions(c *gin.Context) {
 	var query struct {
 		pagination.Pagination
@@ -197,7 +233,9 @@ func isSubscriptionValidationError(err error) bool {
 		errors.Is(err, subscriptiondomain.ErrInvalidItems),
 		errors.Is(err, subscriptiondomain.ErrInvalidQuantity),
 		errors.Is(err, subscriptiondomain.ErrInvalidPrice),
-		errors.Is(err, subscriptiondomain.ErrMultipleFlatPrices):
+		errors.Is(err, subscriptiondomain.ErrInvalidProduct),
+		errors.Is(err, subscriptiondomain.ErrMultipleFlatPrices),
+		errors.Is(err, subscriptiondomain.ErrMissingEntitlements):
 		return true
 	default:
 		return false

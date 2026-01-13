@@ -2,6 +2,7 @@ package usage
 
 import (
 	"github.com/smallbiznis/valora/internal/cache"
+	"github.com/smallbiznis/valora/internal/usage/liveevents"
 	"github.com/smallbiznis/valora/internal/usage/repository"
 	"github.com/smallbiznis/valora/internal/usage/service"
 	"github.com/smallbiznis/valora/internal/usage/snapshot"
@@ -11,6 +12,7 @@ import (
 var Module = fx.Module("usage.service",
 	fx.Provide(cache.NewUsageResolverCache),
 	fx.Provide(repository.ProvideSnapshot),
+	liveevents.Module,
 	fx.Provide(service.NewService),
 	snapshot.Module,
 )

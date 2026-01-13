@@ -79,6 +79,23 @@ type RateLimitConfig struct {
 	UsageIngestConcurrencyTTLSeconds int
 }
 
+type BillingConfig struct {
+	AgingBuckets []AgingBucket `mapstructure:"agingBuckets"`
+	RiskLevels   []RiskLevel   `mapstructure:"riskLevels"`
+}
+
+type AgingBucket struct {
+	Label   string `mapstructure:"label"`
+	MinDays int    `mapstructure:"minDays"`
+	MaxDays *int   `mapstructure:"maxDays"` // pointer = nullable
+}
+
+type RiskLevel struct {
+	Level          string `mapstructure:"level"`
+	MinOutstanding int64  `mapstructure:"minOutstanding"`
+	MinDays        int    `mapstructure:"minDays"`
+}
+
 // Load loads configuration from environment variables and .env file.
 func Load() Config {
 	_ = godotenv.Load()
@@ -150,7 +167,6 @@ func Load() Config {
 		},
 
 		// Vault settings
-
 	}
 
 	return cfg

@@ -27,11 +27,14 @@ import (
 	"github.com/smallbiznis/valora/internal/authorization"
 	"github.com/smallbiznis/valora/internal/billingcycle"
 	"github.com/smallbiznis/valora/internal/billingdashboard"
+	"github.com/smallbiznis/valora/internal/billingoperations"
+	"github.com/smallbiznis/valora/internal/billingoverview"
 	"github.com/smallbiznis/valora/internal/clock"
 	"github.com/smallbiznis/valora/internal/cloudmetrics"
 	"github.com/smallbiznis/valora/internal/config"
 	"github.com/smallbiznis/valora/internal/customer"
 	"github.com/smallbiznis/valora/internal/events"
+	"github.com/smallbiznis/valora/internal/feature"
 	"github.com/smallbiznis/valora/internal/invoice"
 	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
 	"github.com/smallbiznis/valora/internal/invoicetemplate"
@@ -42,11 +45,14 @@ import (
 	"github.com/smallbiznis/valora/internal/observability"
 	"github.com/smallbiznis/valora/internal/organization"
 	"github.com/smallbiznis/valora/internal/payment"
-	"github.com/smallbiznis/valora/internal/paymentprovider"
 	"github.com/smallbiznis/valora/internal/price"
 	"github.com/smallbiznis/valora/internal/priceamount"
 	"github.com/smallbiznis/valora/internal/pricetier"
 	"github.com/smallbiznis/valora/internal/product"
+	"github.com/smallbiznis/valora/internal/productfeature"
+	emailprovider "github.com/smallbiznis/valora/internal/providers/email"
+	paymentprovider "github.com/smallbiznis/valora/internal/providers/payment"
+	pdfprovider "github.com/smallbiznis/valora/internal/providers/pdf"
 	"github.com/smallbiznis/valora/internal/publicinvoice"
 	"github.com/smallbiznis/valora/internal/rating"
 	ratingdomain "github.com/smallbiznis/valora/internal/rating/domain"
@@ -393,17 +399,23 @@ func startEnv() (*testEnv, error) {
 		apikey.Module,
 		customer.Module,
 		billingdashboard.Module,
+		billingoperations.Module,
+		billingoverview.Module,
+		emailprovider.Module,
+		pdfprovider.Module,
 		invoice.Module,
 		invoicetemplate.Module,
 		ledger.Module,
 		meter.Module,
 		organization.Module,
 		payment.Module,
+		paymentprovider.Module,
 		price.Module,
 		priceamount.Module,
 		pricetier.Module,
 		product.Module,
-		paymentprovider.Module,
+		productfeature.Module,
+		feature.Module,
 		publicinvoice.Module,
 		reference.Module,
 		subscription.Module,
