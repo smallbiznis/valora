@@ -20,17 +20,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
 } from "@/components/ui/sidebar"
-import { BarChart3, ChevronRight, Copy, CreditCard, Gauge, History, Home, Key, Package, Receipt, RefreshCcw, Settings, Tag, Users, Zap } from "lucide-react"
+import { BarChart3, Copy, CreditCard, Gauge, History, Home, Key, Package, Receipt, RefreshCcw, Settings, Tag, Users, Zap } from "lucide-react"
+import { cn } from "@/lib/utils"
 
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
 
 const data = {
   user: {
@@ -41,6 +34,7 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const location = useLocation()
   const { orgId } = useParams()
   const role = useOrgStore((state) => state.currentOrg?.role)
   const canAccessAdmin = canManageBilling(role)
@@ -80,12 +74,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: "Operations",
       url: `${orgBasePath}/billing/operations`,
       icon: Zap,
-      items: [
-        { title: "Inbox", url: `${orgBasePath}/billing/operations?tab=inbox` },
-        { title: "My Work", url: `${orgBasePath}/billing/operations?tab=my-work` },
-        { title: "Recently Resolved", url: `${orgBasePath}/billing/operations?tab=recently-resolved` },
-        { title: "Team View", url: `${orgBasePath}/billing/operations?tab=team`, hide: !canManageBilling(role) },
-      ].filter(i => !i.hide)
     },
     {
       title: "Invoices",
@@ -132,7 +120,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
   ].filter(() => canAccessAdmin)
 
-  const location = useLocation()
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -145,7 +132,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <NavLink to={`${orgBasePath}/home`}>
                 <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">Valora</span>
+                <span className="text-base font-semibold">Railzway</span>
               </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -159,48 +146,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarGroupContent>
               <SidebarMenu>
                 {billingNav.map((item) => {
-                  const isAnySubActive = item.items?.some(sub =>
-                    location.pathname + location.search === sub.url
-                  )
-
+                  const isActive = location.pathname.replace(/\/$/, "") === item.url.replace(/\/$/, "")
                   return (
                     <SidebarMenuItem key={item.title}>
-                      {item.items && item.items.length > 0 ? (
-                        <Collapsible asChild defaultOpen={isAnySubActive} className="group/collapsible">
-                          <div>
-                            <CollapsibleTrigger asChild>
-                              <SidebarMenuButton tooltip={item.title} isActive={isAnySubActive}>
-                                <item.icon />
-                                <span>{item.title}</span>
-                                <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                              </SidebarMenuButton>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                              <SidebarMenuSub>
-                                {item.items.map((subItem) => (
-                                  <SidebarMenuSubItem key={subItem.title}>
-                                    <SidebarMenuSubButton
-                                      asChild
-                                      isActive={location.pathname + location.search === subItem.url}
-                                    >
-                                      <NavLink to={subItem.url} end={false}>
-                                        <span>{subItem.title}</span>
-                                      </NavLink>
-                                    </SidebarMenuSubButton>
-                                  </SidebarMenuSubItem>
-                                ))}
-                              </SidebarMenuSub>
-                            </CollapsibleContent>
-                          </div>
-                        </Collapsible>
-                      ) : (
-                        <SidebarMenuButton asChild tooltip={item.title}>
-                          <NavLink to={item.url}>
-                            <item.icon />
-                            <span>{item.title}</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      )}
+                      <SidebarMenuButton asChild tooltip={item.title}>
+                        <NavLink
+                          to={item.url}
+                          className={cn(
+                            "flex w-full items-center gap-2",
+                            isActive && "bg-bg-subtle text-accent-primary font-medium"
+                          )}
+                        >
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
                     </SidebarMenuItem>
                   )
                 })}

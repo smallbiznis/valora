@@ -43,8 +43,12 @@ On tag push:
 - GitHub Release is created
 - Title: `Valora OSS vX.Y.Z`
 - Body: release notes from `CHANGELOG.md`
-- Include Docker image reference:
-  `ghcr.io/<org>/valora:vX.Y.Z`
+- Include Docker image references:
+  - `ghcr.io/<org>/valora:vX.Y.Z` (Monolith)
+  - `ghcr.io/<org>/valora-admin:vX.Y.Z` (Control Plane)
+  - `ghcr.io/<org>/valora-invoice:vX.Y.Z` (Customer Plane)
+  - `ghcr.io/<org>/valora-scheduler:vX.Y.Z` (Background Plane)
+  - `ghcr.io/<org>/valora-api:vX.Y.Z` (Data Plane)
 
 ## Guarantees
 

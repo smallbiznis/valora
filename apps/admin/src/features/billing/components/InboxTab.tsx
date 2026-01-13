@@ -121,8 +121,8 @@ export function InboxTab() {
                     <TableCell className="text-right">
                       <Button
                         size="sm"
-                        variant="default"
-                        className="h-7 text-xs opacity-0 transition-opacity group-hover:opacity-100"
+                        variant="outline"
+                        className="h-7 text-xs transition-colors hover:bg-primary hover:text-primary-foreground"
                         disabled={isClaiming}
                         onClick={() => handleClaim(item.entity_type, item.entity_id)}
                       >

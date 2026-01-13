@@ -1,14 +1,14 @@
-# Threat Model (Valora OSS)
+# Threat Model (Railzway)
 
 ## Purpose
 
-This document provides a **lightweight threat model** for Valora OSS.
+This document provides a **lightweight threat model** for Railzway.
 
 It is intended to:
 
 - Identify key trust boundaries
 - Highlight realistic threat scenarios
-- Clarify which threats are mitigated by Valora OSS and which are delegated to the adopting system
+- Clarify which threats are mitigated by Railzway and which are delegated to the adopting system
 
 This is **not** a formal compliance document.
 
@@ -16,20 +16,20 @@ This is **not** a formal compliance document.
 
 ## System Overview
 
-Valora OSS is a self-hosted billing engine responsible for:
+Railzway is a self-hosted billing engine responsible for:
 
 - Usage ingestion
 - Pricing and rating
 - Subscription lifecycle management
 - Invoice generation
 
-Valora OSS does **not** process payments or store payment credentials.
+Railzway does **not** process payments or store payment credentials.
 
 ---
 
 ## Assets
 
-Primary assets protected by Valora OSS:
+Primary assets protected by Railzway:
 
 - Billing correctness and determinism
 - Usage records and aggregation results
@@ -41,21 +41,21 @@ Primary assets protected by Valora OSS:
 
 ## Trust Boundaries
 
-Valora OSS operates across the following trust boundaries:
+Railzway operates across the following trust boundaries:
 
-1. **Client → Valora API**
+1. **Client → Railzway API**
 
    - Authenticated API requests
    - Usage ingestion and billing configuration
-2. **Valora → Database**
+2. **Railzway → Database**
 
    - Persistent storage of billing data
-3. **Valora → External Systems**
+3. **Railzway → External Systems**
 
    - Payment providers (via references only)
    - Identity providers (upstream authentication)
 
-Valora OSS assumes that network security and infrastructure isolation are provided by the deploying environment.
+Railzway assumes that network security and infrastructure isolation are provided by the deploying environment.
 
 ---
 
@@ -179,7 +179,7 @@ Authorization misconfiguration by the adopting application.
 
 ## Non-Goals
 
-Valora OSS does **not** attempt to mitigate:
+Railzway does **not** attempt to mitigate:
 
 - Infrastructure-level attacks (network, kernel, container escape)
 - Physical security threats
@@ -192,7 +192,7 @@ These are explicitly delegated to the adopting system.
 
 ## Security Assumptions
 
-Valora OSS assumes:
+Railzway assumes:
 
 - TLS is enforced by the deployment environment
 - Secrets are managed securely by the operator
@@ -203,9 +203,9 @@ Valora OSS assumes:
 
 ## Summary
 
-Valora OSS focuses on **billing correctness and logical isolation**, while deliberately minimizing its security scope.
+Railzway focuses on **billing correctness and logical isolation**, while deliberately minimizing its security scope.
 
-By keeping security boundaries explicit and delegating high-risk domains to specialized systems, Valora OSS reduces complexity and limits its attack surface.
+By keeping security boundaries explicit and delegating high-risk domains to specialized systems, Railzway reduces complexity and limits its attack surface.
 
 ---
 

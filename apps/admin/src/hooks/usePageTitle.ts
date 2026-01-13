@@ -5,8 +5,8 @@ type PageTitleOptions = {
   org?: string
 }
 
-const BASE_TITLE = "Valora"
-const DEFAULT_TITLE = "Valora Dashboard"
+const BASE_TITLE = "Railzway"
+const DEFAULT_TITLE = "Railzway Dashboard"
 
 const buildTitle = ({ page, org }: PageTitleOptions = {}): string => {
   if (page) {

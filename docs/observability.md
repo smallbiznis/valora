@@ -1,6 +1,6 @@
-# Observability (Valora OSS)
+# Observability (Railzway )
 
-Valora ships structured logging, OpenTelemetry tracing, and low-cardinality metrics with trace/log correlation.
+Railzway ships structured logging, OpenTelemetry tracing, and low-cardinality metrics with trace/log correlation.
 
 ## Environment variables
 

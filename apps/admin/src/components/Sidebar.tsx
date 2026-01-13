@@ -5,7 +5,7 @@ export default function Sidebar({ orgId }: { orgId: string }) {
 
   return (
     <aside className="w-64 bg-bg-surface text-text-primary">
-      <div className="p-4 font-bold text-xl">Valora</div>
+      <div className="p-4 font-bold text-xl">Railzway</div>
       <nav className="flex flex-col gap-1 p-2">
         <NavLink to={`${base}/home`}>Dashboard</NavLink>
         <NavLink to={`${base}/products`}>Products</NavLink>

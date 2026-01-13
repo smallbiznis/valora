@@ -27,6 +27,8 @@ const (
 	rebuildBatchSize = 500
 )
 
+var Module = fx.Provide(NewService)
+
 type Params struct {
 	fx.In
 

@@ -15,12 +15,14 @@ type Config struct {
 	AppVersion                  string
 	Mode                        string
 	Environment                 string
+	Port                        string
 	AuthCookieSecure            bool
 	DefaultOrgID                int64
 	AuthJWTSecret               string
 	PaymentProviderConfigSecret string
 
 	OTLPEndpoint string
+	StaticDir    string
 
 	Cloud     CloudConfig
 	Bootstrap BootstrapConfig
@@ -112,11 +114,13 @@ func Load() Config {
 		AppVersion:                  getenv("APP_VERSION", "0.1.0"),
 		Mode:                        mode,
 		Environment:                 environment,
+		Port:                        getenv("PORT", "8080"),
 		AuthCookieSecure:            authCookieSecure,
 		DefaultOrgID:                getenvInt64("DEFAULT_ORG", 0),
 		AuthJWTSecret:               strings.TrimSpace(getenv("AUTH_JWT_SECRET", "")),
 		PaymentProviderConfigSecret: strings.TrimSpace(getenv("PAYMENT_PROVIDER_CONFIG_SECRET", "base64:Kq7N2f1Jx9yY4mFZp+u7qZb8c9d0eFQ1vS3nZk6hL2A=")),
 		OTLPEndpoint:                getenv("OTLP_ENDPOINT", "localhost:4317"),
+		StaticDir:                   getenv("STATIC_DIR", "./public"),
 		Cloud: CloudConfig{
 			OrganizationID:   strings.TrimSpace(getenv("CLOUD_ORGANIZATION_ID", "")),
 			OrganizationName: getenv("CLOUD_ORGANIZATION_NAME", ""),

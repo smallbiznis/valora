@@ -61,7 +61,7 @@ export function SignupForm({
                 id="email"
                 type="email"
                 autoComplete="email"
-                placeholder="admin@valora.cloud"
+                placeholder="admin@railzway.cloud"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

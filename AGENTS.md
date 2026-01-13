@@ -1,6 +1,6 @@
-# **Billing-as-a-Service (Grafana-like Model)**
+# **Billing-as-a-Service (Railzway Model)**
 
-This document defines **agent responsibilities, boundaries, and policies** for the Billing-as-a-Service platform, inspired by Grafana OSS/Cloud design principles.
+This document defines **agent responsibilities, boundaries, and policies** for the Railzway billing engine.
 
 **Version:** 1.1
 
@@ -20,11 +20,11 @@ This system follows **strict separation of concerns**:
 
 ***Billing Engine** answers *how usage is measured and charged*
 
-Like Grafana:
+Like Railzway principles:
 
 * Authentication is **non-blocking**
 * Security policy is **contextual, not enforced at login**
-* OSS and Cloud share **one codebase**, differentiated by **configuration and agents**
+* Implementation and Cloud share **one codebase**, differentiated by **configuration and agents**
 
 ---
 
@@ -34,7 +34,7 @@ The platform operates in two explicit modes:
 
 ```text
 
-OSS Mode     → Operator-driven, no public signup
+Private Mode     → Operator-driven, no public signup
 
 Cloud Mode   → Multi-tenant SaaS, public signup
 
@@ -44,7 +44,7 @@ Mode is resolved at runtime:
 
 ```yaml
 
-mode: oss | cloud
+mode: private | cloud
 
 ```
 
@@ -134,7 +134,7 @@ No login is blocked due to policy state.
 
 ## 5. Signup Agent
 
-### OSS Mode
+### Private Mode
 
 * Signup endpoints exist but are **disabled**
 * Users are provisioned by:
@@ -154,7 +154,7 @@ No login is blocked due to policy state.
 ### Rules
 
 * Signup creates **tenants**, not just users
-* Signup cannot be called in OSS mode
+* Signup cannot be called in Private mode
 
 ---
 
@@ -280,9 +280,9 @@ Audit is **mandatory in Cloud mode**.
 
 ---
 
-## 10. OSS vs Cloud Capability Matrix
+## 10. Private vs Cloud Capability Matrix
 
-| Capability           | OSS      | Cloud       |
+| Capability           | Private  | Cloud       |
 
 | -------------------- | -------- | ----------- |
 
@@ -304,7 +304,7 @@ Audit is **mandatory in Cloud mode**.
 
 * ❌ Do not block login for policy reasons
 * ❌ Do not mix billing logic with auth
-* ❌ Do not fork OSS vs Cloud codebases
+* ❌ Do not fork Private vs Cloud codebases
 * ✅ Use config & agents for behavior differences
 
 ---
@@ -331,7 +331,7 @@ Silent failure is prohibited.
 
 This agent model ensures:
 
-* OSS remains flexible and operator-friendly
+* Private mode remains flexible and operator-friendly
 * Cloud remains safe, auditable, and monetizable
 * The platform scales without architectural regret
 

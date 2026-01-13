@@ -60,7 +60,7 @@ export function LoginForm({ className, onSubmit, isLoading, error, showSignup, .
                   data-testid="login-email"
                   type="email"
                   autoComplete="email"
-                  placeholder="admin@valora.cloud"
+                  placeholder="admin@railzway.cloud"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

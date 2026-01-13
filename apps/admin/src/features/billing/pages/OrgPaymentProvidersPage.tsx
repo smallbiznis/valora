@@ -355,7 +355,7 @@ export default function OrgPaymentProvidersPage() {
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold">Payment providers</h1>
         <p className="text-sm text-text-muted">
-          Configure settlement credentials per provider. Valora never processes payments or stores
+          Configure settlement credentials per provider. Railzway never processes payments or stores
           raw secrets.
         </p>
       </div>

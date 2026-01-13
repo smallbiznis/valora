@@ -86,7 +86,7 @@ export function AppShell() {
     <div className="grid min-h-screen grid-cols-[260px_1fr] bg-bg-subtle/20">
       <aside className="border-r border-border-subtle bg-bg-surface">
         <div className="px-4 py-5">
-          <div className="text-lg font-semibold">Valora</div>
+          <div className="text-lg font-semibold">Railzway</div>
           <div className="text-sm text-text-muted">{currentOrg.name}</div>
         </div>
         <Separator />

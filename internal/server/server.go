@@ -122,7 +122,7 @@ var Module = fx.Module("http.server",
 	subscription.Module,
 	usage.Module,
 	fx.Invoke(NewServer),
-	fx.Invoke(run),
+	fx.Invoke(RunHTTP),
 )
 
 func NewEngine(obsCfg observability.Config, httpMetrics *obsmetrics.HTTPMetrics) *gin.Engine {
@@ -148,9 +148,13 @@ func registerGin(obsCfg observability.Config, httpMetrics *obsmetrics.HTTPMetric
 	return NewEngine(obsCfg, httpMetrics)
 }
 
-func run(lc fx.Lifecycle, r *gin.Engine) {
+func RunHTTP(lc fx.Lifecycle, r *gin.Engine, cfg config.Config) {
+	port := cfg.Port
+	if port == "" {
+		port = "8080"
+	}
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":" + port,
 		Handler: r,
 	}
 
@@ -224,41 +228,41 @@ type ServerParams struct {
 	Gin                  *gin.Engine
 	Cfg                  config.Config
 	DB                   *gorm.DB
-	Authsvc              authdomain.Service
-	OAuthsvc             authoauth.Service
-	Sessions             *session.Manager
-	GenID                *snowflake.Node
-	APIKeySvc            apikeydomain.Service
-	AuthzSvc             authorization.Service
-	AuditSvc             auditdomain.Service
-	BillingDashboardSvc  billingdashboarddomain.Service
-	BillingOperationsSvc billingoperationsdomain.Service
-	BillingOverviewSvc   billingoverviewdomain.Service
-	BillingRollup        *billingrollup.Service
-	InvoiceSvc           invoicedomain.Service
-	MeterSvc             meterdomain.Service
-	OrganizationSvc      organizationdomain.Service
-	CustomerSvc          customerdomain.Service
-	PriceSvc             pricedomain.Service
-	PriceAmountSvc       priceamountdomain.Service
-	PriceTierSvc         pricetierdomain.Service
-	ProductSvc           productdomain.Service
-	ProductFeatureSvc    productfeaturedomain.Service
-	FeatureSvc           featuredomain.Service
-	PaymentSvc           paymentdomain.Service
-	PaymentProviderSvc   paymentproviderdomain.Service
-	InvoiceTemplateSvc   invoicetemplatedomain.Service
-	Refrepo              referencedomain.Repository
-	RatingSvc            ratingdomain.Service
-	SubscriptionSvc      subscriptiondomain.Service
-	Usagesvc             usagedomain.Service
-	TaxSvc               taxdomain.Service
-	LiveMeterEvents      *liveevents.Hub `optional:"true"`
-	PublicInvoiceSvc     publicinvoicedomain.Service
-	ObsMetrics           *obsmetrics.Metrics           `optional:"true"`
-	UsageLimiter         *ratelimit.UsageIngestLimiter `optional:"true"`
+	Authsvc              authdomain.Service              `optional:"true"`
+	OAuthsvc             authoauth.Service               `optional:"true"`
+	Sessions             *session.Manager                `optional:"true"`
+	GenID                *snowflake.Node                 `optional:"true"`
+	APIKeySvc            apikeydomain.Service            `optional:"true"`
+	AuthzSvc             authorization.Service           `optional:"true"`
+	AuditSvc             auditdomain.Service             `optional:"true"`
+	BillingDashboardSvc  billingdashboarddomain.Service  `optional:"true"`
+	BillingOperationsSvc billingoperationsdomain.Service `optional:"true"`
+	BillingOverviewSvc   billingoverviewdomain.Service   `optional:"true"`
+	BillingRollup        *billingrollup.Service          `optional:"true"`
+	InvoiceSvc           invoicedomain.Service           `optional:"true"`
+	MeterSvc             meterdomain.Service             `optional:"true"`
+	OrganizationSvc      organizationdomain.Service      `optional:"true"`
+	CustomerSvc          customerdomain.Service          `optional:"true"`
+	PriceSvc             pricedomain.Service             `optional:"true"`
+	PriceAmountSvc       priceamountdomain.Service       `optional:"true"`
+	PriceTierSvc         pricetierdomain.Service         `optional:"true"`
+	ProductSvc           productdomain.Service           `optional:"true"`
+	ProductFeatureSvc    productfeaturedomain.Service    `optional:"true"`
+	FeatureSvc           featuredomain.Service           `optional:"true"`
+	PaymentSvc           paymentdomain.Service           `optional:"true"`
+	PaymentProviderSvc   paymentproviderdomain.Service   `optional:"true"`
+	InvoiceTemplateSvc   invoicetemplatedomain.Service   `optional:"true"`
+	Refrepo              referencedomain.Repository      `optional:"true"`
+	RatingSvc            ratingdomain.Service            `optional:"true"`
+	SubscriptionSvc      subscriptiondomain.Service      `optional:"true"`
+	Usagesvc             usagedomain.Service             `optional:"true"`
+	TaxSvc               taxdomain.Service               `optional:"true"`
+	LiveMeterEvents      *liveevents.Hub                 `optional:"true"`
+	PublicInvoiceSvc     publicinvoicedomain.Service     `optional:"true"`
+	ObsMetrics           *obsmetrics.Metrics             `optional:"true"`
+	UsageLimiter         *ratelimit.UsageIngestLimiter   `optional:"true"`
 
-	Scheduler *scheduler.Scheduler
+	Scheduler *scheduler.Scheduler `optional:"true"`
 }
 
 func NewServer(p ServerParams) *Server {
@@ -307,14 +311,6 @@ func NewServer(p ServerParams) *Server {
 		scheduler:                   p.Scheduler,
 	}
 
-	svc.registerAuthRoutes()
-	svc.registerAPIRoutes()
-	svc.registerAdminRoutes()
-	svc.registerPublicRoutes()
-	svc.registerUIRoutes()
-	svc.registerFallback()
-	svc.RegisterDevBillingRoutes()
-
 	return svc
 }
 
@@ -322,7 +318,7 @@ func (s *Server) Engine() *gin.Engine {
 	return s.engine
 }
 
-func (s *Server) registerAuthRoutes() {
+func (s *Server) RegisterAuthRoutes() {
 	auth := s.engine.Group("/auth")
 
 	auth.POST("/login", s.Login)
@@ -338,7 +334,7 @@ func (s *Server) registerAuthRoutes() {
 	}
 }
 
-func (s *Server) registerAPIRoutes() {
+func (s *Server) RegisterAPIRoutes() {
 	api := s.engine.Group("/api")
 
 	api.GET("/countries", s.ListCountries)
@@ -400,7 +396,7 @@ func (s *Server) registerAPIRoutes() {
 	}
 }
 
-func (s *Server) registerAdminRoutes() {
+func (s *Server) RegisterAdminRoutes() {
 	admin := s.engine.Group("/admin")
 
 	// --- global middlewares ---
@@ -538,7 +534,7 @@ func (s *Server) registerAdminRoutes() {
 	admin.POST("/api-keys/:key_id/revoke", s.RequireRole(organizationdomain.RoleOwner), s.authorizeOrgAction(authorization.ObjectAPIKey, authorization.ActionAPIKeyRevoke), s.RevokeAPIKey)
 }
 
-func (s *Server) registerUIRoutes() {
+func (s *Server) RegisterUIRoutes() {
 	r := s.engine.Group("/")
 
 	// ---- SPA entry points ----
@@ -614,16 +610,17 @@ func (s *Server) registerUIRoutes() {
 	}
 }
 
-func (s *Server) registerFallback() {
+func (s *Server) RegisterFallback() {
+	staticDir := s.cfg.StaticDir
 	s.engine.NoRoute(func(c *gin.Context) {
 		// static assets (vite)
-		if fileExists("./public", c.Request.URL.Path) {
-			c.File("./public" + c.Request.URL.Path)
+		if fileExists(staticDir, c.Request.URL.Path) {
+			c.File(filepath.Join(staticDir, c.Request.URL.Path))
 			return
 		}
 
 		// SPA fallback
-		c.File("./public/index.html")
+		c.File(filepath.Join(staticDir, "index.html"))
 	})
 }
 

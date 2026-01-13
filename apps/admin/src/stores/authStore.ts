@@ -151,7 +151,7 @@ export const useAuthStore = create<AuthState>()(
       setMustChangePassword: (value) => set({ mustChangePassword: value }),
     }),
     {
-      name: "valora-auth",
+      name: "railzway-auth",
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,

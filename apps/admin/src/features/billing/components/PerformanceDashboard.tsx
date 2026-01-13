@@ -147,9 +147,21 @@ export function PerformanceDashboard({
           <div className="flex h-64 items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
+        ) : !data ? (
+          <div className="flex flex-col items-center justify-center h-96 text-center space-y-4">
+            <div className="p-6 rounded-full bg-muted/50">
+              <TrendingUp className="h-12 w-12 text-muted-foreground/30" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold">No Activity Recorded</h3>
+              <p className="text-muted-foreground max-w-xs mx-auto">
+                Your performance metrics will appear here once you've resolved your first assignments.
+              </p>
+            </div>
+          </div>
         ) : (
           <div className="space-y-8">
-            {/* Total Score Section */}
+            {/* ... Total Score Section ... */}
             <div className="flex flex-col items-center justify-center p-6 bg-card border rounded-xl shadow-sm">
               <div className="relative flex items-center justify-center">
                 {/* Ring using simple SVG or CSS */}
@@ -279,10 +291,9 @@ export function PerformanceDashboard({
               </div>
             )}
 
-            <div className="text-xs text-center text-muted-foreground">
+            <div className="text-xs text-center text-muted-foreground pb-4">
               Scores are calculated daily based on resolved assignments and SLA compliance.
             </div>
-
           </div>
         )}
       </SheetContent>

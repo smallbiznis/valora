@@ -1,6 +1,8 @@
 package scheduler
 
 import (
+	"os"
+	"strings"
 	"time"
 )
 
@@ -13,6 +15,18 @@ type Config struct {
 	MaxCloseBatchSize   int
 	MaxRatingBatchSize  int
 	MaxInvoiceBatchSize int
+	EnabledJobs         []string
+}
+
+func ProvideConfig() Config {
+	cfg := DefaultConfig()
+	if jobs := os.Getenv("ENABLED_JOBS"); jobs != "" {
+		cfg.EnabledJobs = strings.Split(jobs, ",")
+		for i := range cfg.EnabledJobs {
+			cfg.EnabledJobs[i] = strings.TrimSpace(cfg.EnabledJobs[i])
+		}
+	}
+	return cfg
 }
 
 func DefaultConfig() Config {

@@ -1,6 +1,6 @@
 # Billing Cycle as a First-Class Concept
 
-In Valora, the billing cycle is not a background job.
+In Railzway, the billing cycle is not a background job.
 It is a **first-class domain concept**.
 
 A billing cycle defines **when billing is computed, what data is included,
@@ -26,9 +26,9 @@ This leads to ambiguity:
 
 ---
 
-## Valora’s Model
+## Railzway’s Model
 
-Valora models a billing cycle as an explicit entity.
+Railzway models a billing cycle as an explicit entity.
 
 A billing cycle represents:
 
@@ -85,7 +85,7 @@ Re-running the same cycle yields the same results.
 
 Corrections do not mutate a closed cycle.
 
-Instead, Valora models corrections as:
+Instead, Railzway models corrections as:
 
 - new billing cycles
 - adjustment records
@@ -123,7 +123,7 @@ The cycle acts as the coordination point for all billing logic.
 
 ## Summary
 
-Valora treats billing cycles as first-class because:
+Railzway treats billing cycles as first-class because:
 
 - billing must be bounded in time
 - computation must be repeatable

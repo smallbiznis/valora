@@ -149,31 +149,71 @@ func (s *Scheduler) runJob(
 func (s *Scheduler) RunOnce(parent context.Context) error {
 	var err error
 
-	err = errors.Join(err,
-		s.runJob(parent, "ensure_cycles", s.cfg.BatchSize, 30*time.Second, s.EnsureBillingCyclesJob),
-		s.runJob(parent, "close_cycles", s.cfg.MaxCloseBatchSize, 30*time.Second, s.CloseCyclesJob),
-		s.runJob(parent, "rating", s.cfg.MaxRatingBatchSize, 30*time.Second, s.RatingJob),
-		s.runJob(parent, "close_after_rating", s.cfg.MaxCloseBatchSize, 30*time.Second, s.CloseAfterRatingJob),
-		s.runJob(parent, "invoice", s.cfg.MaxInvoiceBatchSize, 30*time.Second, s.InvoiceJob),
-	)
-
-	if s.rollupSvc != nil {
-		err = errors.Join(err,
-			s.runJob(parent, "rollup_rebuild", s.cfg.BatchSize, 30*time.Minute, func(ctx context.Context) error {
-				return s.rollupSvc.ProcessRebuildRequests(ctx, s.cfg.BatchSize)
-			}),
-			s.runJob(parent, "rollup_pending", s.cfg.BatchSize, 30*time.Second, func(ctx context.Context) error {
-				return s.rollupSvc.ProcessPending(ctx, s.cfg.BatchSize)
-			}),
-		)
+	jobs := []struct {
+		Name    string
+		Enabled bool
+		Run     func(context.Context) error
+	}{
+		{"ensure_cycles", s.isJobEnabled("ensure_cycles"), func(ctx context.Context) error {
+			return s.runJob(ctx, "ensure_cycles", s.cfg.BatchSize, 30*time.Second, s.EnsureBillingCyclesJob)
+		}},
+		{"close_cycles", s.isJobEnabled("close_cycles"), func(ctx context.Context) error {
+			return s.runJob(ctx, "close_cycles", s.cfg.MaxCloseBatchSize, 30*time.Second, s.CloseCyclesJob)
+		}},
+		{"rating", s.isJobEnabled("rating"), func(ctx context.Context) error {
+			return s.runJob(ctx, "rating", s.cfg.MaxRatingBatchSize, 30*time.Second, s.RatingJob)
+		}},
+		{"close_after_rating", s.isJobEnabled("close_after_rating"), func(ctx context.Context) error {
+			return s.runJob(ctx, "close_after_rating", s.cfg.MaxCloseBatchSize, 30*time.Second, s.CloseAfterRatingJob)
+		}},
+		{"invoice", s.isJobEnabled("invoice"), func(ctx context.Context) error {
+			return s.runJob(ctx, "invoice", s.cfg.MaxInvoiceBatchSize, 30*time.Second, s.InvoiceJob)
+		}},
 	}
 
-	err = errors.Join(err,
-		s.runJob(parent, "end_canceled_subs", s.cfg.BatchSize, 30*time.Second, s.EndCanceledSubscriptionsJob),
-		s.runJob(parent, "recovery_sweep", maxInt(s.cfg.MaxRatingBatchSize, s.cfg.MaxCloseBatchSize, s.cfg.MaxInvoiceBatchSize), 30*time.Second, s.RecoverySweepJob),
-		s.runJob(parent, "sla_evaluation", s.cfg.BatchSize, 30*time.Second, s.SLAEvaluationJob),
-		s.runJob(parent, "finops_scoring", 1, 24*time.Hour, s.FinOpsScoringJob),
-	)
+	for _, job := range jobs {
+		if job.Enabled {
+			err = errors.Join(err, job.Run(parent))
+		}
+	}
+
+	if s.rollupSvc != nil {
+		if s.isJobEnabled("rollup_rebuild") {
+			err = errors.Join(err, s.runJob(parent, "rollup_rebuild", s.cfg.BatchSize, 30*time.Minute, func(ctx context.Context) error {
+				return s.rollupSvc.ProcessRebuildRequests(ctx, s.cfg.BatchSize)
+			}))
+		}
+		if s.isJobEnabled("rollup_pending") {
+			err = errors.Join(err, s.runJob(parent, "rollup_pending", s.cfg.BatchSize, 30*time.Second, func(ctx context.Context) error {
+				return s.rollupSvc.ProcessPending(ctx, s.cfg.BatchSize)
+			}))
+		}
+	}
+
+	otherJobs := []struct {
+		Name    string
+		Enabled bool
+		Run     func(context.Context) error
+	}{
+		{"end_canceled_subs", s.isJobEnabled("end_canceled_subs"), func(ctx context.Context) error {
+			return s.runJob(ctx, "end_canceled_subs", s.cfg.BatchSize, 30*time.Second, s.EndCanceledSubscriptionsJob)
+		}},
+		{"recovery_sweep", s.isJobEnabled("recovery_sweep"), func(ctx context.Context) error {
+			return s.runJob(ctx, "recovery_sweep", maxInt(s.cfg.MaxRatingBatchSize, s.cfg.MaxCloseBatchSize, s.cfg.MaxInvoiceBatchSize), 30*time.Second, s.RecoverySweepJob)
+		}},
+		{"sla_evaluation", s.isJobEnabled("sla_evaluation"), func(ctx context.Context) error {
+			return s.runJob(ctx, "sla_evaluation", s.cfg.BatchSize, 30*time.Second, s.SLAEvaluationJob)
+		}},
+		{"finops_scoring", s.isJobEnabled("finops_scoring"), func(ctx context.Context) error {
+			return s.runJob(ctx, "finops_scoring", 1, 24*time.Hour, s.FinOpsScoringJob)
+		}},
+	}
+
+	for _, job := range otherJobs {
+		if job.Enabled {
+			err = errors.Join(err, job.Run(parent))
+		}
+	}
 
 	return err
 }
@@ -200,6 +240,19 @@ func (s *Scheduler) RunForever(ctx context.Context) {
 		case <-ticker.C:
 		}
 	}
+}
+
+func (s *Scheduler) isJobEnabled(jobName string) bool {
+	// If EnabledJobs is empty, all jobs are enabled by default (monolith mode)
+	if len(s.cfg.EnabledJobs) == 0 {
+		return true
+	}
+	for _, enabled := range s.cfg.EnabledJobs {
+		if strings.EqualFold(enabled, jobName) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Scheduler) EnsureBillingCyclesJob(ctx context.Context) error {

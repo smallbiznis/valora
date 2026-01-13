@@ -1,12 +1,12 @@
 
-# Why Valora Does Not Handle Payments
+# Why Railzway Does Not Handle Payments
 
-Valora intentionally does **not** handle payment execution.
+Railzway intentionally does **not** handle payment execution.
 
 This is not a missing feature.
 It is a deliberate architectural decision.
 
-Valora determines **what should be billed**.
+Railzway determines **what should be billed**.
 It does not determine **how money moves**.
 
 ---
@@ -35,17 +35,17 @@ This is fragile.
 
 ---
 
-## Valora’s Design Boundary
+## Railzway’s Design Boundary
 
-Valora draws a strict boundary:
+Railzway draws a strict boundary:
 
 - **Billing** answers: *what should be billed, when, and why*
 - **Payments** answer: *how money is collected or transferred*
 
-Valora owns the first.
+Railzway owns the first.
 It explicitly excludes the second.
 
-This boundary allows Valora to remain:
+This boundary allows Railzway to remain:
 
 - deterministic
 - auditable
@@ -54,9 +54,9 @@ This boundary allows Valora to remain:
 
 ---
 
-## What Valora Produces
+## What Railzway Produces
 
-Valora produces **billing facts**, not financial side effects.
+Railzway produces **billing facts**, not financial side effects.
 
 Examples:
 
@@ -74,9 +74,9 @@ These outputs are:
 
 ---
 
-## What Valora Does Not Do
+## What Railzway Does Not Do
 
-Valora does **not**:
+Railzway does **not**:
 
 - charge credit cards
 - store payment methods
@@ -127,23 +127,23 @@ Failures are easier to reason about:
 
 ## Integration Model
 
-Valora is designed to sit **upstream** of payments.
+Railzway is designed to sit **upstream** of payments.
 
 A typical flow:
 
-1. Application sends usage events to Valora
-2. Valora computes billing state and invoices
+1. Application sends usage events to Railzway
+2. Railzway computes billing state and invoices
 3. Application passes invoice data to a payment provider
 4. Payment provider executes collection
 5. Payment results are optionally reflected back as metadata
 
-Valora remains the system of record for **billing intent**.
+Railzway remains the system of record for **billing intent**.
 
 ---
 
 ## Non-Goals
 
-Valora intentionally does not aim to become:
+Railzway intentionally does not aim to become:
 
 - a payment orchestration layer
 - a merchant of record
@@ -156,13 +156,13 @@ These domains have different constraints and responsibilities.
 
 ## Summary
 
-Valora does not handle payments because:
+Railzway does not handle payments because:
 
 - billing logic must be deterministic
 - money movement is inherently side-effectful
 - coupling the two creates fragile systems
 - clear boundaries improve long-term correctness
 
-> **Valora keeps billing boring, explicit, and predictable
+> **Railzway keeps billing boring, explicit, and predictable
 > by refusing to own payment execution.**
 >
