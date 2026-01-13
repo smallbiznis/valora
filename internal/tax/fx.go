@@ -1,8 +1,8 @@
 package tax
 
 import (
-	"github.com/smallbiznis/valora/internal/tax/repository"
-	"github.com/smallbiznis/valora/internal/tax/service"
+	"github.com/smallbiznis/railzway/internal/tax/repository"
+	"github.com/smallbiznis/railzway/internal/tax/service"
 	"go.uber.org/fx"
 )
 

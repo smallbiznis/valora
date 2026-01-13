@@ -20,5 +20,5 @@ Similar to Admin, this bundles a lightweight React UI with a Go backend.
 
 ```bash
 # Docker
-docker run -p 8080:8080 ghcr.io/<org>/valora-invoice:latest
+docker run -p 8080:8080 ghcr.io/<org>/railzway-invoice:latest
 ```

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	paymentdomain "github.com/smallbiznis/valora/internal/payment/domain"
+	paymentdomain "github.com/smallbiznis/railzway/internal/payment/domain"
 )
 
 func TestVerifySignature(t *testing.T) {

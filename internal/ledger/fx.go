@@ -1,7 +1,7 @@
 package ledger
 
 import (
-	"github.com/smallbiznis/valora/internal/ledger/service"
+	"github.com/smallbiznis/railzway/internal/ledger/service"
 	"go.uber.org/fx"
 )
 

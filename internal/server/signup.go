@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	authdomain "github.com/smallbiznis/valora/internal/auth/domain"
-	signupdomain "github.com/smallbiznis/valora/internal/signup/domain"
+	authdomain "github.com/smallbiznis/railzway/internal/auth/domain"
+	signupdomain "github.com/smallbiznis/railzway/internal/signup/domain"
 )
 
 type SignupRequest struct {

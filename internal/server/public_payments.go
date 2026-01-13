@@ -7,7 +7,7 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
-	publicinvoicedomain "github.com/smallbiznis/valora/internal/publicinvoice/domain"
+	publicinvoicedomain "github.com/smallbiznis/railzway/internal/publicinvoice/domain"
 )
 
 func (s *Server) RegisterPublicRoutes() {

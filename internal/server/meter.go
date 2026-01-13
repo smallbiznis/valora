@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	meterdomain "github.com/smallbiznis/valora/internal/meter/domain"
+	meterdomain "github.com/smallbiznis/railzway/internal/meter/domain"
 )
 
 type createMeterRequest struct {

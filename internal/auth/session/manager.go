@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/smallbiznis/valora/internal/config"
+	"github.com/smallbiznis/railzway/internal/config"
 )
 
 const DefaultCookieName = "_sid"

@@ -1,8 +1,8 @@
 package pricetier
 
 import (
-	"github.com/smallbiznis/valora/internal/pricetier/repository"
-	"github.com/smallbiznis/valora/internal/pricetier/service"
+	"github.com/smallbiznis/railzway/internal/pricetier/repository"
+	"github.com/smallbiznis/railzway/internal/pricetier/service"
 	"go.uber.org/fx"
 )
 

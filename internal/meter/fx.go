@@ -1,8 +1,8 @@
 package meter
 
 import (
-	"github.com/smallbiznis/valora/internal/meter/repository"
-	"github.com/smallbiznis/valora/internal/meter/service"
+	"github.com/smallbiznis/railzway/internal/meter/repository"
+	"github.com/smallbiznis/railzway/internal/meter/service"
 	"go.uber.org/fx"
 )
 

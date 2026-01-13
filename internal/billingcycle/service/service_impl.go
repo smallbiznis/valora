@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	billingcycledomain "github.com/smallbiznis/valora/internal/billingcycle/domain"
-	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
-	"github.com/smallbiznis/valora/pkg/repository"
+	billingcycledomain "github.com/smallbiznis/railzway/internal/billingcycle/domain"
+	subscriptiondomain "github.com/smallbiznis/railzway/internal/subscription/domain"
+	"github.com/smallbiznis/railzway/pkg/repository"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"

@@ -110,7 +110,7 @@ jobs:
             echo ""
             echo "## Docker Image"
             echo ""
-            echo "ghcr.io/${{ github.repository_owner }}/valora:${tag}"
+            echo "ghcr.io/${{ github.repository_owner }}/railzway:${tag}"
           } > "${notes}"
 
           if [ ! -s "${notes}" ]; then
@@ -125,10 +125,10 @@ jobs:
           set -euo pipefail
 
           tag="${{ steps.resolve.outputs.tag }}"
-          archive="valora-${tag}.tar.gz"
+          archive="railzway-${tag}.tar.gz"
 
           # Archive directly from the tag to avoid HEAD ambiguity.
-          git archive --format=tar.gz --prefix="valora-${tag}/" "${tag}" > "${archive}"
+          git archive --format=tar.gz --prefix="railzway-${tag}/" "${tag}" > "${archive}"
 
           echo "file=${archive}" >> "$GITHUB_OUTPUT"
 

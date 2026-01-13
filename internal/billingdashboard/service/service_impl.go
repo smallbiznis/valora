@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	billingdashboard "github.com/smallbiznis/valora/internal/billingdashboard/domain"
-	"github.com/smallbiznis/valora/internal/clock"
-	"github.com/smallbiznis/valora/internal/orgcontext"
+	billingdashboard "github.com/smallbiznis/railzway/internal/billingdashboard/domain"
+	"github.com/smallbiznis/railzway/internal/clock"
+	"github.com/smallbiznis/railzway/internal/orgcontext"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/datatypes"

@@ -12,8 +12,8 @@ import (
 	"net/url"
 	"strings"
 
-	authconfig "github.com/smallbiznis/valora/internal/auth/config"
-	obstracing "github.com/smallbiznis/valora/internal/observability/tracing"
+	authconfig "github.com/smallbiznis/railzway/internal/auth/config"
+	obstracing "github.com/smallbiznis/railzway/internal/observability/tracing"
 )
 
 const (

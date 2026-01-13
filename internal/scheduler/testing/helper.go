@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	billingcycledomain "github.com/smallbiznis/valora/internal/billingcycle/domain"
+	billingcycledomain "github.com/smallbiznis/railzway/internal/billingcycle/domain"
 	"gorm.io/gorm"
 )
 

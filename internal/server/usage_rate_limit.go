@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/smallbiznis/valora/internal/observability/logger"
-	obsmetrics "github.com/smallbiznis/valora/internal/observability/metrics"
-	"github.com/smallbiznis/valora/internal/orgcontext"
+	"github.com/smallbiznis/railzway/internal/observability/logger"
+	obsmetrics "github.com/smallbiznis/railzway/internal/observability/metrics"
+	"github.com/smallbiznis/railzway/internal/orgcontext"
 	"go.uber.org/zap"
 )
 

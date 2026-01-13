@@ -17,7 +17,7 @@ This service is optimized for **throughput** and **low latency**. It does not se
 go run ./apps/api/main.go
 
 # Docker
-docker run -p 8080:8080 ghcr.io/<org>/valora-api:latest
+docker run -p 8080:8080 ghcr.io/<org>/railzway-api:latest
 ```
 
 ## Configuration

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/smallbiznis/valora/internal/authorization"
+	"github.com/smallbiznis/railzway/internal/authorization"
 )
 
 type Scope string

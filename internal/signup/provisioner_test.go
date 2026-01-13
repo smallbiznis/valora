@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/bwmarrin/snowflake"
-	billingevent "github.com/smallbiznis/valora/internal/billingevent/domain"
-	"github.com/smallbiznis/valora/internal/config"
-	dbpkg "github.com/smallbiznis/valora/pkg/db"
+	billingevent "github.com/smallbiznis/railzway/internal/billingevent/domain"
+	"github.com/smallbiznis/railzway/internal/config"
+	dbpkg "github.com/smallbiznis/railzway/pkg/db"
 )
 
 func TestNewProvisionerOSSModeUsesNoop(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
-	auditdomain "github.com/smallbiznis/valora/internal/audit/domain"
+	auditdomain "github.com/smallbiznis/railzway/internal/audit/domain"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"

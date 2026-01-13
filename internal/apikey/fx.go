@@ -1,8 +1,8 @@
 package apikey
 
 import (
-	"github.com/smallbiznis/valora/internal/apikey/repository"
-	"github.com/smallbiznis/valora/internal/apikey/service"
+	"github.com/smallbiznis/railzway/internal/apikey/repository"
+	"github.com/smallbiznis/railzway/internal/apikey/service"
 	"go.uber.org/fx"
 )
 

@@ -5,7 +5,7 @@ package db
 // 	"reflect"
 // 	"time"
 
-// 	"github.com/smallbiznis/valora/internal/audit/domain"
+// 	"github.com/smallbiznis/railzway/internal/audit/domain"
 // 	"go.uber.org/zap"
 // 	"gorm.io/gorm"
 // )

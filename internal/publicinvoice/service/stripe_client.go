@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	paymentdomain "github.com/smallbiznis/valora/internal/payment/domain"
-	publicinvoicedomain "github.com/smallbiznis/valora/internal/publicinvoice/domain"
+	paymentdomain "github.com/smallbiznis/railzway/internal/payment/domain"
+	publicinvoicedomain "github.com/smallbiznis/railzway/internal/publicinvoice/domain"
 )
 
 type stripePaymentIntent struct {

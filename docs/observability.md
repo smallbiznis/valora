@@ -25,7 +25,7 @@ export OTEL_SAMPLING_RATIO=0.1
 export SERVICE_VERSION=dev
 export DEPLOYMENT_ENV=dev
 
-go run ./cmd/valora
+go run ./cmd/railzway
 ```
 
 ## Correlation fields

@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	"github.com/smallbiznis/valora/internal/events"
-	invoicedomain "github.com/smallbiznis/valora/internal/invoice/domain"
-	ledgerdomain "github.com/smallbiznis/valora/internal/ledger/domain"
+	"github.com/smallbiznis/railzway/internal/events"
+	invoicedomain "github.com/smallbiznis/railzway/internal/invoice/domain"
+	ledgerdomain "github.com/smallbiznis/railzway/internal/ledger/domain"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/datatypes"

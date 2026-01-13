@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	customerdomain "github.com/smallbiznis/valora/internal/customer/domain"
-	"github.com/smallbiznis/valora/pkg/db/pagination"
+	customerdomain "github.com/smallbiznis/railzway/internal/customer/domain"
+	"github.com/smallbiznis/railzway/pkg/db/pagination"
 )
 
 type createCustomerRequest struct {

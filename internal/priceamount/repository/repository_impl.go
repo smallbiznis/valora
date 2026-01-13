@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	priceamountdomain "github.com/smallbiznis/valora/internal/priceamount/domain"
-	"github.com/smallbiznis/valora/pkg/db/option"
+	priceamountdomain "github.com/smallbiznis/railzway/internal/priceamount/domain"
+	"github.com/smallbiznis/railzway/pkg/db/option"
 	"gorm.io/gorm"
 )
 

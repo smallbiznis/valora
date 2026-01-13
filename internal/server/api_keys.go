@@ -8,9 +8,9 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
-	apikeydomain "github.com/smallbiznis/valora/internal/apikey/domain"
-	authdomain "github.com/smallbiznis/valora/internal/auth/domain"
-	authscope "github.com/smallbiznis/valora/internal/auth/scope"
+	apikeydomain "github.com/smallbiznis/railzway/internal/apikey/domain"
+	authdomain "github.com/smallbiznis/railzway/internal/auth/domain"
+	authscope "github.com/smallbiznis/railzway/internal/auth/scope"
 	"gorm.io/gorm"
 )
 

@@ -35,5 +35,5 @@ go run main.go
 ### Production (Docker)
 The Docker image bundles both:
 ```bash
-docker run -p 8080:8080 ghcr.io/<org>/valora-admin:latest
+docker run -p 8080:8080 ghcr.io/<org>/railzway-admin:latest
 ```

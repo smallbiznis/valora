@@ -1,10 +1,10 @@
 package auth
 
 import (
-	authconfig "github.com/smallbiznis/valora/internal/auth/config"
-	"github.com/smallbiznis/valora/internal/auth/oauth"
-	"github.com/smallbiznis/valora/internal/auth/repository"
-	"github.com/smallbiznis/valora/internal/auth/service"
+	authconfig "github.com/smallbiznis/railzway/internal/auth/config"
+	"github.com/smallbiznis/railzway/internal/auth/oauth"
+	"github.com/smallbiznis/railzway/internal/auth/repository"
+	"github.com/smallbiznis/railzway/internal/auth/service"
 	"go.uber.org/fx"
 )
 

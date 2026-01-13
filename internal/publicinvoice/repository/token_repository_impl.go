@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/snowflake"
-	publicinvoicedomain "github.com/smallbiznis/valora/internal/publicinvoice/domain"
+	publicinvoicedomain "github.com/smallbiznis/railzway/internal/publicinvoice/domain"
 	"gorm.io/gorm"
 )
 

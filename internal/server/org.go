@@ -6,7 +6,7 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
-	"github.com/smallbiznis/valora/internal/organization/domain"
+	"github.com/smallbiznis/railzway/internal/organization/domain"
 )
 
 func (s *Server) CreateOrg(c *gin.Context) {

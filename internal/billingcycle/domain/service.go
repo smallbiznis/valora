@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/smallbiznis/valora/pkg/db/pagination"
+	"github.com/smallbiznis/railzway/pkg/db/pagination"
 )
 
 type ListBillingCycleRequest struct{}

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/smallbiznis/valora/internal/config"
+	"github.com/smallbiznis/railzway/internal/config"
 )
 
 // Config holds observability configuration derived from environment variables.

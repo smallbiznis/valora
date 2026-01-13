@@ -17,9 +17,9 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
-	authdomain "github.com/smallbiznis/valora/internal/auth/domain"
-	authoauth "github.com/smallbiznis/valora/internal/auth/oauth"
-	orgdomain "github.com/smallbiznis/valora/internal/organization/domain"
+	authdomain "github.com/smallbiznis/railzway/internal/auth/domain"
+	authoauth "github.com/smallbiznis/railzway/internal/auth/oauth"
+	orgdomain "github.com/smallbiznis/railzway/internal/organization/domain"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )

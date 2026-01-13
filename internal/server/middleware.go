@@ -8,11 +8,11 @@ import (
 	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	auditdomain "github.com/smallbiznis/valora/internal/audit/domain"
-	auditcontext "github.com/smallbiznis/valora/internal/auditcontext"
-	authdomain "github.com/smallbiznis/valora/internal/auth/domain"
-	obscontext "github.com/smallbiznis/valora/internal/observability/context"
-	"github.com/smallbiznis/valora/internal/orgcontext"
+	auditdomain "github.com/smallbiznis/railzway/internal/audit/domain"
+	auditcontext "github.com/smallbiznis/railzway/internal/auditcontext"
+	authdomain "github.com/smallbiznis/railzway/internal/auth/domain"
+	obscontext "github.com/smallbiznis/railzway/internal/observability/context"
+	"github.com/smallbiznis/railzway/internal/orgcontext"
 )
 
 const (

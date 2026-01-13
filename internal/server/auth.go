@@ -7,8 +7,8 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
-	auditdomain "github.com/smallbiznis/valora/internal/audit/domain"
-	authdomain "github.com/smallbiznis/valora/internal/auth/domain"
+	auditdomain "github.com/smallbiznis/railzway/internal/audit/domain"
+	authdomain "github.com/smallbiznis/railzway/internal/auth/domain"
 	"gorm.io/gorm"
 )
 

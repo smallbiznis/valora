@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	billingcycledomain "github.com/smallbiznis/valora/internal/billingcycle/domain"
-	subscriptiondomain "github.com/smallbiznis/valora/internal/subscription/domain"
+	billingcycledomain "github.com/smallbiznis/railzway/internal/billingcycle/domain"
+	subscriptiondomain "github.com/smallbiznis/railzway/internal/subscription/domain"
 )
 
 var (

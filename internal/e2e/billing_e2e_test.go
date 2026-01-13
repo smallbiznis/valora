@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	"github.com/smallbiznis/valora/internal/server"
-	usagedomain "github.com/smallbiznis/valora/internal/usage/domain"
+	"github.com/smallbiznis/railzway/internal/server"
+	usagedomain "github.com/smallbiznis/railzway/internal/usage/domain"
 )
 
 type usageRow struct {

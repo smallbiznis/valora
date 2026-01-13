@@ -9,11 +9,11 @@ import (
 	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
-	apikeydomain "github.com/smallbiznis/valora/internal/apikey/domain"
-	auditdomain "github.com/smallbiznis/valora/internal/audit/domain"
-	auditcontext "github.com/smallbiznis/valora/internal/auditcontext"
-	obscontext "github.com/smallbiznis/valora/internal/observability/context"
-	"github.com/smallbiznis/valora/internal/orgcontext"
+	apikeydomain "github.com/smallbiznis/railzway/internal/apikey/domain"
+	auditdomain "github.com/smallbiznis/railzway/internal/audit/domain"
+	auditcontext "github.com/smallbiznis/railzway/internal/auditcontext"
+	obscontext "github.com/smallbiznis/railzway/internal/observability/context"
+	"github.com/smallbiznis/railzway/internal/orgcontext"
 )
 
 const (
