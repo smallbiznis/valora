@@ -50,7 +50,7 @@ func main() {
 		// I will Assume server.Module needs to be "fixed" or I just Provide it here to be safe/override.
 
 		// Let's use the pattern from apps/admin:
-		fx.Provide(server.NewEngine),
+
 		fx.Provide(server.NewServer),
 
 		fx.Invoke(func(s *server.Server) {
