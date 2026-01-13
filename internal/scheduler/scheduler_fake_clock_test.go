@@ -123,7 +123,7 @@ func TestScheduler_RunOnce_FakeClock_30Days(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open sqlite: %v", err)
 	}
-	
+
 	// SQLite support hack: remove FOR UPDATE clauses
 	db.Callback().Query().Before("gorm:query").Register("sqlite_skip_locked", func(d *gorm.DB) {
 		sql := d.Statement.SQL.String()
@@ -143,7 +143,7 @@ func TestScheduler_RunOnce_FakeClock_30Days(t *testing.T) {
 			d.Statement.SQL.WriteString(newSQL)
 		}
 	})
-	
+
 	sqlDB, err := db.DB()
 	if err != nil {
 		t.Fatalf("failed to get sql db: %v", err)
@@ -262,7 +262,7 @@ func TestScheduler_RunOnce_FakeClock_30Days(t *testing.T) {
 			t.Fatalf("seed ledger account %s: %v", acc.Code, err)
 		}
 	}
-	
+
 	// Reset metrics
 	registry := prometheus.NewRegistry()
 	restore := swapPrometheusRegistry(registry)
@@ -277,7 +277,7 @@ func TestScheduler_RunOnce_FakeClock_30Days(t *testing.T) {
 			// Simulate invoice generation
 			invID := node.Generate()
 			return &invoicedomain.Invoice{
-				ID: invID,
+				ID:     invID,
 				Status: invoicedomain.InvoiceStatusDraft,
 			}, nil
 		},
@@ -322,9 +322,9 @@ func TestScheduler_RunOnce_FakeClock_30Days(t *testing.T) {
 	// We want to verify:
 	// - Cycle created at T0 (period: Jan 1 - Feb 1)
 	// - At Feb 1, cycle should close, rate, invoice
-	
+
 	ctx := context.Background()
-	
+
 	// Step 1: Initial Run at Jan 1
 	// Should create the first billing cycle
 	if err := scheduler.RunOnce(ctx); err != nil {
@@ -352,7 +352,7 @@ func TestScheduler_RunOnce_FakeClock_30Days(t *testing.T) {
 	// Step 2: Advance time ensuring we pass period end
 	// Let's advance day by day
 	targetDate := startTime.AddDate(0, 0, 32) // Feb 2
-	
+
 	for fakeClock.Now().Before(targetDate) {
 		fakeClock.Advance(24 * time.Hour)
 		// Run scheduler each "day"
@@ -368,7 +368,7 @@ func TestScheduler_RunOnce_FakeClock_30Days(t *testing.T) {
 	// - Rated
 	// - Invoiced
 	// - Invoice Finalized (since cfg.FinalizeInvoices = true)
-	
+
 	// Re-fetch cycle
 	if err := db.Raw("SELECT * FROM billing_cycles WHERE id = ?", cycle.ID).Scan(&cycle).Error; err != nil {
 		t.Fatalf("refetch cycle: %v", err)
@@ -376,16 +376,16 @@ func TestScheduler_RunOnce_FakeClock_30Days(t *testing.T) {
 
 	// Check status chain
 	// Cycle should be Closed (after rating and ensureLedger)
-	// Actually, wait: 
+	// Actually, wait:
 	// - CloseCyclesJob marks it Closing
 	// - RatingJob runs (marks RatingCompleted)
 	// - CloseAfterRatingJob runs (checks rating, ensures ledger, marks Closed)
 	// - InvoiceJob runs (generates invoice, marks Invoiced)
-	
+
 	// In scheduler.go:
 	// s.runJob("invoice") checks status=Closed AND invoiced_at IS NULL (line 505)
 	// So it MUST be Closed before Invoicing.
-	
+
 	if cycle.Status != billingcycledomain.BillingCycleStatusClosed {
 		t.Errorf("expected cycle to be Closed, got %s", cycle.Status)
 	}

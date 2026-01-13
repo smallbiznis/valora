@@ -27,10 +27,10 @@ type Service struct {
 	db  *gorm.DB
 	log *zap.Logger
 
-	genID              *snowflake.Node
-	ratingrepo         repository.Repository[ratingdomain.RatingResult]
-	priceRepo          repository.Repository[pricedomain.Price]
-	priceAmountRepo    priceamountdomain.Repository
+	genID           *snowflake.Node
+	ratingrepo      repository.Repository[ratingdomain.RatingResult]
+	priceRepo       repository.Repository[pricedomain.Price]
+	priceAmountRepo priceamountdomain.Repository
 }
 
 type ServiceParam struct {
@@ -117,13 +117,12 @@ func (s *Service) RunRating(ctx context.Context, billingCycleID string) error {
 				return fmt.Errorf("rating failed for item %s: %w", item.ID, err)
 			}
 
-
 			// CALCULATE GLOBAL EFFECTIVE WINDOW
 			// Intersection of:
 			// 1. Billing Cycle [Start, End]
 			// 2. Subscription [StartAt, EndAt/CanceledAt]
 			// 3. Entitlement [EffectiveFrom, EffectiveTo] (Plan Change)
-			
+
 			start := cycle.PeriodStart
 			if subscription.StartAt.After(start) {
 				start = subscription.StartAt
@@ -152,11 +151,17 @@ func (s *Service) RunRating(ctx context.Context, billingCycleID string) error {
 			activeSeconds := end.Sub(start).Seconds()
 			prorationFactor := activeSeconds / cycleDuration
 			// Clamp factor to 0..1 (floating point safety)
-			if prorationFactor > 1.0 { prev := prorationFactor; prorationFactor = 1.0; s.log.Warn("clamped proration > 1", zap.Float64("prev", prev)) }
-			if prorationFactor < 0.0 { prorationFactor = 0.0 } // Should be caught by end > start
+			if prorationFactor > 1.0 {
+				prev := prorationFactor
+				prorationFactor = 1.0
+				s.log.Warn("clamped proration > 1", zap.Float64("prev", prev))
+			}
+			if prorationFactor < 0.0 {
+				prorationFactor = 0.0
+			} // Should be caught by end > start
 
 			// Pass 'start' and 'end' as the RATING WINDOW for this item
-			
+
 			if item.MeterID == nil {
 				if err := s.rateFlatItem(ctx, tx, cycle, item, featureCode, start, end, prorationFactor, now); err != nil {
 					return err
@@ -194,9 +199,9 @@ func (s *Service) RunRating(ctx context.Context, billingCycleID string) error {
 }
 
 func (s *Service) loadEntitlements(
-	ctx context.Context, 
-	tx *gorm.DB, 
-	orgID, subID snowflake.ID, 
+	ctx context.Context,
+	tx *gorm.DB,
+	orgID, subID snowflake.ID,
 	start, end time.Time,
 ) ([]subscriptiondomain.SubscriptionEntitlement, error) {
 	// Select entitlements effective during window
@@ -239,18 +244,16 @@ func (s *Service) resolveEntitlementWithWindow(
 		// If optional entitlements, maybe allow missing price lookup? No, we need price to link to Product.
 		return "", nil, ratingdomain.ErrMissingPriceAmount
 	}
-	
+
 	for _, ent := range entitlements {
 		if ent.ProductID == price.ProductID {
 			return ent.FeatureCode, &ent, nil
 		}
 	}
-	
+
 	return "", nil, nil
 
 }
-
-
 
 type billingCycleRow struct {
 	ID             snowflake.ID
@@ -363,7 +366,7 @@ func (s *Service) rateFlatItem(
 	// Calculate Prorated Amount
 	// Only apply if factor < 1.0 (to avoid rounding errors on full periods perhaps? or consistent application?)
 	// Strict: Always apply factor.
-	
+
 	baseAmount := float64(priceAmount.UnitAmountCents)
 	proratedAmount := baseAmount * prorationFactor
 	finalAmount := int64(math.Floor(proratedAmount + 0.5)) // Round to nearest cent
@@ -376,14 +379,14 @@ func (s *Service) rateFlatItem(
 
 	// Override amount in result logic?
 	// insertRatingWindow calculates amount from Qty * UnitPrice.
-	// For Flat Rate: Qty = 1, UnitPrice = Prorated Amount? 
+	// For Flat Rate: Qty = 1, UnitPrice = Prorated Amount?
 	// Or Qty = ProrationFactor, UnitPrice = Base?
 	// Flat fees usually Qty=1.
 	// Let's pass the Computed Amount explicitly or adjust usage.
 	// insertRatingResult takes `quantity` and `unitPrice` and `amount`.
 	// Let's modify `insertRatingWindow` to accept override amount or handle flat logic?
 	// Or better: `insertRatingResult`
-	
+
 	checksum := buildChecksum(cycle.ID, cycle.SubscriptionID, item.PriceID, item.MeterID, featureCode, window.Start, window.End)
 
 	return s.insertRatingResult(tx, ratingdomain.RatingResult{
@@ -394,23 +397,23 @@ func (s *Service) rateFlatItem(
 		PriceID:        item.PriceID,
 		FeatureCode:    featureCode, // From Entitlement
 		MeterID:        item.MeterID,
-		
-		Source:     "flat_rate",
-		
-		Quantity:    prorationFactor, // Store factor as quantity for visibility? Or 1?
+
+		Source: "flat_rate",
+
+		Quantity: prorationFactor, // Store factor as quantity for visibility? Or 1?
 		// User Prompt: "Persist proration-adjusted values into: rating_results.quantity, rating_results.amount"
 		// If I set Quantity = Factor, and UnitPrice = Base, then Amount = Factor * Base.
 		// That works perfectly for explaining the calculation!
-		
-		UnitPrice:   priceAmount.UnitAmountCents,
-		Amount:      finalAmount, // Result of math
-		Currency:    priceAmount.Currency,
-		
+
+		UnitPrice: priceAmount.UnitAmountCents,
+		Amount:    finalAmount, // Result of math
+		Currency:  priceAmount.Currency,
+
 		PeriodStart: window.Start,
 		PeriodEnd:   window.End,
-		
-		Checksum:    checksum,
-		CreatedAt:   now,
+
+		Checksum:  checksum,
+		CreatedAt: now,
 	})
 }
 
@@ -618,8 +621,6 @@ func buildChecksum(
 func roundMoney(raw float64) int64 {
 	return int64(math.Floor(raw + 0.5))
 }
-
-
 
 func parseID(value string) (snowflake.ID, error) {
 	return snowflake.ParseString(strings.TrimSpace(value))

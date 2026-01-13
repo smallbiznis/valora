@@ -39,7 +39,7 @@ func (p *SMTPProvider) SendTemplate(ctx context.Context, to []string, templateNa
 	// Locate template file (Assumes running from project root or configured path)
 	// For MVP, using relative path.
 	tmplPath := filepath.Join("internal", "providers", "email", "templates", templateName+".html")
-	
+
 	t, err := template.ParseFiles(tmplPath)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)

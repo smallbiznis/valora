@@ -24,19 +24,19 @@ type InvoiceData struct {
 	IssueDate     string
 	DueDate       string
 	ServicePeriod string
-	
+
 	BillToName    string
 	BillToAddress string
 	BillToEmail   string
-	
+
 	ShipToName    string
 	ShipToAddress string
-	
-	TotalDue      string
-	BankDetails   string
-	
+
+	TotalDue    string
+	BankDetails string
+
 	Items []InvoiceItem
-	
+
 	Subtotal  string
 	Total     string
 	AmountDue string
@@ -85,9 +85,9 @@ func (p *PDFProvider) GenerateInvoice(ctx context.Context, data interface{}) (io
 			Align: align.Left,
 		}),
 	)
-	
+
 	// Invoice Meta
-	m.AddRow(20, 
+	m.AddRow(20,
 		col.New(6).Add(
 			text.New("Invoice number: "+invoice.InvoiceNumber, props.Text{Top: 0}),
 			text.New("Date of issue: "+invoice.IssueDate, props.Text{Top: 4}),
@@ -125,7 +125,7 @@ func (p *PDFProvider) GenerateInvoice(ctx context.Context, data interface{}) (io
 			Top:   5,
 		}),
 	)
-	
+
 	// Bank Details
 	m.AddRow(25,
 		text.NewCol(12, invoice.BankDetails, props.Text{
@@ -143,7 +143,7 @@ func (p *PDFProvider) GenerateInvoice(ctx context.Context, data interface{}) (io
 	)
 
 	m.AddRow(1, col.New(12).Add(
-		// Line
+	// Line
 	))
 
 	// Items
@@ -155,7 +155,7 @@ func (p *PDFProvider) GenerateInvoice(ctx context.Context, data interface{}) (io
 			text.NewCol(2, item.Amount, props.Text{Size: 9, Align: align.Right}),
 		)
 	}
-	
+
 	// Footer Totals
 	m.AddRow(10,
 		col.New(8),
@@ -180,5 +180,3 @@ func (p *PDFProvider) GenerateInvoice(ctx context.Context, data interface{}) (io
 
 	return bytes.NewReader(doc.GetBytes()), nil
 }
-
-

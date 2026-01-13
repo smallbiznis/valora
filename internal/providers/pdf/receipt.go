@@ -53,9 +53,9 @@ func (p *PDFProvider) GenerateReceipt(ctx context.Context, data interface{}) (io
 			Left:    10, // Adjust alignment
 		}),
 	)
-	
+
 	// Receipt Meta
-	m.AddRow(20, 
+	m.AddRow(20,
 		col.New(6).Add(
 			text.New("Invoice number: "+receipt.InvoiceNumber, props.Text{Top: 0}),
 			text.New("Date paid: "+receipt.DatePaid, props.Text{Top: 4}),
@@ -92,7 +92,7 @@ func (p *PDFProvider) GenerateReceipt(ctx context.Context, data interface{}) (io
 			Top:   5,
 		}),
 	)
-	
+
 	// Bank Details
 	m.AddRow(25,
 		text.NewCol(12, receipt.BankDetails, props.Text{
@@ -118,7 +118,7 @@ func (p *PDFProvider) GenerateReceipt(ctx context.Context, data interface{}) (io
 			text.NewCol(2, item.Amount, props.Text{Size: 9, Align: align.Right}),
 		)
 	}
-	
+
 	// Footer Totals
 	m.AddRow(10,
 		col.New(8),
@@ -130,7 +130,6 @@ func (p *PDFProvider) GenerateReceipt(ctx context.Context, data interface{}) (io
 		text.NewCol(2, "Total", props.Text{Size: 9}),
 		text.NewCol(2, receipt.Total, props.Text{Size: 9, Align: align.Right}),
 	)
-
 
 	doc, err := m.Generate()
 	if err != nil {

@@ -101,13 +101,13 @@ func mapRowsToSnapshots(rows []finopsSnapshotRow) []domain.FinOpsScoreSnapshot {
 		// Warning: datatypes.JSON is []byte.
 		// We map to domain struct which has Metrics PerformanceMetrics.
 		// We need to unmarshal the JSON content.
-		
+
 		// Helper to unmarshal safely
 		var m domain.PerformanceMetrics
 		var s domain.PerformanceScores
 		// We suppress error here assuming DB data is valid JSON if inserted correctly.
 		// In a real repo we might log error.
-		_ = m.UnmarshalJSON(r.Metrics) 
+		_ = m.UnmarshalJSON(r.Metrics)
 		_ = s.UnmarshalJSON(r.Scores)
 
 		snapshots[i] = domain.FinOpsScoreSnapshot{

@@ -17,9 +17,10 @@ import (
 // It reads ONLY from the finalized invoice snapshot (no live lookups).
 //
 // Double-entry logic:
-//   Debit:  Accounts Receivable (asset increases)
-//   Credit: Revenue (income increases)
-//   Credit: Tax Payable (liability increases, if tax > 0)
+//
+//	Debit:  Accounts Receivable (asset increases)
+//	Credit: Revenue (income increases)
+//	Credit: Tax Payable (liability increases, if tax > 0)
 //
 // Idempotency: The ledger service has ON CONFLICT DO NOTHING, so re-posting
 // the same invoice will not create duplicate entries.
@@ -102,10 +103,10 @@ func (s *Service) postInvoiceToLedger(ctx context.Context, tx *gorm.DB, invoice 
 	// For now, we'll use a workaround: call the ledger service's CreateEntry
 	// which will create a nested transaction. PostgreSQL supports this via savepoints.
 	// SQLite also supports savepoints.
-	
+
 	// However, the cleaner approach is to directly insert into ledger tables
 	// within our existing transaction to maintain atomicity.
-	
+
 	return s.postLedgerEntryDirect(ctx, tx, invoice, lines)
 }
 

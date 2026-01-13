@@ -7,18 +7,17 @@ import (
 )
 
 type OverdueInvoice struct {
-	InvoiceID     string    `json:"invoice_id"`
-	InvoiceNumber string    `json:"invoice_number"`
-	CustomerID    string    `json:"customer_id"`
-	CustomerName  string    `json:"customer_name"`
-	AmountDue     int64     `json:"amount_due"`
-	Currency      string    `json:"currency"`
-	DueAt         time.Time `json:"due_at"`
+	InvoiceID     string      `json:"invoice_id"`
+	InvoiceNumber string      `json:"invoice_number"`
+	CustomerID    string      `json:"customer_id"`
+	CustomerName  string      `json:"customer_name"`
+	AmountDue     int64       `json:"amount_due"`
+	Currency      string      `json:"currency"`
+	DueAt         time.Time   `json:"due_at"`
 	DaysOverdue   int         `json:"days_overdue"`
 	PublicToken   string      `json:"public_token,omitempty"`
 	Assignment    *Assignment `json:"assignment,omitempty"`
 }
-
 
 type OverdueInvoicesResponse struct {
 	Currency string           `json:"currency"`
@@ -27,20 +26,19 @@ type OverdueInvoicesResponse struct {
 }
 
 type OutstandingCustomer struct {
-	CustomerID             string     `json:"customer_id"`
-	CustomerName           string     `json:"customer_name"`
-	OutstandingBalance     int64      `json:"outstanding_balance"`
-	Currency               string     `json:"currency"`
-	OldestOverdueInvoiceID string     `json:"oldest_overdue_invoice_id,omitempty"`
-	OldestOverdueInvoice   string     `json:"oldest_overdue_invoice,omitempty"`
-	OldestOverdueAt        *time.Time `json:"oldest_overdue_at,omitempty"`
-	LastPaymentAt          *time.Time `json:"last_payment_at,omitempty"`
-	OldestOverdueDays      int        `json:"oldest_overdue_days,omitempty"`
+	CustomerID             string      `json:"customer_id"`
+	CustomerName           string      `json:"customer_name"`
+	OutstandingBalance     int64       `json:"outstanding_balance"`
+	Currency               string      `json:"currency"`
+	OldestOverdueInvoiceID string      `json:"oldest_overdue_invoice_id,omitempty"`
+	OldestOverdueInvoice   string      `json:"oldest_overdue_invoice,omitempty"`
+	OldestOverdueAt        *time.Time  `json:"oldest_overdue_at,omitempty"`
+	LastPaymentAt          *time.Time  `json:"last_payment_at,omitempty"`
+	OldestOverdueDays      int         `json:"oldest_overdue_days,omitempty"`
 	HasOverdueOutstanding  bool        `json:"has_overdue_outstanding"`
 	PublicToken            string      `json:"public_token,omitempty"`
 	Assignment             *Assignment `json:"assignment,omitempty"`
 }
-
 
 type OutstandingCustomersResponse struct {
 	Currency  string                `json:"currency"`
@@ -49,9 +47,9 @@ type OutstandingCustomersResponse struct {
 }
 
 type PaymentIssue struct {
-	CustomerID          string     `json:"customer_id"`
-	CustomerName        string     `json:"customer_name"`
-	IssueType           string     `json:"issue_type"`
+	CustomerID          string      `json:"customer_id"`
+	CustomerName        string      `json:"customer_name"`
+	IssueType           string      `json:"issue_type"`
 	LastAttempt         *time.Time  `json:"last_attempt"`
 	AssignedTo          string      `json:"assigned_to,omitempty"`
 	AssignmentExpiresAt *time.Time  `json:"assignment_expires_at,omitempty"`
@@ -72,41 +70,39 @@ type ActionSummary struct {
 }
 
 type CriticalAction struct {
-	Category            string     `json:"category"`
-	InvoiceID           string     `json:"invoice_id,omitempty"`
-	InvoiceNumber       string     `json:"invoice_number,omitempty"`
-	CustomerID          string     `json:"customer_id"`
-	CustomerName        string     `json:"customer_name"`
-	AmountDue           int64      `json:"amount_due"`
-	Currency            string     `json:"currency"`
-	DueAt               *time.Time `json:"due_at,omitempty"`
-	DaysOverdue         int        `json:"days_overdue"`
-	LastAttempt         *time.Time `json:"last_attempt,omitempty"`
+	Category            string      `json:"category"`
+	InvoiceID           string      `json:"invoice_id,omitempty"`
+	InvoiceNumber       string      `json:"invoice_number,omitempty"`
+	CustomerID          string      `json:"customer_id"`
+	CustomerName        string      `json:"customer_name"`
+	AmountDue           int64       `json:"amount_due"`
+	Currency            string      `json:"currency"`
+	DueAt               *time.Time  `json:"due_at,omitempty"`
+	DaysOverdue         int         `json:"days_overdue"`
+	LastAttempt         *time.Time  `json:"last_attempt,omitempty"`
 	AssignedTo          string      `json:"assigned_to,omitempty"`
 	AssignmentExpiresAt *time.Time  `json:"assignment_expires_at,omitempty"`
 	PublicToken         string      `json:"public_token,omitempty"`
 	Assignment          *Assignment `json:"assignment,omitempty"`
 }
 
-
 type CollectionQueueEntry struct {
-	CustomerID            string     `json:"customer_id"`
-	CustomerName          string     `json:"customer_name"`
-	OutstandingBalance    int64      `json:"outstanding_balance"`
-	Currency              string     `json:"currency"`
-	OldestUnpaidInvoiceID string     `json:"oldest_unpaid_invoice_id,omitempty"`
-	OldestUnpaidInvoice   string     `json:"oldest_unpaid_invoice,omitempty"`
-	OldestUnpaidAt        *time.Time `json:"oldest_unpaid_at,omitempty"`
-	OldestUnpaidDays      int        `json:"oldest_unpaid_days,omitempty"`
-	LastPaymentAt         *time.Time `json:"last_payment_at,omitempty"`
-	AgingBucket           string     `json:"aging_bucket"`
-	RiskLevel             string     `json:"risk_level"`
+	CustomerID            string      `json:"customer_id"`
+	CustomerName          string      `json:"customer_name"`
+	OutstandingBalance    int64       `json:"outstanding_balance"`
+	Currency              string      `json:"currency"`
+	OldestUnpaidInvoiceID string      `json:"oldest_unpaid_invoice_id,omitempty"`
+	OldestUnpaidInvoice   string      `json:"oldest_unpaid_invoice,omitempty"`
+	OldestUnpaidAt        *time.Time  `json:"oldest_unpaid_at,omitempty"`
+	OldestUnpaidDays      int         `json:"oldest_unpaid_days,omitempty"`
+	LastPaymentAt         *time.Time  `json:"last_payment_at,omitempty"`
+	AgingBucket           string      `json:"aging_bucket"`
+	RiskLevel             string      `json:"risk_level"`
 	AssignedTo            string      `json:"assigned_to,omitempty"`
 	AssignmentExpiresAt   *time.Time  `json:"assignment_expires_at,omitempty"`
 	PublicToken           string      `json:"public_token,omitempty"`
 	Assignment            *Assignment `json:"assignment,omitempty"`
 }
-
 
 type BillingOperationsResponse struct {
 	Currency        string                 `json:"currency"`
@@ -201,12 +197,12 @@ const (
 )
 
 const (
-	SLAFresh     = "fresh"
-	SLAActive    = "active"
-	SLAAging     = "aging"
-	SLAStale     = "stale"
-	SLABreached  = "breached"
-	SLAResolved  = "resolved"
+	SLAFresh    = "fresh"
+	SLAActive   = "active"
+	SLAAging    = "aging"
+	SLAStale    = "stale"
+	SLABreached = "breached"
+	SLAResolved = "resolved"
 )
 
 const (
@@ -217,8 +213,6 @@ const (
 	CriticalCategoryOverdueInvoice = "overdue_invoice"
 	CriticalCategoryFailedPayment  = "failed_payment"
 )
-
-
 
 type PerformanceMetrics struct {
 	AvgResponseMS   int64   `json:"avg_response_ms"`
@@ -248,7 +242,6 @@ type FinOpsScoreSnapshot struct {
 	Metrics        PerformanceMetrics `json:"metrics"`
 	Scores         PerformanceScores  `json:"scores"`
 }
-
 
 type Service interface {
 	ListOverdueInvoices(ctx context.Context, limit int) (OverdueInvoicesResponse, error)

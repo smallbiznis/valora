@@ -50,7 +50,7 @@ func TestFinOpsSnapshotRepository(t *testing.T) {
 	db.Exec(`INSERT INTO finops_performance_snapshots 
 		(id, org_id, user_id, period_type, period_start, period_end, scoring_version, metrics, scores, total_score, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		node.Generate().Int64(), orgID.Int64(), userID, domain.PeriodTypeDaily, start, end, 
+		node.Generate().Int64(), orgID.Int64(), userID, domain.PeriodTypeDaily, start, end,
 		domain.ScoringVersionV1EqualWeight, string(metricsJSON), string(scoresJSON), 100, now, now)
 
 	// User 2 in same Org
@@ -58,15 +58,15 @@ func TestFinOpsSnapshotRepository(t *testing.T) {
 	db.Exec(`INSERT INTO finops_performance_snapshots 
 		(id, org_id, user_id, period_type, period_start, period_end, scoring_version, metrics, scores, total_score, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		node.Generate().Int64(), orgID.Int64(), user2, domain.PeriodTypeDaily, start, end, 
+		node.Generate().Int64(), orgID.Int64(), user2, domain.PeriodTypeDaily, start, end,
 		domain.ScoringVersionV1EqualWeight, string(metricsJSON), string(scoresJSON), 90, now, now)
-		
+
 	// Different Org
 	otherOrgID := node.Generate()
 	db.Exec(`INSERT INTO finops_performance_snapshots 
 		(id, org_id, user_id, period_type, period_start, period_end, scoring_version, metrics, scores, total_score, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		node.Generate().Int64(), otherOrgID.Int64(), userID, domain.PeriodTypeDaily, start, end, 
+		node.Generate().Int64(), otherOrgID.Int64(), userID, domain.PeriodTypeDaily, start, end,
 		domain.ScoringVersionV1EqualWeight, string(metricsJSON), string(scoresJSON), 100, now, now)
 
 	ctx := orgcontext.WithOrgID(context.Background(), orgID.Int64())
@@ -85,7 +85,7 @@ func TestFinOpsSnapshotRepository(t *testing.T) {
 		// Trying to access orgID data with otherCtx (which has otherOrgID) but we pass orgID as arg?
 		// Repo FindByUser takes orgID as arg.
 		// Implementation checks: if ctxOrgID != orgID -> error
-		
+
 		snaps, err := repo.FindByUser(otherCtx, orgID, userID, domain.PeriodTypeDaily, start, end)
 		assert.ErrorIs(t, err, domain.ErrInvalidOrganization)
 		assert.Nil(t, snaps)
@@ -95,12 +95,12 @@ func TestFinOpsSnapshotRepository(t *testing.T) {
 		snaps, err := repo.FindByOrg(ctx, orgID, domain.PeriodTypeDaily, start, start.Add(48*time.Hour))
 		assert.NoError(t, err)
 		assert.Len(t, snaps, 2) // user_repo_test and user_repo_test_2
-		
+
 		// Order check: user_repo_test < user_repo_test_2
 		assert.Equal(t, userID, snaps[0].UserID)
 		assert.Equal(t, user2, snaps[1].UserID)
 	})
-	
+
 	t.Run("MapRowsHelper", func(t *testing.T) {
 		// Verify mapping handles JSON correctly via struct
 	})
@@ -112,22 +112,22 @@ func TestFinOpsSnapshotRepository(t *testing.T) {
 		// Insert 2 more snapshots for user_repo_test on Jan 2 and Jan 3
 		now2 := start.Add(24 * time.Hour)
 		now3 := start.Add(48 * time.Hour)
-		
+
 		db.Exec(`INSERT INTO finops_performance_snapshots 
 			(id, org_id, user_id, period_type, period_start, period_end, scoring_version, metrics, scores, total_score, created_at, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			node2.Generate().Int64(), orgID.Int64(), userID, domain.PeriodTypeDaily, now2, now2.Add(24*time.Hour), 
+			node2.Generate().Int64(), orgID.Int64(), userID, domain.PeriodTypeDaily, now2, now2.Add(24*time.Hour),
 			domain.ScoringVersionV1EqualWeight, string(metricsJSON), string(scoresJSON), 95, now, now)
 
 		db.Exec(`INSERT INTO finops_performance_snapshots 
 			(id, org_id, user_id, period_type, period_start, period_end, scoring_version, metrics, scores, total_score, created_at, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			node2.Generate().Int64(), orgID.Int64(), userID, domain.PeriodTypeDaily, now3, now3.Add(24*time.Hour), 
+			node2.Generate().Int64(), orgID.Int64(), userID, domain.PeriodTypeDaily, now3, now3.Add(24*time.Hour),
 			domain.ScoringVersionV1EqualWeight, string(metricsJSON), string(scoresJSON), 85, now, now)
-			
+
 		// We have Jan 1 (Start), Jan 2 (Start+24h), Jan 3 (Start+48h)
 		// FindByUserWithLimit(limit=2) -> Should get Jan 3 and Jan 2 (DESC order)
-		
+
 		snaps, err := repo.FindByUserWithLimit(ctx, orgID, userID, domain.PeriodTypeDaily, start, start.Add(72*time.Hour), 2)
 		assert.NoError(t, err)
 		assert.Len(t, snaps, 2)
@@ -137,7 +137,7 @@ func TestFinOpsSnapshotRepository(t *testing.T) {
 	})
 }
 
-// We need a dummy helper to create datatypes.JSON from string if we were mocking at struct level, 
+// We need a dummy helper to create datatypes.JSON from string if we were mocking at struct level,
 // but here we use DB.
 func toJSON(v any) datatypes.JSON {
 	b, _ := json.Marshal(v)

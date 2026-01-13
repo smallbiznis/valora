@@ -59,15 +59,15 @@ func TestRating_Deterministic_Idempotency(t *testing.T) {
 	orgID := node.Generate()
 	subID := node.Generate()
 	cycleID := node.Generate()
-	
+
 	productID := node.Generate()
 	priceID := node.Generate()
 	meterID := node.Generate()
-	
+
 	now := time.Now().UTC()
 	start := now.Add(-24 * time.Hour)
 	end := now
-	
+
 	// Cycle
 	db.Create(&billingcycledomain.BillingCycle{
 		ID:             cycleID,
@@ -77,7 +77,7 @@ func TestRating_Deterministic_Idempotency(t *testing.T) {
 		PeriodEnd:      end,
 		Status:         billingcycledomain.BillingCycleStatusClosing,
 	})
-	
+
 	// Price (Allowed Snapshot)
 	db.Create(&pricedomain.Price{
 		ID:        priceID,
@@ -86,13 +86,13 @@ func TestRating_Deterministic_Idempotency(t *testing.T) {
 		Code:      "price_123",
 		Active:    true,
 	})
-	
+
 	// Price Amount (via stub)
 	priceAmountStub.Amounts[priceID.String()] = priceamountdomain.PriceAmount{
 		PriceID:         priceID,
 		UnitAmountCents: 100, // $1.00
 	}
-	
+
 	// Subscription Item (Metered)
 	db.Create(&subscriptiondomain.SubscriptionItem{
 		ID:             node.Generate(),
@@ -103,7 +103,7 @@ func TestRating_Deterministic_Idempotency(t *testing.T) {
 		Quantity:       1,
 		BillingMode:    "METERED",
 	})
-	
+
 	// Entitlement (Snapshot)
 	featureCode := "feat_metered"
 	db.Create(&subscriptiondomain.SubscriptionEntitlement{
@@ -115,7 +115,7 @@ func TestRating_Deterministic_Idempotency(t *testing.T) {
 		MeterID:        &meterID,
 		EffectiveFrom:  start.Add(-1 * time.Hour),
 	})
-	
+
 	// Usage Events
 	db.Create(&usagedomain.UsageEvent{
 		ID:             node.Generate(),
@@ -139,7 +139,7 @@ func TestRating_Deterministic_Idempotency(t *testing.T) {
 	// 3. Run Rating (First Time)
 	err = svc.RunRating(context.Background(), cycleID.String())
 	assert.NoError(t, err)
-	
+
 	var results []ratingdomain.RatingResult
 	db.Where("billing_cycle_id = ?", cycleID).Find(&results)
 	if assert.Len(t, results, 1) {
@@ -155,13 +155,13 @@ func TestRating_Deterministic_Idempotency(t *testing.T) {
 	// But check Deterministic outputs.
 	err = svc.RunRating(context.Background(), cycleID.String())
 	assert.NoError(t, err)
-	
+
 	var results2 []ratingdomain.RatingResult
 	db.Where("billing_cycle_id = ?", cycleID).Find(&results2)
 	assert.Len(t, results2, 1)
 	assert.Equal(t, float64(15.0), results2[0].Quantity)
 	assert.Equal(t, featureCode, results2[0].FeatureCode)
-	
+
 	// Assert ID changed (proving we did a full replacements)
 	assert.NotEqual(t, firstRunID, results2[0].ID, "ID should change due to Delete-Insert")
 }
@@ -172,11 +172,21 @@ type priceAmountStub struct {
 }
 
 // Implement required methods
-func (s *priceAmountStub) Insert(ctx context.Context, db *gorm.DB, amount *priceamountdomain.PriceAmount) error { return nil }
-func (s *priceAmountStub) FindOne(ctx context.Context, db *gorm.DB, amount *priceamountdomain.PriceAmount) (*priceamountdomain.PriceAmount, error) { return nil, nil }
-func (s *priceAmountStub) FindByID(ctx context.Context, db *gorm.DB, orgID, id snowflake.ID) (*priceamountdomain.PriceAmount, error) { return nil, nil }
-func (s *priceAmountStub) List(ctx context.Context, db *gorm.DB, f priceamountdomain.PriceAmount, opts ...option.QueryOption) ([]priceamountdomain.PriceAmount, error) { return nil, nil }
-func (s *priceAmountStub) Update(ctx context.Context, db *gorm.DB, amount *priceamountdomain.PriceAmount) (*priceamountdomain.PriceAmount, error) { return nil, nil }
+func (s *priceAmountStub) Insert(ctx context.Context, db *gorm.DB, amount *priceamountdomain.PriceAmount) error {
+	return nil
+}
+func (s *priceAmountStub) FindOne(ctx context.Context, db *gorm.DB, amount *priceamountdomain.PriceAmount) (*priceamountdomain.PriceAmount, error) {
+	return nil, nil
+}
+func (s *priceAmountStub) FindByID(ctx context.Context, db *gorm.DB, orgID, id snowflake.ID) (*priceamountdomain.PriceAmount, error) {
+	return nil, nil
+}
+func (s *priceAmountStub) List(ctx context.Context, db *gorm.DB, f priceamountdomain.PriceAmount, opts ...option.QueryOption) ([]priceamountdomain.PriceAmount, error) {
+	return nil, nil
+}
+func (s *priceAmountStub) Update(ctx context.Context, db *gorm.DB, amount *priceamountdomain.PriceAmount) (*priceamountdomain.PriceAmount, error) {
+	return nil, nil
+}
 
 func (s *priceAmountStub) FindEffectiveAt(ctx context.Context, db *gorm.DB, orgID, priceID snowflake.ID, meterID *snowflake.ID, currency string, at time.Time) (*priceamountdomain.PriceAmount, error) {
 	// Simple mock lookup by PriceID
@@ -186,8 +196,18 @@ func (s *priceAmountStub) FindEffectiveAt(ctx context.Context, db *gorm.DB, orgI
 	return nil, nil
 }
 
-func (s *priceAmountStub) FindPrevious(ctx context.Context, db *gorm.DB, orgID, priceID snowflake.ID, meterID *snowflake.ID, currency string, before time.Time) (*priceamountdomain.PriceAmount, error) { return nil, nil }
-func (s *priceAmountStub) FindNext(ctx context.Context, db *gorm.DB, orgID, priceID snowflake.ID, meterID *snowflake.ID, currency string, after time.Time) (*priceamountdomain.PriceAmount, error) { return nil, nil }
-func (s *priceAmountStub) ListOverlapping(ctx context.Context, db *gorm.DB, orgID, priceID snowflake.ID, meterID *snowflake.ID, currency string, start, end time.Time) ([]priceamountdomain.PriceAmount, error) { return nil, nil }
-func (s *priceAmountStub) FindLatestByPriceAndCurrency(ctx context.Context, db *gorm.DB, orgID, priceID snowflake.ID, currency string) (*priceamountdomain.PriceAmount, error) { return nil, nil }
-func (s *priceAmountStub) FindUpcoming(ctx context.Context, db *gorm.DB, orgID, priceID snowflake.ID, meterID *snowflake.ID, currency string) (*priceamountdomain.PriceAmount, error) { return nil, nil }
+func (s *priceAmountStub) FindPrevious(ctx context.Context, db *gorm.DB, orgID, priceID snowflake.ID, meterID *snowflake.ID, currency string, before time.Time) (*priceamountdomain.PriceAmount, error) {
+	return nil, nil
+}
+func (s *priceAmountStub) FindNext(ctx context.Context, db *gorm.DB, orgID, priceID snowflake.ID, meterID *snowflake.ID, currency string, after time.Time) (*priceamountdomain.PriceAmount, error) {
+	return nil, nil
+}
+func (s *priceAmountStub) ListOverlapping(ctx context.Context, db *gorm.DB, orgID, priceID snowflake.ID, meterID *snowflake.ID, currency string, start, end time.Time) ([]priceamountdomain.PriceAmount, error) {
+	return nil, nil
+}
+func (s *priceAmountStub) FindLatestByPriceAndCurrency(ctx context.Context, db *gorm.DB, orgID, priceID snowflake.ID, currency string) (*priceamountdomain.PriceAmount, error) {
+	return nil, nil
+}
+func (s *priceAmountStub) FindUpcoming(ctx context.Context, db *gorm.DB, orgID, priceID snowflake.ID, meterID *snowflake.ID, currency string) (*priceamountdomain.PriceAmount, error) {
+	return nil, nil
+}

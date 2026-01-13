@@ -229,7 +229,6 @@ func (s *Server) ResolveBillingOperationsAssignment(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "resolved"})
 }
 
-
 func parseBillingOperationsLimit(c *gin.Context) (int, error) {
 	limitValue, err := parseOptionalInt64(c.Query("limit"))
 	if err != nil {
@@ -247,8 +246,6 @@ func parseBillingOperationsLimit(c *gin.Context) (int, error) {
 	}
 	return limit, nil
 }
-
-
 
 // GET /finops/performance/me
 func (s *Server) GetBillingOperationsPerformanceMe(c *gin.Context) {

@@ -166,7 +166,7 @@ func (s *Service) ValidateUsageEntitlement(ctx context.Context, subscriptionID, 
 		// If no entitlement found, we assume it's allowed (or will be rated as flat/pay-as-you-go).
 		return nil
 	}
-	
+
 	// Check feature type (must be metered for usage)
 	if entitlement.FeatureType != "metered" {
 		return subscriptiondomain.ErrFeatureNotEntitled

@@ -211,7 +211,7 @@ func TestIngest_EntitlementGating(t *testing.T) {
 
 			ctx := WithTestOrgContext(context.Background(), orgID)
 			t.Logf("Test %s: orgID=%s", tt.name, orgID)
-			
+
 			res, err := svc.Ingest(ctx, tt.req)
 
 			if tt.expectedErr != nil {

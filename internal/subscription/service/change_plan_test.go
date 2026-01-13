@@ -80,11 +80,11 @@ func (m *mockRepository) InsertEntitlements(ctx context.Context, db *gorm.DB, en
 }
 func (m *mockRepository) FindByID(ctx context.Context, db *gorm.DB, orgID, id snowflake.ID) (*subscriptiondomain.Subscription, error) {
 	if s, ok := m.subscriptions[id.String()]; ok {
-        // Need to return a copy or pointer to updated struct if modified?
-        // Actually, if we want to confirm PlanChangedAt, we should read from DB if `ChangePlan` wrote to DB.
-        // `ChangePlan` wrote to DB via `tx.Exec`. So memory map is STALE unless we update it.
-        // But `ChangePlan` doesn't update repo map (it doesn't know about it).
-        // So validation should check DB directly, not use repo.
+		// Need to return a copy or pointer to updated struct if modified?
+		// Actually, if we want to confirm PlanChangedAt, we should read from DB if `ChangePlan` wrote to DB.
+		// `ChangePlan` wrote to DB via `tx.Exec`. So memory map is STALE unless we update it.
+		// But `ChangePlan` doesn't update repo map (it doesn't know about it).
+		// So validation should check DB directly, not use repo.
 		return s, nil
 	}
 	return nil, nil
@@ -95,14 +95,27 @@ func (m *mockRepository) FindByIDForUpdate(ctx context.Context, db *gorm.DB, org
 	}
 	return nil, nil
 }
-func (m *mockRepository) List(ctx context.Context, db *gorm.DB, orgID snowflake.ID) ([]subscriptiondomain.Subscription, error) { return nil, nil }
-func (m *mockRepository) FindActiveByCustomerID(ctx context.Context, db *gorm.DB, orgID, customerID snowflake.ID, statuses []subscriptiondomain.SubscriptionStatus) (*subscriptiondomain.Subscription, error) { return nil, nil }
-func (m *mockRepository) FindActiveByCustomerIDAt(ctx context.Context, db *gorm.DB, orgID, customerID snowflake.ID, at time.Time) (*subscriptiondomain.Subscription, error) { return nil, nil }
-func (m *mockRepository) FindSubscriptionItemByMeterCode(ctx context.Context, db *gorm.DB, orgID, subscriptionID snowflake.ID, meterCode string) (*subscriptiondomain.SubscriptionItem, error) { return nil, nil }
-func (m *mockRepository) FindSubscriptionItemByMeterID(ctx context.Context, db *gorm.DB, orgID, subscriptionID, meterID snowflake.ID) (*subscriptiondomain.SubscriptionItem, error) { return nil, nil }
-func (m *mockRepository) FindSubscriptionItemByMeterIDAt(ctx context.Context, db *gorm.DB, orgID, subscriptionID, meterID snowflake.ID, at time.Time) (*subscriptiondomain.SubscriptionItem, error) { return nil, nil }
-func (m *mockRepository) FindEntitlement(ctx context.Context, db *gorm.DB, subscriptionID snowflake.ID, meterID snowflake.ID, at time.Time) (*subscriptiondomain.SubscriptionEntitlement, error) { return nil, nil }
-
+func (m *mockRepository) List(ctx context.Context, db *gorm.DB, orgID snowflake.ID) ([]subscriptiondomain.Subscription, error) {
+	return nil, nil
+}
+func (m *mockRepository) FindActiveByCustomerID(ctx context.Context, db *gorm.DB, orgID, customerID snowflake.ID, statuses []subscriptiondomain.SubscriptionStatus) (*subscriptiondomain.Subscription, error) {
+	return nil, nil
+}
+func (m *mockRepository) FindActiveByCustomerIDAt(ctx context.Context, db *gorm.DB, orgID, customerID snowflake.ID, at time.Time) (*subscriptiondomain.Subscription, error) {
+	return nil, nil
+}
+func (m *mockRepository) FindSubscriptionItemByMeterCode(ctx context.Context, db *gorm.DB, orgID, subscriptionID snowflake.ID, meterCode string) (*subscriptiondomain.SubscriptionItem, error) {
+	return nil, nil
+}
+func (m *mockRepository) FindSubscriptionItemByMeterID(ctx context.Context, db *gorm.DB, orgID, subscriptionID, meterID snowflake.ID) (*subscriptiondomain.SubscriptionItem, error) {
+	return nil, nil
+}
+func (m *mockRepository) FindSubscriptionItemByMeterIDAt(ctx context.Context, db *gorm.DB, orgID, subscriptionID, meterID snowflake.ID, at time.Time) (*subscriptiondomain.SubscriptionItem, error) {
+	return nil, nil
+}
+func (m *mockRepository) FindEntitlement(ctx context.Context, db *gorm.DB, subscriptionID snowflake.ID, meterID snowflake.ID, at time.Time) (*subscriptiondomain.SubscriptionEntitlement, error) {
+	return nil, nil
+}
 
 // Helper to init DB
 func setupTestDB(t *testing.T) *gorm.DB {
@@ -147,8 +160,8 @@ func TestChangePlan(t *testing.T) {
 				ProductID:       oldProductID,
 				BillingInterval: pricedomain.Month,
 				Active:          true,
-                PricingModel:    pricedomain.Flat,
-                BillingMode:     pricedomain.Licensed,
+				PricingModel:    pricedomain.Flat,
+				BillingMode:     pricedomain.Licensed,
 			},
 			{
 				ID:              newPriceID,
@@ -156,13 +169,13 @@ func TestChangePlan(t *testing.T) {
 				ProductID:       newProductID,
 				BillingInterval: pricedomain.Month, // Same cycle for simplicity
 				Active:          true,
-                IsDefault:       true,
-                PricingModel:    pricedomain.Flat,
-                BillingMode:     pricedomain.Licensed,
+				IsDefault:       true,
+				PricingModel:    pricedomain.Flat,
+				BillingMode:     pricedomain.Licensed,
 			},
 		},
 	}
-	
+
 	pfRepo := &mockProductFeatureRepo{
 		features: []productfeaturedomain.FeatureAssignment{
 			{
@@ -185,8 +198,8 @@ func TestChangePlan(t *testing.T) {
 		Repo:               repo,
 		Pricesvc:           priceSvc,
 		ProductFeatureRepo: pfRepo,
-        // PriceAmountsvc needed for loadPriceAmount if pricing model not flat
-        PriceAmountsvc: &mockPriceAmountService{}, 
+		// PriceAmountsvc needed for loadPriceAmount if pricing model not flat
+		PriceAmountsvc: &mockPriceAmountService{},
 	})
 
 	// Create active subscription
@@ -213,9 +226,9 @@ func TestChangePlan(t *testing.T) {
 			EffectiveFrom:  now.Add(-24 * time.Hour),
 		},
 	})
-    
-    // Inject OrgID into context
-    ctx := orgcontext.WithOrgID(context.Background(), int64(orgID))
+
+	// Inject OrgID into context
+	ctx := orgcontext.WithOrgID(context.Background(), int64(orgID))
 
 	// Execute ChangePlan
 	req := subscriptiondomain.ChangePlanRequest{
@@ -259,10 +272,10 @@ func TestChangePlan(t *testing.T) {
 	}
 
 	// Verify Subscription PlanChangedAt by querying DB directly
-    var checkSub subscriptiondomain.Subscription
-    if err := db.Where("id = ?", subID).First(&checkSub).Error; err != nil {
-        t.Fatalf("Failed to retrieve subscription from DB: %v", err)
-    }
+	var checkSub subscriptiondomain.Subscription
+	if err := db.Where("id = ?", subID).First(&checkSub).Error; err != nil {
+		t.Fatalf("Failed to retrieve subscription from DB: %v", err)
+	}
 
 	if checkSub.PlanChangedAt == nil {
 		t.Error("PlanChangedAt should be set")
@@ -270,10 +283,18 @@ func TestChangePlan(t *testing.T) {
 }
 
 type mockClock struct{}
+
 func (m *mockClock) Now() time.Time { return time.Now().UTC() }
 
 // Mock PriceAmountService (minimal)
 type mockPriceAmountService struct{}
-func (m *mockPriceAmountService) Create(ctx context.Context, req priceamountdomain.CreateRequest) (*priceamountdomain.Response, error) { return &priceamountdomain.Response{}, nil }
-func (m *mockPriceAmountService) List(ctx context.Context, req priceamountdomain.ListPriceAmountRequest) ([]priceamountdomain.Response, error) { return nil, nil }
-func (m *mockPriceAmountService) Get(ctx context.Context, req priceamountdomain.GetPriceAmountByID) (*priceamountdomain.Response, error) { return nil, nil }
+
+func (m *mockPriceAmountService) Create(ctx context.Context, req priceamountdomain.CreateRequest) (*priceamountdomain.Response, error) {
+	return &priceamountdomain.Response{}, nil
+}
+func (m *mockPriceAmountService) List(ctx context.Context, req priceamountdomain.ListPriceAmountRequest) ([]priceamountdomain.Response, error) {
+	return nil, nil
+}
+func (m *mockPriceAmountService) Get(ctx context.Context, req priceamountdomain.GetPriceAmountByID) (*priceamountdomain.Response, error) {
+	return nil, nil
+}

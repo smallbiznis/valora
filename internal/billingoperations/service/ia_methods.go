@@ -340,17 +340,17 @@ func (s *Service) GetMyWork(ctx context.Context, userID string, req domain.MyWor
 		LIMIT ?`
 
 	type myWorkRow struct {
-		AssignmentID       string                 `gorm:"column:assignment_id"`
-		EntityType         string                 `gorm:"column:entity_type"`
-		EntityID           string                 `gorm:"column:entity_id"`
-		SnapshotMetadata   datatypes.JSON         `gorm:"column:snapshot_metadata"`
-		AssignedAt         time.Time              `gorm:"column:assigned_at"`
-		Status             string                 `gorm:"column:status"`
-		LastActionAt       sql.NullTime           `gorm:"column:last_action_at"`
-		EntityName         sql.NullString         `gorm:"column:entity_name"`
-		CurrentAmountDue   sql.NullInt64          `gorm:"column:current_amount_due"`
-		CurrentDaysOverdue sql.NullFloat64        `gorm:"column:current_days_overdue"`
-		TokenHash          sql.NullString         `gorm:"column:token_hash"`
+		AssignmentID       string          `gorm:"column:assignment_id"`
+		EntityType         string          `gorm:"column:entity_type"`
+		EntityID           string          `gorm:"column:entity_id"`
+		SnapshotMetadata   datatypes.JSON  `gorm:"column:snapshot_metadata"`
+		AssignedAt         time.Time       `gorm:"column:assigned_at"`
+		Status             string          `gorm:"column:status"`
+		LastActionAt       sql.NullTime    `gorm:"column:last_action_at"`
+		EntityName         sql.NullString  `gorm:"column:entity_name"`
+		CurrentAmountDue   sql.NullInt64   `gorm:"column:current_amount_due"`
+		CurrentDaysOverdue sql.NullFloat64 `gorm:"column:current_days_overdue"`
+		TokenHash          sql.NullString  `gorm:"column:token_hash"`
 	}
 
 	var rows []myWorkRow

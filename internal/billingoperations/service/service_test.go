@@ -46,7 +46,7 @@ func TestServiceReadAPI(t *testing.T) {
 	node, _ := snowflake.NewNode(1)
 	orgID := node.Generate()
 	userID := "user_svc_test"
-	
+
 	// Seed data
 	now := time.Now().UTC()
 	start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
@@ -58,7 +58,7 @@ func TestServiceReadAPI(t *testing.T) {
 	db.Exec(`INSERT INTO finops_performance_snapshots 
 		(id, org_id, user_id, period_type, period_start, period_end, scoring_version, metrics, scores, total_score, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		node.Generate().Int64(), orgID.Int64(), userID, domain.PeriodTypeDaily, start, end, 
+		node.Generate().Int64(), orgID.Int64(), userID, domain.PeriodTypeDaily, start, end,
 		domain.ScoringVersionV1EqualWeight, metricsJSON, scoresJSON, 80, now, now)
 
 	// Another user same org
@@ -68,16 +68,16 @@ func TestServiceReadAPI(t *testing.T) {
 	db.Exec(`INSERT INTO finops_performance_snapshots 
 		(id, org_id, user_id, period_type, period_start, period_end, scoring_version, metrics, scores, total_score, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		node.Generate().Int64(), orgID.Int64(), user2, domain.PeriodTypeDaily, start, end, 
+		node.Generate().Int64(), orgID.Int64(), user2, domain.PeriodTypeDaily, start, end,
 		domain.ScoringVersionV1EqualWeight, metricsJSON, scoresJSON90, 90, now, now)
-		
+
 	ctx := orgcontext.WithOrgID(context.Background(), orgID.Int64())
 
 	t.Run("GetMyPerformance", func(t *testing.T) {
 		req := domain.GetPerformanceRequest{
 			PeriodType: domain.PeriodTypeDaily,
 			From:       start,
-			To:         end.Add(24*time.Hour),
+			To:         end.Add(24 * time.Hour),
 			Limit:      10,
 		}
 		resp, err := svc.GetMyPerformance(ctx, userID, req)
@@ -90,17 +90,17 @@ func TestServiceReadAPI(t *testing.T) {
 		req := domain.GetPerformanceRequest{
 			PeriodType: domain.PeriodTypeDaily, // Though we are aggregating daily snapshots
 			From:       start,
-			To:         end.Add(24*time.Hour),
+			To:         end.Add(24 * time.Hour),
 		}
 		resp, err := svc.GetTeamPerformance(ctx, req)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, resp.TeamSize)
 		assert.Len(t, resp.Snapshots, 2)
-		
+
 		// Check aggregation logic
 		// user_svc_test: 1 snapshot, score 80
 		// user_svc_test_2: 1 snapshot, score 90
-		
+
 		for _, s := range resp.Snapshots {
 			if s.UserID == userID {
 				assert.Equal(t, 80, s.AvgScore)

@@ -25,21 +25,21 @@ func main() {
 		// Functional Domains
 		scheduler.Module,
 		migration.Module,
-		
+
 		// All other domain modules usually imported by specific apps
 		// We can mostly rely on server.Module importing them transitively or explicitly here
 		// but server.Module already imports MOST of them.
 		// Let's ensure we register ALL routes.
 
 		fx.Provide(server.NewEngine),
-		// NewServer is already provided by server.Module? 
-		// No, server.Module invokes NewServer? 
-		// Let's check server.go again. 
+		// NewServer is already provided by server.Module?
+		// No, server.Module invokes NewServer?
+		// Let's check server.go again.
 		// server.Module has fx.Invoke(NewServer), fx.Invoke(RunHTTP).
-		// Wait, server.Module DOES invoke NewServer. 
-		// But in apps/admin we had to Provide it? 
+		// Wait, server.Module DOES invoke NewServer.
+		// But in apps/admin we had to Provide it?
 		// In apps/admin we did: fx.Provide(server.NewEngine), fx.Provide(server.NewServer).
-		// In server.server.go, Module DOES NOT Provide NewServer, it Invokes it? 
+		// In server.server.go, Module DOES NOT Provide NewServer, it Invokes it?
 		// Let's check server.go code again in my mind...
 		// Lines 124-125: fx.Invoke(NewServer), fx.Invoke(RunHTTP).
 		// This means NewServer is treated as an invocation (side effect?) or maybe I misread.
@@ -48,7 +48,7 @@ func main() {
 		// In server.go:124 it says fx.Invoke(NewServer). This seems wrong if we want to use 's' in Invoke.
 		// But wait, existing code in server.go might have been: fx.Provide(NewServer).
 		// I will Assume server.Module needs to be "fixed" or I just Provide it here to be safe/override.
-		
+
 		// Let's use the pattern from apps/admin:
 		fx.Provide(server.NewEngine),
 		fx.Provide(server.NewServer),
@@ -56,18 +56,18 @@ func main() {
 		fx.Invoke(func(s *server.Server) {
 			// Register ALL the things
 			s.RegisterAPIRoutes()
-			s.RegisterAdminRoutes()     // Admin Dashboard API
-			s.RegisterPublicRoutes()    // Public Invoice API
+			s.RegisterAdminRoutes()  // Admin Dashboard API
+			s.RegisterPublicRoutes() // Public Invoice API
 			s.RegisterAuthRoutes()
-			
+
 			// UI Routes (Monolith primarily serves Admin UI)
-			s.RegisterUIRoutes() 
+			s.RegisterUIRoutes()
 			s.RegisterFallback()
 		}),
-		
+
 		// RunHTTP is invoked by server.Module or explicitly?
-		// server.Module has fx.Invoke(RunHTTP). 
-		// We can leave it or be explicit. 
+		// server.Module has fx.Invoke(RunHTTP).
+		// We can leave it or be explicit.
 		// To be safe, let's Suppress server.Module's autodrive if needed, or just let it run.
 		// But server.Module defines `fx.Invoke(RunHTTP)` at line 125.
 		// So it will run automatically.

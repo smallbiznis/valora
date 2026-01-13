@@ -9,7 +9,7 @@ type InboxRequest struct {
 }
 
 type InboxItem struct {
-	EntityType   string     `json:"entity_type"`   // "invoice" | "customer"
+	EntityType   string     `json:"entity_type"` // "invoice" | "customer"
 	EntityID     string     `json:"entity_id"`
 	EntityName   string     `json:"entity_name"`   // invoice_number or customer_name
 	RiskCategory string     `json:"risk_category"` // "overdue" | "failed_payment" | "high_exposure"
@@ -89,7 +89,7 @@ type TeamViewRequest struct{}
 type TeamMemberWorkload struct {
 	UserID             string `json:"user_id"`
 	ActiveAssignments  int    `json:"active_assignments"`
-	AvgAssignmentAge   string `json:"avg_assignment_age"`  // "1h 30m"
+	AvgAssignmentAge   string `json:"avg_assignment_age"` // "1h 30m"
 	TotalExposureOwned int64  `json:"total_exposure_owned"`
 	EscalationCount    int    `json:"escalation_count"`
 }

@@ -41,22 +41,22 @@ type Params struct {
 	AuthzSvc             authorization.Service
 	BillingOperationsSvc billingopsdomain.Service
 	RollupSvc            *rollup.Service `optional:"true"`
-	GenID           *snowflake.Node
-	Clock           clock.Clock
-	Config          Config `optional:"true"`
+	GenID                *snowflake.Node
+	Clock                clock.Clock
+	Config               Config `optional:"true"`
 }
 
 type Scheduler struct {
-	db              *gorm.DB
-	log             *zap.Logger
-	cfg             Config
-	genID           *snowflake.Node
-	clock           clock.Clock
-	ratingSvc       ratingdomain.Service
-	invoiceSvc      invoicedomain.Service
-	ledgerSvc       ledgerdomain.Service
-	subscriptionSvc subscriptiondomain.Service
-	auditSvc        auditdomain.Service
+	db                   *gorm.DB
+	log                  *zap.Logger
+	cfg                  Config
+	genID                *snowflake.Node
+	clock                clock.Clock
+	ratingSvc            ratingdomain.Service
+	invoiceSvc           invoicedomain.Service
+	ledgerSvc            ledgerdomain.Service
+	subscriptionSvc      subscriptiondomain.Service
+	auditSvc             auditdomain.Service
 	authzSvc             authorization.Service
 	billingOperationsSvc billingopsdomain.Service
 	rollupSvc            *rollup.Service
@@ -78,16 +78,16 @@ func New(p Params) (*Scheduler, error) {
 	}
 	cfg := p.Config.withDefaults()
 	return &Scheduler{
-		db:              p.DB,
-		log:             p.Log.Named("scheduler").With(zap.String("component", "scheduler")),
-		cfg:             cfg,
-		genID:           p.GenID,
-		clock:           p.Clock,
-		ratingSvc:       p.RatingSvc,
-		invoiceSvc:      p.InvoiceSvc,
-		ledgerSvc:       p.LedgerSvc,
-		subscriptionSvc: p.SubscriptionSvc,
-		auditSvc:        p.AuditSvc,
+		db:                   p.DB,
+		log:                  p.Log.Named("scheduler").With(zap.String("component", "scheduler")),
+		cfg:                  cfg,
+		genID:                p.GenID,
+		clock:                p.Clock,
+		ratingSvc:            p.RatingSvc,
+		invoiceSvc:           p.InvoiceSvc,
+		ledgerSvc:            p.LedgerSvc,
+		subscriptionSvc:      p.SubscriptionSvc,
+		auditSvc:             p.AuditSvc,
 		authzSvc:             p.AuthzSvc,
 		billingOperationsSvc: p.BillingOperationsSvc,
 		rollupSvc:            p.RollupSvc,

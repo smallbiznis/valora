@@ -46,7 +46,7 @@ func main() {
 		authorization.Module,
 		billingoperations.Module,
 		rollup.Module,
-		
+
 		// Transitive dependencies (invoice needs product/price etc)
 		product.Module,
 		productfeature.Module,

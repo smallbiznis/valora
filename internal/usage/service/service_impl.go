@@ -146,19 +146,19 @@ func (s *Service) Ingest(
 			// If feature not entitled, we must reject.
 			if errors.Is(err, subscriptiondomain.ErrFeatureNotEntitled) {
 				// Map to a new usage domain error or return explicitly
-				return nil, errors.New("usage_rejected_feature_not_entitled") 
+				return nil, errors.New("usage_rejected_feature_not_entitled")
 			}
-            // For other errors (db issues), return them? 
-            // Strict gating -> if we can't validate, we shouldn't accept.
+			// For other errors (db issues), return them?
+			// Strict gating -> if we can't validate, we shouldn't accept.
 			return nil, err
 		}
 	} else {
-        // Critical: If subSvc is missing, we cannot enforce gating.
-        return nil, errors.New("usage_ingestion_gating_unavailable")
-    }
+		// Critical: If subSvc is missing, we cannot enforce gating.
+		return nil, errors.New("usage_ingestion_gating_unavailable")
+	}
 
 	// idempotencyKey already normalized above
-	
+
 	record := &usagedomain.UsageEvent{
 		ID:             s.genID.Generate(),
 		OrgID:          orgID,

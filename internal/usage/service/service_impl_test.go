@@ -245,14 +245,27 @@ func (s *subscriptionStub) ValidateUsageEntitlement(ctx context.Context, subID, 
 	return nil
 }
 
-func (s *subscriptionStub) List(context.Context, subscriptiondomain.ListSubscriptionRequest) (subscriptiondomain.ListSubscriptionResponse, error) { return subscriptiondomain.ListSubscriptionResponse{}, nil }
-func (s *subscriptionStub) Create(context.Context, subscriptiondomain.CreateSubscriptionRequest) (subscriptiondomain.CreateSubscriptionResponse, error) { return subscriptiondomain.CreateSubscriptionResponse{}, nil }
-func (s *subscriptionStub) ReplaceItems(context.Context, subscriptiondomain.ReplaceSubscriptionItemsRequest) (subscriptiondomain.CreateSubscriptionResponse, error) { return subscriptiondomain.CreateSubscriptionResponse{}, nil }
-func (s *subscriptionStub) GetByID(context.Context, string) (subscriptiondomain.Subscription, error) { return subscriptiondomain.Subscription{}, nil }
-func (s *subscriptionStub) GetSubscriptionItem(context.Context, subscriptiondomain.GetSubscriptionItemRequest) (subscriptiondomain.SubscriptionItem, error) { return subscriptiondomain.SubscriptionItem{}, nil }
-func (s *subscriptionStub) TransitionSubscription(ctx context.Context, id string, status subscriptiondomain.SubscriptionStatus, reason subscriptiondomain.TransitionReason) error { return nil }
-func (s *subscriptionStub) ChangePlan(ctx context.Context, req subscriptiondomain.ChangePlanRequest) error { return nil }
-
+func (s *subscriptionStub) List(context.Context, subscriptiondomain.ListSubscriptionRequest) (subscriptiondomain.ListSubscriptionResponse, error) {
+	return subscriptiondomain.ListSubscriptionResponse{}, nil
+}
+func (s *subscriptionStub) Create(context.Context, subscriptiondomain.CreateSubscriptionRequest) (subscriptiondomain.CreateSubscriptionResponse, error) {
+	return subscriptiondomain.CreateSubscriptionResponse{}, nil
+}
+func (s *subscriptionStub) ReplaceItems(context.Context, subscriptiondomain.ReplaceSubscriptionItemsRequest) (subscriptiondomain.CreateSubscriptionResponse, error) {
+	return subscriptiondomain.CreateSubscriptionResponse{}, nil
+}
+func (s *subscriptionStub) GetByID(context.Context, string) (subscriptiondomain.Subscription, error) {
+	return subscriptiondomain.Subscription{}, nil
+}
+func (s *subscriptionStub) GetSubscriptionItem(context.Context, subscriptiondomain.GetSubscriptionItemRequest) (subscriptiondomain.SubscriptionItem, error) {
+	return subscriptiondomain.SubscriptionItem{}, nil
+}
+func (s *subscriptionStub) TransitionSubscription(ctx context.Context, id string, status subscriptiondomain.SubscriptionStatus, reason subscriptiondomain.TransitionReason) error {
+	return nil
+}
+func (s *subscriptionStub) ChangePlan(ctx context.Context, req subscriptiondomain.ChangePlanRequest) error {
+	return nil
+}
 
 func prepareUsageSchema(t *testing.T, db *gorm.DB) {
 	t.Helper()

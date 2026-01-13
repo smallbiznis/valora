@@ -22,14 +22,14 @@ func main() {
 		fx.Provide(RegisterSnowflake),
 		db.Module,
 		clock.Module,
-		
+
 		// Core dependencies for API
 		auth.Module,   // For API Key validation logic
 		apikey.Module, // For API Key domain
 		meter.Module,
 		usage.Module,
 		ratelimit.Module,
-		
+
 		fx.Provide(server.NewEngine),
 		fx.Provide(server.NewServer),
 		fx.Invoke(func(s *server.Server) {

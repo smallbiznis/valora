@@ -104,6 +104,7 @@ type InvoiceSequence struct {
 }
 
 func (InvoiceSequence) TableName() string { return "invoice_sequences" }
+
 type SubscriptionEntitlement struct {
 	ID             snowflake.ID
 	OrgID          snowflake.ID

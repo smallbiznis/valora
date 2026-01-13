@@ -60,7 +60,7 @@ func (m *mockLedgerSvc) CreateEntry(ctx context.Context, orgID snowflake.ID, sou
 
 func TestPostInvoiceToLedger_CorrectPostings(t *testing.T) {
 	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	
+
 	// Migrate tables
 	db.AutoMigrate(
 		&invoicedomain.Invoice{},
@@ -76,7 +76,7 @@ func TestPostInvoiceToLedger_CorrectPostings(t *testing.T) {
 
 	node, _ := snowflake.NewNode(1)
 	logger := zap.NewNop()
-	
+
 	svcInterface := NewService(ServiceParam{
 		DB:    db,
 		Log:   logger,
@@ -117,7 +117,7 @@ func TestPostInvoiceToLedger_CorrectPostings(t *testing.T) {
 	// Verify
 	var entry ledgerdomain.LedgerEntry
 	db.First(&entry, "source_id = ?", invoiceID)
-	
+
 	var lines []ledgerdomain.LedgerEntryLine
 	db.Find(&lines, "ledger_entry_id = ?", entry.ID)
 	assert.Len(t, lines, 3)
@@ -156,7 +156,6 @@ func TestPostInvoiceToLedger_CorrectPostings(t *testing.T) {
 	assert.Len(t, lines, 2)
 }
 
-
 func TestFinalizeInvoice_Idempotency(t *testing.T) {
 	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	db.AutoMigrate(&invoicedomain.Invoice{}, &ledgerdomain.LedgerEntry{}, &ledgerdomain.LedgerEntryLine{}, &ledgerdomain.LedgerAccount{})
@@ -177,7 +176,7 @@ func TestFinalizeInvoice_Idempotency(t *testing.T) {
 
 	orgID := node.Generate()
 	invoiceID := node.Generate()
-	
+
 	// Seed ledger accounts
 	assert.NoError(t, db.Create(&ledgerdomain.LedgerAccount{ID: node.Generate(), OrgID: orgID, Code: ledgerdomain.AccountCodeAccountsReceivable, Name: "AR", Type: ledgerdomain.Assets}).Error)
 	assert.NoError(t, db.Create(&ledgerdomain.LedgerAccount{ID: node.Generate(), OrgID: orgID, Code: ledgerdomain.AccountCodeRevenueUsage, Name: "Revenue", Type: ledgerdomain.Income}).Error)
@@ -196,7 +195,7 @@ func TestFinalizeInvoice_Idempotency(t *testing.T) {
 	// Call postInvoiceToLedger directly (internal method)
 	// Since it's internal we test it via a helper or by export in _test.go if needed.
 	// But we can just test if calling it again creates duplicates.
-	
+
 	err := db.Transaction(func(tx *gorm.DB) error {
 		return svc.postInvoiceToLedger(context.Background(), tx, invoice)
 	})
@@ -217,12 +216,12 @@ func TestFinalizeInvoice_Idempotency(t *testing.T) {
 func TestFinalizeInvoice_Idempotency_NoOp(t *testing.T) {
 	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	db.AutoMigrate(&invoicedomain.Invoice{}, &ledgerdomain.LedgerEntry{}, &ledgerdomain.LedgerAccount{})
-	
+
 	node, _ := snowflake.NewNode(1)
 	svcInterface := NewService(ServiceParam{
-		DB:             db,
-		Log:            zap.NewNop(),
-		GenID:          node,
+		DB:    db,
+		Log:   zap.NewNop(),
+		GenID: node,
 		// Mocks shouldn't be called if No-Op works
 		TaxResolver:    new(mockTaxResolver),
 		Renderer:       new(mockRenderer),
@@ -233,7 +232,7 @@ func TestFinalizeInvoice_Idempotency_NoOp(t *testing.T) {
 
 	orgID := node.Generate()
 	invoiceID := node.Generate()
-	
+
 	// Create an already FINALIZED invoice
 	invoice := &invoicedomain.Invoice{
 		ID:             invoiceID,
@@ -257,7 +256,5 @@ func TestFinalizeInvoice_Idempotency_NoOp(t *testing.T) {
 	assert.Equal(t, invoicedomain.InvoiceStatusFinalized, reloaded.Status)
 }
 
-func float64Ptr(f float64) *float64 { return &f }
+func float64Ptr(f float64) *float64  { return &f }
 func timePtr(t time.Time) *time.Time { return &t }
-
-
