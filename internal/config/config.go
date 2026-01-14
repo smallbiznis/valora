@@ -12,7 +12,7 @@ import (
 
 // Config holds application configuration.
 var (
-	DefaultAppVersion            = "0.1.0"
+	DefaultAppVersion            = "1.0.0"
 	DefaultCloudMetricsEndpoint  = ""
 	DefaultCloudMetricsAuthToken = ""
 )

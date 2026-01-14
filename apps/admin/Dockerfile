@@ -12,7 +12,7 @@ FROM golang:1.25-alpine AS backend-builder
 WORKDIR /app
 
 # Build arguments
-ARG VERSION="0.1.0"
+ARG VERSION="1.0.0"
 ARG CLOUD_METRICS_ENDPOINT=""
 ARG CLOUD_METRICS_AUTH_TOKEN=""
 
