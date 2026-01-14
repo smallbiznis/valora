@@ -479,9 +479,9 @@ func (s *Server) RegisterAdminRoutes() {
 	admin.GET("/price_tiers/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.GetPriceTierByID)
 
 	// -------- Subscriptions --------
-	admin.GET("/subscriptions", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ListSubscriptions)
+	admin.GET("/subscriptions", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin, organizationdomain.RoleFinOps), s.ListSubscriptions)
 	admin.POST("/subscriptions", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.CreateSubscription)
-	admin.GET("/subscriptions/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.GetSubscriptionByID)
+	admin.GET("/subscriptions/:id", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin, organizationdomain.RoleFinOps), s.GetSubscriptionByID)
 	admin.PUT("/subscriptions/:id/items", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.ReplaceSubscriptionItems)
 	admin.POST("/subscriptions/:id/activate", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionActivate), s.ActivateSubscription)
 	admin.POST("/subscriptions/:id/pause", s.RequireRole(organizationdomain.RoleOwner, organizationdomain.RoleAdmin), s.authorizeOrgAction(authorization.ObjectSubscription, authorization.ActionSubscriptionPause), s.PauseSubscription)
