@@ -191,7 +191,11 @@ func (s *Service) ListBillingActivity(ctx context.Context, limit int) (billingda
 		return billingdashboard.BillingActivityResponse{}, err
 	}
 
-	loc, _ := time.LoadLocation("Asia/Jakarta") // change based on org location/customer
+	loc, err := time.LoadLocation("Asia/Jakarta") // change based on org location/customer
+	if err != nil {
+		// Fallback to UTC if timezone loading fails
+		loc = time.UTC
+	}
 	now := s.clock.Now().In(loc)
 	today := truncateToDate(now)
 	yesterday := today.AddDate(0, 0, -1)
