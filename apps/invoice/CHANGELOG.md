@@ -1,5 +1,11 @@
 # @railzway/invoice
 
+## 1.1.1
+
+### Patch Changes
+
+- a1ba20a: fix: add missing database migration for adyen/braintree and fix frontend build dependency
+
 ## 1.1.0
 
 ### Minor Changes
