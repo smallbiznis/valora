@@ -3,6 +3,7 @@
 **Railzway** is a **deterministic billing computation engine** for modern SaaS and platform products.
 
 ![Release CI](https://github.com/smallbiznis/railzway/actions/workflows/github-release.yml/badge.svg)
+[![Docker Release](https://github.com/smallbiznis/railzway/actions/workflows/docker-release.yml/badge.svg)](https://github.com/smallbiznis/railzway/actions/workflows/docker-release.yml)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-orange.svg)
 ![Release](https://img.shields.io/github/v/release/smallbiznis/railzway)
 ![Go Version](https://img.shields.io/badge/go-1.23+-00ADD8?logo=go)
