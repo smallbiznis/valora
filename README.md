@@ -74,10 +74,9 @@ To preserve correctness and clarity, the following are **intentionally out of sc
 
 #### Payment Execution
 
-- No credit card processing, bank transfers, or settlement
-- No payment gateway integrations (Stripe, PayPal, etc.)
-- Determines *what* to bill, not *how* to collect payment
-- *Post-v1.0*: payment adapter interface
+- No credit card processing (except via Stripe adapter)
+- Supports **Stripe** for payment collection
+- *Post-v1.0*: additional payment adapter interfaces
 
 #### Merchant of Record & Compliance
 
@@ -126,7 +125,7 @@ To preserve correctness and clarity, the following are **intentionally out of sc
 
 #### Complex Proration Models
 
-- Day-based proration only
+- Second-based precision proration
 - Boundary rule: `[start inclusive, end exclusive]`
 - *Post-v1.0*: configurable proration strategies
 
