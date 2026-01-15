@@ -15,7 +15,7 @@ import (
 // @Produce      json
 // @Security     ApiKeyAuth
 // @Param        request body usagedomain.CreateIngestRequest true "Ingest Usage Request"
-// @Success      200  {object}  usagedomain.Usage
+// @Success      200  {object}  usagedomain.UsageEvent
 // @Router       /usage [post]
 func (s *Server) IngestUsage(c *gin.Context) {
 
