@@ -5,7 +5,11 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	referencedomain "github.com/smallbiznis/railzway/internal/reference/domain"
 )
+
+// Prevent unused import removal
+var _ = referencedomain.Country{}
 
 // @Summary      List Countries
 // @Description  List available countries

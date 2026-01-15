@@ -15,7 +15,7 @@ import (
 // @Produce      json
 // @Security     ApiKeyAuth
 // @Param        request body pricedomain.CreateRequest true "Create Pricing Request"
-// @Success      200  {object}  pricedomain.Pricing
+// @Success      200  {object}  pricedomain.Response
 // @Router       /pricings [post]
 func (s *Server) CreatePricing(c *gin.Context) {
 	var req pricedomain.CreateRequest
@@ -43,7 +43,7 @@ func (s *Server) CreatePricing(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     ApiKeyAuth
-// @Success      200  {object}  []pricedomain.Pricing
+// @Success      200  {object}  []pricedomain.Response
 // @Router       /pricings [get]
 func (s *Server) ListPricings(c *gin.Context) {
 	resp, err := s.priceSvc.List(c.Request.Context())
@@ -62,7 +62,7 @@ func (s *Server) ListPricings(c *gin.Context) {
 // @Produce      json
 // @Security     ApiKeyAuth
 // @Param        id   path      string  true  "Pricing ID"
-// @Success      200  {object}  pricedomain.Pricing
+// @Success      200  {object}  pricedomain.Response
 // @Router       /pricings/{id} [get]
 func (s *Server) GetPricingByID(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))

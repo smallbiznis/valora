@@ -171,7 +171,7 @@ func (s *Server) GetInvoiceByID(c *gin.Context) {
 // @Produce      json
 // @Security     ApiKeyAuth
 // @Param        id   path      string  true  "Invoice ID"
-// @Success      200  {object}  invoicedomain.InvoiceRender
+// @Success      200  {object}  invoicedomain.RenderInvoiceResponse
 // @Router       /invoices/{id}/render [get]
 func (s *Server) RenderInvoice(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
