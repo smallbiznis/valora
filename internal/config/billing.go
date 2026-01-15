@@ -36,8 +36,9 @@ func NewBillingConfigHolder() (*BillingConfigHolder, error) {
 
 	v.SetConfigName("billing")
 	v.SetConfigType("yml")
-	v.AddConfigPath(".")
-	v.AddConfigPath("/etc/railzway")
+	v.AddConfigPath("/var/lib/railzway/config") // Volume-mounted config
+	v.AddConfigPath("/etc/railzway")            // System config
+	v.AddConfigPath(".")                        // Current directory (dev mode)
 
 	// env hanya untuk path override (optional)
 	v.SetEnvPrefix("RAILZWAY")

@@ -42,10 +42,16 @@ COPY --from=backend-builder /app/admin-service .
 # Copy static assets from frontend builder
 COPY --from=frontend-builder /app/dist ./public
 
+# Create volume mount points
+RUN mkdir -p /var/lib/railzway/config
+
 # Configuration
 ENV PORT=8080
 ENV STATIC_DIR=./public
 ENV GIN_MODE=release
+
+# Declare volumes
+VOLUME ["/var/lib/railzway"]
 
 EXPOSE 8080
 

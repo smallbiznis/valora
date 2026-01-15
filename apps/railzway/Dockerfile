@@ -49,10 +49,16 @@ COPY --from=backend-builder /app/railzway .
 # Copy UI assets (Admin Dashboard)
 COPY --from=frontend-builder /app/dist ./public
 
+# Create volume mount points for persistent data
+RUN mkdir -p /var/lib/railzway/config
+
 # Config
 ENV PORT=8080
 ENV STATIC_DIR=./public
 ENV GIN_MODE=release
+
+# Declare volumes for persistent storage
+VOLUME ["/var/lib/railzway"]
 
 EXPOSE 8080
 CMD ["./railzway"]
