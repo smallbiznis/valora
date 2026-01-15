@@ -46,6 +46,12 @@ Railzway is a **billing computation engine**, not an all-in-one billing platform
 - **Multi-Tenancy**Organization-scoped isolation and authorization
 - **Audit Trail**
   Immutable event log for all billing state changes
+- **Payment Integrations**
+  Built-in adapter for Stripe and extensible provider interface
+- **Taxation**
+  Configurable tax behavior (inclusive/exclusive) and basic rate application
+- **Entitlements**
+  Billing-driven feature provisioning and sync capabilities
 
 ---
 
@@ -74,15 +80,15 @@ To preserve correctness and clarity, the following are **intentionally out of sc
 
 #### Payment Execution
 
-- No credit card processing (except via Stripe adapter)
-- Supports **Stripe** for payment collection
+- No native credit card processing (delegates to adapters)
+- **Stripe Adapter** included for payment collection
 - *Post-v1.0*: additional payment adapter interfaces
 
 #### Merchant of Record & Compliance
 
-- No tax calculation (VAT, GST, sales tax)
+- No automated jurisdictional tax calculation (e.g. Avalara/Vertex)
 - No PCI-DSS, PSD2, or regulatory automation
-- Tax amounts may be stored as external line items
+- Tax amounts stored as line items (basic rate calculation supported)
 - *Post-v1.0*: tax metadata structure
 
 #### Dunning & Collections
