@@ -30,9 +30,15 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/scheduler .
 
+# Create volume mount points
+RUN mkdir -p /var/lib/railzway/config
+
 # Configuration
 ENV ENABLED_JOBS=""
 ENV PORT=8080
+
+# Declare volumes
+VOLUME ["/var/lib/railzway"]
 
 EXPOSE 8080
 

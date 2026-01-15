@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"log"
 	"os"
 	"strconv"
@@ -301,24 +303,35 @@ func clampInt(value, min, max int) int {
 }
 
 func loadOrCreateInstanceID() string {
+	// Priority 1: Explicit env var (user-controlled)
 	id := strings.TrimSpace(os.Getenv("RAILZWAY_INSTANCE_ID"))
 	if id != "" {
 		return id
 	}
 
-	filename := ".instance_id"
+	// Priority 2: Read from persistent storage
+	filename := "/var/lib/railzway/.instance_id"
 	data, err := os.ReadFile(filename)
 	if err == nil {
 		return strings.TrimSpace(string(data))
 	}
 
-	// Generate new ID
-	newID := "inst_" + strings.ReplaceAll(os.Getenv("HOSTNAME"), " ", "")
-	if newID == "inst_" {
+	// Priority 3: Generate anonymous ID from hostname hash (privacy-safe)
+	hostname := os.Getenv("HOSTNAME")
+	var newID string
+	if hostname != "" {
+		// Hash hostname to ensure privacy (cannot be reversed)
+		hash := sha256.Sum256([]byte(hostname))
+		newID = "inst_" + hex.EncodeToString(hash[:8]) // First 16 hex chars (8 bytes)
+	} else {
+		// Fallback: Generate random anonymous ID
 		newID = "inst_anon_" + strconv.FormatInt(time.Now().UnixNano(), 36)
 	}
 
+	// Try to persist for future restarts
+	_ = os.MkdirAll("/var/lib/railzway", 0755)
 	_ = os.WriteFile(filename, []byte(newID), 0644)
+	
 	return newID
 }
 

@@ -30,9 +30,15 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/api-service .
 
+# Create volume mount points
+RUN mkdir -p /var/lib/railzway/config
+
 # Configuration
 ENV PORT=8080
 ENV GIN_MODE=release
+
+# Declare volumes
+VOLUME ["/var/lib/railzway"]
 
 EXPOSE 8080
 

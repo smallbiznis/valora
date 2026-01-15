@@ -177,6 +177,111 @@ Railzway makes minimal assumptions about the runtime environment.
 
 ---
 
+## Persistent Storage (Volumes)
+
+Railzway uses `/var/lib/railzway` for persistent data storage. This directory should be mounted as a volume in production deployments.
+
+### Volume Structure
+
+```
+/var/lib/railzway/
+├── .instance_id              # Anonymous instance ID for telemetry
+└── config/
+    └── billing.yml           # Billing configuration (hot-reloadable)
+```
+
+### Docker Volume Mounting
+
+**Docker Run:**
+```bash
+docker run -d \
+  -v railzway-data:/var/lib/railzway \
+  -p 8080:8080 \
+  ghcr.io/smallbiznis/railzway:latest
+```
+
+**Docker Compose:**
+```yaml
+services:
+  railzway:
+    image: ghcr.io/smallbiznis/railzway:latest
+    volumes:
+      - railzway-data:/var/lib/railzway
+      # Optional: Mount custom billing config
+      - ./billing.yml:/var/lib/railzway/config/billing.yml:ro
+    ports:
+      - "8080:8080"
+
+volumes:
+  railzway-data:
+```
+
+**Kubernetes:**
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: railzway-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: railzway
+spec:
+  template:
+    spec:
+      containers:
+      - name: railzway
+        image: ghcr.io/smallbiznis/railzway:latest
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/railzway
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: railzway-data
+```
+
+### Custom Billing Configuration
+
+Create a `billing.yml` file to customize aging buckets and risk levels:
+
+```yaml
+billing:
+  agingBuckets:
+    - label: "0-30"
+      minDays: 0
+      maxDays: 30
+    - label: "31-60"
+      minDays: 31
+      maxDays: 60
+    - label: "60+"
+      minDays: 61
+      maxDays: null
+  riskLevels:
+    - level: "high"
+      minOutstanding: 1000000  # $10,000 in cents
+      minDays: 60
+    - level: "medium"
+      minOutstanding: 250000   # $2,500 in cents
+      minDays: 31
+    - level: "low"
+      minOutstanding: 0
+      minDays: 0
+```
+
+See `billing.yml.example` for a complete reference.
+
+**Hot Reload:** Changes to `billing.yml` are automatically detected and applied without restart.
+
+---
+
 ## Who Railzway Is For
 
 Railzway is designed for teams that:

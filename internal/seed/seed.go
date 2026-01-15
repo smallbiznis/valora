@@ -18,9 +18,9 @@ import (
 const (
 	defaultOrgName       = "Main"
 	defaultOrgSlug       = "main"
-	defaultAdminEmail    = "admin@valora.cloud"
+	defaultAdminEmail    = "admin@railzway.com"
 	defaultAdminPassword = "admin"
-	defaultAdminDisplay  = "Valora Admin"
+	defaultAdminDisplay  = "Railzway Admin"
 )
 
 // EnsureMainOrg seeds the default organization for startup bootstrap.
