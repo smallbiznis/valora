@@ -199,6 +199,36 @@ export default function OrgSubscriptionCreatePage() {
     }
   }, [billingCycleType, cycleOptions])
 
+  // Auto-select meter if only one option exists for the selected price
+  useEffect(() => {
+    setItems((prevItems) => {
+      let hasChanges = false
+      const nextItems = prevItems.map((item) => {
+        if (!item.priceId || item.meterId) return item
+
+        const price = priceLookup.get(item.priceId)
+        if (!price || price.pricing_model === "FLAT") return item
+
+        // Check if amounts are loaded
+        const amounts = priceAmountsByPrice[item.priceId]
+        if (!amounts) return item
+
+        // Get options
+        const uniqueMeters = new Set<string>()
+        amounts.forEach((a) => {
+          if (a.meter_id) uniqueMeters.add(a.meter_id)
+        })
+
+        if (uniqueMeters.size === 1) {
+          hasChanges = true
+          return { ...item, meterId: Array.from(uniqueMeters)[0] }
+        }
+        return item
+      })
+      return hasChanges ? nextItems : prevItems
+    })
+  }, [priceAmountsByPrice, priceLookup])
+
   useEffect(() => {
     if (!orgId) {
       setCustomers([])
@@ -367,9 +397,21 @@ export default function OrgSubscriptionCreatePage() {
   }
 
   const handlePriceChange = (itemId: string, nextPriceId: string) => {
+    // For FLAT pricing, clear the meterId immediately.
+    // For usage pricing, we'll try to auto-select if there's only one option
+    // but we can't do that synchronously easily unless we already have the price amounts loaded.
+    // Since loadPriceAmounts is async, we can't guarantee options are ready.
+    // However, if we've already loaded them (cached), we could.
+    // For now, let's just clear usage meterId to force selection, unless we want to be smarter.
     setItems((prev) =>
       prev.map((item) =>
-        item.id === itemId ? { ...item, priceId: nextPriceId, meterId: "" } : item
+        item.id === itemId
+          ? {
+            ...item,
+            priceId: nextPriceId,
+            meterId: "", // Always reset meter when price changes
+          }
+          : item
       )
     )
     if (nextPriceId) {
@@ -441,15 +483,26 @@ export default function OrgSubscriptionCreatePage() {
       }
     })
 
-    if (normalizedItems.some((item) => !item.price_id || !item.meter_id)) {
-      setError("Each line item needs a price and meter.")
+    if (
+      normalizedItems.some((item) => {
+        const price = priceLookup.get(item.price_id)
+        if (!price) return true
+        // FLAT prices don't need a meter
+        if (price.pricing_model === "FLAT") return false
+        // Others need a meter
+        return !item.meter_id
+      })
+    ) {
+      setError("Each usage-based line item needs a meter.")
       return
     }
 
     if (
-      normalizedItems.some(
-        (item) => getMeterOptions(item.price_id).length === 0
-      )
+      normalizedItems.some((item) => {
+        const price = priceLookup.get(item.price_id)
+        if (!price || price.pricing_model === "FLAT") return false
+        return getMeterOptions(item.price_id).length === 0
+      })
     ) {
       setError("One or more prices have no meters configured.")
       return
@@ -622,10 +675,29 @@ export default function OrgSubscriptionCreatePage() {
                       : ""
                     const isLoadingMeters =
                       item.priceId && priceAmountsLoading[item.priceId]
+
+                    // Only show meter error if price is NOT FLAT
+                    const isFlat = price?.pricing_model === "FLAT"
                     const meterError =
-                      item.priceId && !isLoadingMeters && meterOptions.length === 0
+                      !isFlat && item.priceId && !isLoadingMeters && meterOptions.length === 0
                         ? "No meters available for this price."
                         : ""
+
+                    // Helper to get display price
+                    const getDisplayPrice = () => {
+                      if (!item.priceId || !priceAmountsByPrice[item.priceId]) return null
+                      const amounts = priceAmountsByPrice[item.priceId]
+                      if (amounts.length === 0) return null
+                      // Should we show range or just the first one? 
+                      // For FLAT there is usually one.
+                      // For USAGE there might be multiple rates but usually we want to show something indicative.
+                      const amt = amounts[0]
+                      const formatter = new Intl.NumberFormat("en-US", {
+                        style: "currency",
+                        currency: amt.currency,
+                      })
+                      return formatter.format(amt.unit_amount_cents / 100)
+                    }
 
                     return (
                       <TableRow key={item.id}>
@@ -662,56 +734,94 @@ export default function OrgSubscriptionCreatePage() {
                               </SelectContent>
                             </Select>
                             {price && (
-                              <div className="text-xs text-text-muted">
-                                {price.pricing_model} · {price.billing_mode}
+                              <div className="flex items-center justify-between text-xs text-text-muted">
+                                <span>{price.pricing_model} · {price.billing_mode}</span>
+                                {getDisplayPrice() && (
+                                  <span className="font-medium text-text-primary">
+                                    {getDisplayPrice()}
+                                  </span>
+                                )}
                               </div>
                             )}
                           </div>
                         </TableCell>
                         <TableCell className="min-w-[220px] align-top">
                           <div className="space-y-1">
-                            <Select
-                              value={item.meterId}
-                              onValueChange={(value) => handleMeterChange(item.id, value)}
-                              disabled={!item.priceId || Boolean(isLoadingMeters)}
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue
-                                  placeholder={
-                                    !item.priceId
-                                      ? "Select a price first"
-                                      : isLoadingMeters
-                                        ? "Loading meters..."
-                                        : "Select a meter"
-                                  }
-                                />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {!item.priceId && (
-                                  <SelectItem value="empty" disabled>
-                                    Select a price first
-                                  </SelectItem>
-                                )}
-                                {isLoadingMeters && (
-                                  <SelectItem value="loading" disabled>
-                                    Loading meters...
-                                  </SelectItem>
-                                )}
-                                {!isLoadingMeters &&
-                                  item.priceId &&
-                                  meterOptions.length === 0 && (
-                                    <SelectItem value="empty" disabled>
-                                      No meters configured
-                                    </SelectItem>
-                                  )}
-                                {!isLoadingMeters &&
-                                  meterOptions.map((meterId) => (
-                                    <SelectItem key={meterId} value={meterId}>
-                                      {formatMeterLabel(meterLookup.get(meterId), meterId)}
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
+                            {(() => {
+                              const price = item.priceId ? priceLookup.get(item.priceId) : undefined
+                              const isFlat = price?.pricing_model === "FLAT"
+                              // price.pricing_model for usage is usually PER_UNIT or USAGE_BASED depending on type defs
+
+                              const hasSingleMeter = item.priceId &&
+                                getMeterOptions(item.priceId).length === 1 &&
+                                !isLoadingMeters
+
+                              if (isFlat) {
+                                return (
+                                  <div className="flex h-10 items-center text-sm text-text-muted">
+                                    —
+                                  </div>
+                                )
+                              }
+
+                              if (price && hasSingleMeter && item.meterId) {
+                                // Hidden if auto-selected and single option, 
+                                // just show the meter name or nothing? 
+                                // User said "field meter tidak perlu ada".
+                                // Let's show the meter name as text for confirmation, effectively "removing" the field input.
+                                const meter = meterLookup.get(item.meterId)
+                                return (
+                                  <div className="flex h-10 items-center text-sm text-text-primary">
+                                    {meter ? meter.name : item.meterId}
+                                  </div>
+                                )
+                              }
+
+                              return (
+                                <Select
+                                  value={item.meterId}
+                                  onValueChange={(value) => handleMeterChange(item.id, value)}
+                                  disabled={!item.priceId || Boolean(isLoadingMeters)}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue
+                                      placeholder={
+                                        !item.priceId
+                                          ? "Select a price first"
+                                          : isLoadingMeters
+                                            ? "Loading meters..."
+                                            : "Select a meter"
+                                      }
+                                    />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {!item.priceId && (
+                                      <SelectItem value="empty" disabled>
+                                        Select a price first
+                                      </SelectItem>
+                                    )}
+                                    {isLoadingMeters && (
+                                      <SelectItem value="loading" disabled>
+                                        Loading meters...
+                                      </SelectItem>
+                                    )}
+                                    {!isLoadingMeters &&
+                                      item.priceId &&
+                                      meterOptions.length === 0 && (
+                                        <SelectItem value="empty" disabled>
+                                          No meters configured
+                                        </SelectItem>
+                                      )}
+                                    {!isLoadingMeters &&
+                                      meterOptions.map((meterId) => (
+                                        <SelectItem key={meterId} value={meterId}>
+                                          {formatMeterLabel(meterLookup.get(meterId), meterId)}
+                                        </SelectItem>
+                                      ))}
+                                  </SelectContent>
+                                </Select>
+                              )
+                            })()}
                             {priceAmountError && (
                               <p className="text-status-error text-xs">
                                 {priceAmountError}
