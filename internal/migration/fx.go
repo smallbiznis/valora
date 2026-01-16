@@ -13,9 +13,11 @@ var Module = fx.Module("migrations",
 		if err != nil {
 			return err
 		}
+
 		if err := RunMigrations(sqlDB); err != nil {
 			return err
 		}
+
 		if err := seed.EnsureMainOrg(conn); err != nil {
 			return err
 		}

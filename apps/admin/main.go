@@ -22,6 +22,7 @@ import (
 	"github.com/smallbiznis/railzway/internal/invoicetemplate"
 	"github.com/smallbiznis/railzway/internal/ledger"
 	"github.com/smallbiznis/railzway/internal/meter"
+	"github.com/smallbiznis/railzway/internal/migration"
 	"github.com/smallbiznis/railzway/internal/observability"
 	"github.com/smallbiznis/railzway/internal/organization"
 	"github.com/smallbiznis/railzway/internal/payment"
@@ -46,6 +47,7 @@ import (
 func main() {
 	app := fx.New(
 		config.Module,
+		migration.Module,
 		cloudmetrics.Module,
 		observability.Module,
 		fx.Provide(RegisterSnowflake),
@@ -95,6 +97,7 @@ func main() {
 			s.RegisterFallback()
 		}),
 		fx.Invoke(server.RunHTTP),
+
 	)
 	app.Run()
 }
