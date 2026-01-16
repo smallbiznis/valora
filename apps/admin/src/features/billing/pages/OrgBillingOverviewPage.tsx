@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, XAxis, YAxis } from "recharts"
 import type { DateRange } from "react-day-picker"
 
 import { admin } from "@/api/client"
@@ -94,16 +94,7 @@ const granularityOptions = [
   { value: "month", label: "Monthly" },
 ]
 
-const mrrChartConfig = {
-  current: {
-    label: "MRR",
-    color: "hsl(var(--accent-primary))",
-  },
-  previous: {
-    label: "Previous",
-    color: "hsl(var(--border-strong))",
-  },
-} satisfies ChartConfig
+
 
 const revenueChartConfig = {
   current: {
@@ -372,21 +363,12 @@ export default function OrgBillingOverviewPage() {
     }
   }, [queryParams])
 
-  const mrrSeries = mrr?.series ?? []
   const revenueSeries = revenue?.series ?? []
   const subscriberSeries = subscribers?.series ?? []
-  const mrrCompare = compare ? mrr?.compare_series ?? [] : []
   const revenueCompare = compare ? revenue?.compare_series ?? [] : []
   const subscriberCompare = compare ? subscribers?.compare_series ?? [] : []
 
-  const mrrChartData = useMemo(() => {
-    if (!mrrSeries.length) return []
-    return mrrSeries.map((point, index) => ({
-      period: point.period,
-      current: point.value,
-      previous: mrrCompare[index]?.value ?? null,
-    }))
-  }, [mrrSeries, mrrCompare])
+
 
   const revenueChartData = useMemo(() => {
     if (!revenueSeries.length) return []
@@ -635,77 +617,7 @@ export default function OrgBillingOverviewPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle>MRR over time</CardTitle>
-            <CardDescription>Recurring revenue snapshot by period.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-[260px] w-full" />
-            ) : mrr?.has_data ? (
-              <ChartContainer config={mrrChartConfig} className="h-[260px] w-full">
-                <LineChart data={mrrChartData}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="period"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    tickFormatter={(value) => formatAxisLabel(value, granularity)}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => formatCurrencyCompact(value, mrr?.currency ?? "USD")}
-                    width={72}
-                  />
-                  <ChartTooltip
-                    cursor={false}
-                    content={
-                      <ChartTooltipContent
-                        indicator="line"
-                        labelFormatter={(value) => formatAxisLabel(value as string, granularity)}
-                        formatter={(value, name) => {
-                          const label = name === "previous" ? "Previous" : "Current"
-                          return (
-                            <div className="flex w-full items-center justify-between gap-3">
-                              <span className="text-text-muted">{label}</span>
-                              <span className="font-medium">
-                                {formatCurrency(value as number, mrr?.currency ?? "USD")}
-                              </span>
-                            </div>
-                          )
-                        }}
-                      />
-                    }
-                  />
-                  <Line
-                    dataKey="current"
-                    type="monotone"
-                    stroke="var(--color-current)"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                  {compare && (
-                    <Line
-                      dataKey="previous"
-                      type="monotone"
-                      stroke="var(--color-previous)"
-                      strokeWidth={2}
-                      strokeDasharray="4 4"
-                      dot={false}
-                    />
-                  )}
-                </LineChart>
-              </ChartContainer>
-            ) : (
-              <div className="flex h-[260px] items-center justify-center text-sm text-text-muted">
-                No data
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
 
         <Card className="h-full">
           <CardHeader>
