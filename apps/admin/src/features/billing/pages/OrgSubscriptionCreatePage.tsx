@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, Info } from "lucide-react"
 
 import { admin } from "@/api/client"
 import { ForbiddenState } from "@/components/forbidden-state"
@@ -30,6 +30,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
 import { canManageBilling } from "@/lib/roles"
 import { useOrgStore } from "@/stores/orgStore"
@@ -660,9 +666,9 @@ export default function OrgSubscriptionCreatePage() {
               <Table className="min-w-[780px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Meter</TableHead>
-                    <TableHead className="w-[120px]">Quantity</TableHead>
+                    <TableHead>Billing Item</TableHead>
+                    <TableHead>Usage Metric</TableHead>
+                    <TableHead className="w-[120px]">Seats / Units</TableHead>
                     <TableHead className="w-[80px]" />
                   </TableRow>
                 </TableHeader>
@@ -722,7 +728,7 @@ export default function OrgSubscriptionCreatePage() {
                               <SelectTrigger className="w-full">
                                 <SelectValue
                                   placeholder={
-                                    pricesLoading ? "Loading prices..." : "Select a price"
+                                    pricesLoading ? "Loading prices..." : "Choose billing item"
                                   }
                                 />
                               </SelectTrigger>
@@ -737,6 +743,11 @@ export default function OrgSubscriptionCreatePage() {
                                     No prices for this billing cycle
                                   </SelectItem>
                                 )}
+                                {!pricesLoading && availablePrices.length === 0 && filteredPrices.length > 0 && (
+                                  <SelectItem value="all-selected" disabled>
+                                    Each billing item can only be added once
+                                  </SelectItem>
+                                )}
                                 {availablePrices.map((priceItem) => (
                                   <SelectItem key={priceItem.id} value={priceItem.id}>
                                     {formatPriceLabel(priceItem)}
@@ -744,14 +755,45 @@ export default function OrgSubscriptionCreatePage() {
                                 ))}
                               </SelectContent>
                             </Select>
+                            {!price && (
+                              <p className="text-[10px] text-text-muted">
+                                Choose what will be billed as part of this subscription.
+                              </p>
+                            )}
                             {price && (
-                              <div className="flex items-center justify-between text-xs text-text-muted">
-                                <span>{price.pricing_model} · {price.billing_mode}</span>
-                                {getDisplayPrice() && (
-                                  <span className="font-medium text-text-primary">
-                                    {getDisplayPrice()}
-                                  </span>
-                                )}
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center justify-between text-xs text-text-muted">
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-1 cursor-help underline decoration-dotted decoration-border-muted/50 underline-offset-2">
+                                          <span>
+                                            {price.pricing_model === "FLAT"
+                                              ? "Fixed recurring fee"
+                                              : "Usage-based billing"}
+                                          </span>
+                                          <Info className="h-3 w-3 opacity-70" />
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        {price.pricing_model === "FLAT"
+                                          ? "This item contributes to MRR."
+                                          : "Usage-based charges do not affect MRR."}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+
+                                  {getDisplayPrice() && (
+                                    <span className="font-medium text-text-primary">
+                                      {getDisplayPrice()}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-text-muted/80">
+                                  {price.pricing_model === "FLAT"
+                                    ? "Charged on a recurring basis, regardless of usage."
+                                    : "Charged based on actual usage each billing period."}
+                                </p>
                               </div>
                             )}
                           </div>
@@ -797,10 +839,10 @@ export default function OrgSubscriptionCreatePage() {
                                       <SelectValue
                                         placeholder={
                                           !item.priceId
-                                            ? "Select a price first"
+                                            ? "Select billing item first"
                                             : isLoadingMeters
-                                              ? "Loading meters..."
-                                              : "Select a meter"
+                                              ? "Loading..."
+                                              : "Select usage metric"
                                         }
                                       />
                                     </SelectTrigger>
@@ -819,7 +861,7 @@ export default function OrgSubscriptionCreatePage() {
                                         item.priceId &&
                                         meterOptions.length === 0 && (
                                           <SelectItem value="empty" disabled>
-                                            No meters configured
+                                            No metrics configured
                                           </SelectItem>
                                         )}
                                       {!isLoadingMeters &&
@@ -832,6 +874,11 @@ export default function OrgSubscriptionCreatePage() {
                                   </Select>
                                 )
                               })()}
+                              {price && price.pricing_model !== "FLAT" && (
+                                <p className="text-[10px] text-text-muted">
+                                  Defines what is measured for billing (e.g. API calls).
+                                </p>
+                              )}
                               {priceAmountError && (
                                 <p className="text-status-error text-xs">
                                   {priceAmountError}
@@ -844,16 +891,38 @@ export default function OrgSubscriptionCreatePage() {
                           )}
                         </TableCell>
                         <TableCell className="align-top">
-                          {/* 3. Disable Quantity input when pricing_model != FLAT */}
-                          <Input
-                            type="number"
-                            min={1}
-                            max={127}
-                            value={price && price.pricing_model !== "FLAT" ? "1" : item.quantity}
-                            onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                            disabled={!item.priceId || (price && price.pricing_model !== "FLAT")}
-                            className={price && price.pricing_model !== "FLAT" ? "bg-background-subtle text-text-muted cursor-not-allowed" : ""}
-                          />
+                          <div className="space-y-1">
+                            {/* 3. Disable Quantity input when pricing_model != FLAT */}
+                            <Input
+                              type="number"
+                              min={1}
+                              max={127}
+                              value={price && price.pricing_model !== "FLAT" ? "1" : item.quantity}
+                              onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                              disabled={!item.priceId || (price && price.pricing_model !== "FLAT")}
+                              className={price && price.pricing_model !== "FLAT" ? "bg-background-subtle text-text-muted cursor-not-allowed" : ""}
+                            />
+                            {price && price.pricing_model === "FLAT" && (
+                              <p className="text-[10px] text-text-muted">
+                                Number of units billed.
+                              </p>
+                            )}
+                            {price && price.pricing_model !== "FLAT" && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-1 cursor-help text-[10px] text-text-muted">
+                                      <span>Quantity is fixed</span>
+                                      <Info className="h-3 w-3 opacity-70" />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    Usage volume is determined by actual events, not quantity.
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="align-top text-right">
                           <Button
