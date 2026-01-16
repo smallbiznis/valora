@@ -85,7 +85,7 @@ func updateOrganizationCount(ctx context.Context, c *CloudMetrics, db *gorm.DB) 
 		return
 	}
 	var count int64
-	if err := db.WithContext(ctx).Table("organization").Count(&count).Error; err != nil {
+	if err := db.WithContext(ctx).Table("organizations").Count(&count).Error; err != nil {
 		return
 	}
 	c.SetOrganizationsTotal(count)
