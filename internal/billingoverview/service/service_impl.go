@@ -44,38 +44,41 @@ func (s *Service) GetMRR(ctx context.Context, req billingoverview.OverviewReques
 		return billingoverview.MRRResponse{}, billingoverview.ErrInvalidOrganization
 	}
 
-	start, end := normalizeRange(req, s.clock.Now())
+	// MRR is a snapshot metric (run-rate at a point in time).
+	// We use req.End as the "as of" timestamp. If not provided, we use Now.
+	asOf := req.End
+	if asOf.IsZero() {
+		asOf = s.clock.Now().UTC()
+	} else {
+		asOf = asOf.UTC()
+	}
+
 	currency, err := s.loadOrgCurrency(ctx, orgID)
 	if err != nil {
 		return billingoverview.MRRResponse{}, err
 	}
-	series, err := s.listMRRSeries(ctx, orgID, currency, start, end, req.Granularity)
+
+	// Get snapshot of all active subscriptions at this point in time
+	snapshot, err := s.listMRRSnapshot(ctx, orgID, currency, asOf)
 	if err != nil {
 		return billingoverview.MRRResponse{}, err
 	}
 
-	var compareSeries []billingoverview.SeriesPoint
-	if req.Compare {
-		prevStart, prevEnd := shiftRange(start, end, req.Granularity)
-		compareSeries, err = s.listMRRSeries(ctx, orgID, currency, prevStart, prevEnd, req.Granularity)
-		if err != nil {
-			return billingoverview.MRRResponse{}, err
-		}
+	// Sum up all individual subscription MRRs to get the total MRR (Run Rate)
+	var currentMRR int64
+	for _, mrr := range snapshot {
+		currentMRR += mrr
 	}
-
-	current := lastSeriesValue(series)
-	previous := lastSeriesValue(compareSeries)
-	growthAmount, growthRate := computeGrowth(current, previous)
 
 	return billingoverview.MRRResponse{
 		Currency:      currency,
-		Current:       current,
-		Previous:      previous,
-		GrowthAmount:  growthAmount,
-		GrowthRate:    growthRate,
-		Series:        series,
-		CompareSeries: compareSeries,
-		HasData:       len(series) > 0,
+		Current:       &currentMRR,
+		Previous:      nil, // Comparison logic removed as per requirement
+		GrowthAmount:  nil, // Growth logic removed as per requirement
+		GrowthRate:    nil, // Growth logic removed as per requirement
+		Series:        nil, // Time series generation removed as per requirement
+		CompareSeries: nil, // Time series generation removed as per requirement
+		HasData:       len(snapshot) > 0,
 	}, nil
 }
 
