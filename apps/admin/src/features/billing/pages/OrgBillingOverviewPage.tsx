@@ -25,6 +25,7 @@ import { Switch } from "@/components/ui/switch"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { cn } from "@/lib/utils"
 import { getErrorMessage, isForbiddenError } from "@/lib/api-errors"
+import { TrendInsightCard } from "../components/TrendInsightCard"
 
 type SeriesPoint = {
   period: string
@@ -586,6 +587,26 @@ export default function OrgBillingOverviewPage() {
           )}
         </CardContent>
       </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <TrendInsightCard
+          title="MRR Trend"
+          previous={mrr?.previous}
+          growthRate={mrr?.growth_rate}
+          growthAmount={mrr?.growth_amount}
+          currency={mrr?.currency ?? "USD"}
+          type="currency"
+          className="h-full"
+        />
+        <TrendInsightCard
+          title="Subscriber Trend"
+          previous={subscribers?.previous}
+          growthRate={subscribers?.growth_rate}
+          growthAmount={subscribers?.growth_amount}
+          type="number"
+          className="h-full"
+        />
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <MetricCard
