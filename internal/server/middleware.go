@@ -2,6 +2,9 @@ package server
 
 import (
 	"context"
+	"fmt"
+	"html"
+	"net/http"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -11,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	auditdomain "github.com/smallbiznis/railzway/internal/audit/domain"
 	auditcontext "github.com/smallbiznis/railzway/internal/auditcontext"
+	authconfig "github.com/smallbiznis/railzway/internal/auth/config"
 	authdomain "github.com/smallbiznis/railzway/internal/auth/domain"
 	obscontext "github.com/smallbiznis/railzway/internal/observability/context"
 	"github.com/smallbiznis/railzway/internal/orgcontext"
@@ -26,6 +30,11 @@ const (
 )
 
 func (s *Server) serveIndex(c *gin.Context) {
+	if errs := s.webConfigErrors(); len(errs) > 0 {
+		c.Header("Cache-Control", "no-store")
+		c.Data(http.StatusServiceUnavailable, "text/html; charset=utf-8", []byte(renderConfigErrorPage(s.cfg.Mode, errs)))
+		return
+	}
 	c.File(filepath.Join(s.cfg.StaticDir, "index.html"))
 }
 
@@ -212,6 +221,92 @@ func (s *Server) RequireRole(roles ...string) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func (s *Server) webConfigErrors() []string {
+	var errs []string
+
+	if s.cfg.IsCloud() && s.cfg.DefaultOrgID == 0 {
+		errs = append(errs, "DEFAULT_ORG is required for cloud mode")
+	}
+	if !s.cfg.IsCloud() && s.cfg.Bootstrap.AllowAssignOrg {
+		if strings.TrimSpace(s.cfg.Bootstrap.AutoAssignOrgID) == "" {
+			errs = append(errs, "AUTO_ASSIGN_ORG_ID is required when ALLOW_ASSIGN_ORG=true")
+		}
+		if strings.TrimSpace(s.cfg.Bootstrap.AutoAssignOrgRole) == "" {
+			errs = append(errs, "AUTO_ASSIGN_ORG_ROLE is required when ALLOW_ASSIGN_ORG=true")
+		}
+		if strings.TrimSpace(s.cfg.Bootstrap.AllowAssignUserRole) == "" {
+			errs = append(errs, "ALLOW_ASSIGN_USER_ROLE is required when ALLOW_ASSIGN_ORG=true")
+		}
+	}
+
+	for _, provider := range authconfig.ParseAuthProvidersFromEnv() {
+		if !provider.Enabled || provider.Type == "local" {
+			continue
+		}
+		var missing []string
+		prefix := authProviderEnvPrefix(provider.Type)
+		if strings.TrimSpace(provider.ClientID) == "" {
+			missing = append(missing, prefix+"CLIENT_ID")
+		}
+		if strings.TrimSpace(provider.AuthURL) == "" {
+			missing = append(missing, prefix+"AUTH_URL")
+		}
+		if strings.TrimSpace(provider.TokenURL) == "" {
+			missing = append(missing, prefix+"TOKEN_URL")
+		}
+		if strings.TrimSpace(provider.APIURL) == "" {
+			missing = append(missing, prefix+"API_URL")
+		}
+		if len(missing) > 0 {
+			errs = append(errs, fmt.Sprintf("auth provider %s enabled but missing: %s", provider.Type, strings.Join(missing, ", ")))
+		}
+	}
+
+	return errs
+}
+
+func authProviderEnvPrefix(providerType string) string {
+	value := strings.ToUpper(strings.TrimSpace(providerType))
+	if value == "" {
+		return "AUTH_"
+	}
+	return "AUTH_" + value + "_"
+}
+
+func renderConfigErrorPage(mode string, errs []string) string {
+	title := "Configuration error"
+	var b strings.Builder
+	b.WriteString("<!doctype html><html><head><meta charset=\"utf-8\">")
+	b.WriteString("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
+	b.WriteString("<title>")
+	b.WriteString(title)
+	b.WriteString("</title>")
+	b.WriteString("<style>")
+	b.WriteString("body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0f172a;color:#e2e8f0;margin:0;padding:0}")
+	b.WriteString(".wrap{max-width:820px;margin:48px auto;padding:32px;background:#111827;border:1px solid #1f2937;border-radius:16px}")
+	b.WriteString("h1{font-size:28px;margin:0 0 12px;color:#f8fafc}")
+	b.WriteString("p{margin:0 0 12px;color:#cbd5f5}")
+	b.WriteString("ul{margin:12px 0 0 20px}")
+	b.WriteString("li{margin:6px 0;color:#fca5a5}")
+	b.WriteString("code{background:#0b1220;padding:2px 6px;border-radius:6px}")
+	b.WriteString("</style></head><body><div class=\"wrap\">")
+	b.WriteString("<h1>")
+	b.WriteString(title)
+	b.WriteString("</h1>")
+	b.WriteString("<p>Mode: <code>")
+	b.WriteString(html.EscapeString(strings.TrimSpace(mode)))
+	b.WriteString("</code></p>")
+	b.WriteString("<p>Missing or invalid configuration detected. Fix the items below and reload.</p>")
+	b.WriteString("<ul>")
+	for _, err := range errs {
+		b.WriteString("<li>")
+		b.WriteString(html.EscapeString(err))
+		b.WriteString("</li>")
+	}
+	b.WriteString("</ul></div></body></html>")
+	return b.String()
 }
 
 func (s *Server) roleForOrg(ctx context.Context, orgID, userID snowflake.ID) (string, error) {

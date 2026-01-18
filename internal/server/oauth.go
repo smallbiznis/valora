@@ -283,18 +283,29 @@ func (s *Server) ensureOrgMembership(ctx context.Context, userID snowflake.ID, o
 }
 
 func (s *Server) ensureAutoOrgMembership(ctx context.Context, userID snowflake.ID) error {
-	if s.cfg.IsCloud() {
+	if userID == 0 {
 		return nil
 	}
+
+	if s.cfg.IsCloud() {
+		if s.cfg.DefaultOrgID == 0 {
+			return nil
+		}
+		orgID := snowflake.ID(s.cfg.DefaultOrgID)
+		return s.ensureOrgMembership(ctx, userID, []snowflake.ID{orgID}, orgdomain.RoleOwner)
+	}
+
 	cfg := s.cfg.Bootstrap
 	if !cfg.AllowSignUp || !cfg.AllowAssignOrg {
 		return nil
 	}
+
 	orgIDRaw := strings.TrimSpace(cfg.AutoAssignOrgID)
 	role := strings.ToUpper(strings.TrimSpace(cfg.AutoAssignOrgRole))
 	if orgIDRaw == "" || role == "" {
 		return nil
 	}
+
 	if !roleAllowed(cfg.AllowAssignUserRole, role) {
 		return nil
 	}

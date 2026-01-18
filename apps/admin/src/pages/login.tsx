@@ -1,16 +1,64 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
-// import {auth} from "@/api/client"
+import { auth } from "@/api/client"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { LoginForm } from "@/components/login-form"
-import { useAppMode } from "@/hooks/useAppMode"
 import { useAuthStore } from "@/stores/authStore"
 
-export default function LoginPage() {
+type AuthProvider = {
+  name: string
+  display_name: string
+  login_path: string
+}
+
+type AuthConfig = {
+  local_login_enabled: boolean
+  providers: AuthProvider[]
+}
+
+function ProviderButtons({ providers }: { providers: AuthProvider[] }) {
+  if (!providers.length) {
+    return (
+      <p className="text-center text-sm text-text-muted">
+        No OAuth providers are configured for this instance.
+      </p>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {providers.map((provider) => (
+        <Button asChild className="w-full" key={provider.name}>
+          <a href={provider.login_path}>Sign in with {provider.display_name || provider.name}</a>
+        </Button>
+      ))}
+    </div>
+  )
+}
+
+function CloudLogin({ providers }: { providers: AuthProvider[] }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-bg-subtle/40 px-4 py-12">
+      <Card className="w-full max-w-lg">
+        <CardHeader className="items-center text-center">
+          <img src="/primary.svg" className="mb-4 size-14" alt="Railzway logo" />
+          <CardTitle className="text-2xl">Welcome to Railzway Cloud</CardTitle>
+          <CardDescription>Sign in using your Railzway account.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ProviderButtons providers={providers} />
+          <p className="text-center text-sm text-text-muted">This instance only accepts OAuth sign-in.</p>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function LocalLogin({ providers }: { providers: AuthProvider[] }) {
   const navigate = useNavigate()
   const login = useAuthStore((s) => s.login)
-  const mode = useAppMode()
-
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -30,7 +78,79 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-subtle/40 px-4 py-12">
-      <LoginForm onSubmit={handleSubmit} isLoading={isLoading} error={error} showSignup={mode === "cloud"} />
+      <div className="w-full max-w-lg space-y-4">
+        <LoginForm onSubmit={handleSubmit} isLoading={isLoading} error={error} showSignup={false} />
+        {providers.length > 0 && (
+          <Card>
+            <CardHeader className="text-center">
+              <CardTitle className="text-base">Or sign in with</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProviderButtons providers={providers} />
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
+}
+
+export default function LoginPage() {
+  const [authConfig, setAuthConfig] = useState<AuthConfig | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    setIsLoading(true)
+    auth.get<AuthConfig>("/providers")
+      .then((res) => {
+        if (!active) return
+        setAuthConfig(res.data)
+        setLoadError(null)
+      })
+      .catch(() => {
+        if (!active) return
+        setLoadError("Unable to load authentication options. Please refresh.")
+      })
+      .finally(() => {
+        if (!active) return
+        setIsLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-text-muted text-sm">
+        Loading authentication...
+      </div>
+    )
+  }
+
+  if (loadError || !authConfig) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-bg-subtle/40 px-4 py-12">
+        <Card className="w-full max-w-lg">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">Sign-in unavailable</CardTitle>
+            <CardDescription>{loadError ?? "Unable to load sign-in options."}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button className="w-full" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!authConfig.local_login_enabled) {
+    return <CloudLogin providers={authConfig.providers ?? []} />
+  }
+
+  return <LocalLogin providers={authConfig.providers ?? []} />
 }

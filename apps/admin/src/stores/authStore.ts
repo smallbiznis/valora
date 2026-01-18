@@ -17,25 +17,14 @@ type AuthState = {
   isAuthenticated: boolean
   mustChangePassword: boolean
   login: (payload: { email: string; password: string }) => Promise<void>
+  refreshSession: () => Promise<void>
   signup: (payload: { email: string; password: string; displayName?: string; orgName?: string }) => Promise<void>
   completeInvite: (inviteId: string, payload: { password: string; name: string; username?: string }) => Promise<void>
   logout: () => Promise<void>
   setMustChangePassword: (value: boolean) => void
 }
 
-const readAppMode = (): "oss" | "cloud" => {
-  const raw = import.meta.env.VITE_APP_MODE
-  if (raw === "oss" || raw === "cloud") {
-    return raw
-  }
-  return "oss"
-}
-
 const resolveMustChangePassword = (payload: any): boolean => {
-  if (readAppMode() !== "cloud") {
-    return false
-  }
-
   const metadata = payload?.metadata ?? payload?.session?.metadata ?? payload
   if (!metadata || typeof metadata !== "object") {
     return false
@@ -105,6 +94,20 @@ export const useAuthStore = create<AuthState>()(
           const user = buildUser(res.data)
           if (!user) {
             throw new Error("invalid_login_response")
+          }
+          const mustChangePassword = resolveMustChangePassword(res.data)
+          set({ user, isAuthenticated: true, mustChangePassword })
+        } catch (err) {
+          set({ user: null, isAuthenticated: false, mustChangePassword: false })
+          throw err
+        }
+      },
+      refreshSession: async () => {
+        try {
+          const res = await auth.get("/me")
+          const user = buildUser(res.data)
+          if (!user) {
+            throw new Error("invalid_session_response")
           }
           const mustChangePassword = resolveMustChangePassword(res.data)
           set({ user, isAuthenticated: true, mustChangePassword })

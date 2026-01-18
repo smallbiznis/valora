@@ -7,10 +7,8 @@ import ChangePasswordPage from "@/pages/change-password"
 import LoginPage from "@/pages/login"
 import OnboardingPage from "@/pages/onboarding"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useAppMode } from "@/hooks/useAppMode"
 import { useAuthStore } from "@/stores/authStore"
 
-const SignupPage = lazy(() => import("@/pages/signup"))
 const AcceptInvitePage = lazy(() => import("@/pages/accept-invite"))
 
 const OrgHome = lazy(() => import("@/features/billing/pages/OrgHome"))
@@ -89,10 +87,12 @@ const AdminTaxDefinitionsPage = lazy(
 function RequireAuth() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const mustChangePassword = useAuthStore((s) => s.mustChangePassword)
+  const refreshSession = useAuthStore((s) => s.refreshSession)
   const location = useLocation()
   const [hasHydrated, setHasHydrated] = useState(
     useAuthStore.persist.hasHydrated()
   )
+  const [isCheckingSession, setIsCheckingSession] = useState(false)
   useEffect(() => {
     const unsubscribe = useAuthStore.persist.onFinishHydration(() => {
       setHasHydrated(true)
@@ -102,7 +102,18 @@ function RequireAuth() {
     }
     return unsubscribe
   }, [])
-  if (!hasHydrated) {
+  useEffect(() => {
+    if (!hasHydrated || isAuthenticated || isCheckingSession) {
+      return
+    }
+    setIsCheckingSession(true)
+    refreshSession()
+      .catch(() => {})
+      .finally(() => {
+        setIsCheckingSession(false)
+      })
+  }, [hasHydrated, isAuthenticated, isCheckingSession, refreshSession])
+  if (!hasHydrated || isCheckingSession) {
     return <div className="flex min-h-screen items-center justify-center text-text-muted text-sm">Loading session...</div>
   }
   if (!isAuthenticated) {
@@ -128,14 +139,6 @@ function FeatureBoundary({ children }: { children: ReactNode }) {
   return <Suspense fallback={<RouteSkeleton />}>{children}</Suspense>
 }
 
-function CloudOnlyRoute({ children }: { children: ReactNode }) {
-  const mode = useAppMode()
-  if (mode !== "cloud") {
-    return <Navigate to="/login" replace />
-  }
-  return <>{children}</>
-}
-
 const withFeatureBoundary = (node: ReactElement) => (
   <FeatureBoundary>{node}</FeatureBoundary>
 )
@@ -151,13 +154,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/signup",
-    element: (
-      <CloudOnlyRoute>
-        <FeatureBoundary>
-          <SignupPage />
-        </FeatureBoundary>
-      </CloudOnlyRoute>
-    ),
+    element: <Navigate to="/login" replace />,
   },
   {
     path: "/invite/:inviteId",

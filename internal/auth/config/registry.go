@@ -66,8 +66,8 @@ func normalizeProviderConfig(key string, cfg AuthProviderConfig) AuthProviderCon
 func normalizeProviderType(raw string) string {
 	value := strings.ToLower(strings.TrimSpace(raw))
 	switch value {
-	case "valora_cloud", "valora-cloud", "valora cloud", "usevalora.cloud":
-		return "usevalora_cloud"
+	case "railzway_com":
+		return "railzway_com"
 	default:
 		return value
 	}

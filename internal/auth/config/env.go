@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strings"
 )
@@ -10,20 +11,21 @@ const (
 	envPrefixOAuth       = "AUTH_OAUTH_"
 	envPrefixGitHub      = "AUTH_GITHUB_"
 	envPrefixGoogle      = "AUTH_GOOGLE_"
-	envPrefixValoraCloud = "AUTH_VALORA_CLOUD_"
+	envPrefixRailzwayCom = "AUTH_RAILZWAY_COM_"
 )
 
 type providerEnvSpec struct {
 	providerType string
 	prefix       string
+	displayName  string
 }
 
 var providerSpecs = []providerEnvSpec{
-	{providerType: "local", prefix: envPrefixLocal},
-	{providerType: "oauth", prefix: envPrefixOAuth},
-	{providerType: "github", prefix: envPrefixGitHub},
-	{providerType: "google", prefix: envPrefixGoogle},
-	{providerType: "usevalora_cloud", prefix: envPrefixValoraCloud},
+	{providerType: "local", prefix: envPrefixLocal, displayName: "Local"},
+	{providerType: "oauth", prefix: envPrefixOAuth, displayName: "OAuth"},
+	{providerType: "github", prefix: envPrefixGitHub, displayName: "GitHub"},
+	{providerType: "google", prefix: envPrefixGoogle, displayName: "Google"},
+	{providerType: "railzway_com", prefix: envPrefixRailzwayCom, displayName: "Railzway.com"},
 }
 
 // ParseAuthProvidersFromEnv reads auth provider configuration from environment variables.
@@ -34,16 +36,22 @@ func ParseAuthProvidersFromEnv() map[string]AuthProviderConfig {
 		if !hasEnvPrefix(env, spec.prefix) {
 			continue
 		}
-		cfg := parseProviderConfig(spec.providerType, spec.prefix)
+		cfg := parseProviderConfig(spec.providerType, spec.prefix, spec.displayName)
 		configs[cfg.Type] = cfg
 	}
+	fmt.Printf("configs: %v\n", configs)
 	return configs
 }
 
-func parseProviderConfig(providerType string, prefix string) AuthProviderConfig {
+func parseProviderConfig(providerType string, prefix string, defaultName string) AuthProviderConfig {
 	name := strings.TrimSpace(getenv(prefix + "NAME"))
+	fmt.Printf("NAME: %s\n", name)
 	if name == "" {
-		name = providerType
+		if strings.TrimSpace(defaultName) != "" {
+			name = defaultName
+		} else {
+			name = providerType
+		}
 	}
 	return AuthProviderConfig{
 		Name:         name,

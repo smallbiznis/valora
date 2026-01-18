@@ -1,11 +1,8 @@
 package server
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	authdomain "github.com/smallbiznis/railzway/internal/auth/domain"
-	signupdomain "github.com/smallbiznis/railzway/internal/signup/domain"
 )
 
 type SignupRequest struct {
@@ -16,36 +13,7 @@ type SignupRequest struct {
 }
 
 func (s *Server) Signup(c *gin.Context) {
-	if !s.cfg.IsCloud() {
-		AbortWithError(c, ErrNotFound)
-		return
-	}
-
-	var req SignupRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		AbortWithError(c, invalidRequestError())
-		return
-	}
-
-	result, err := s.signupsvc.Signup(c.Request.Context(), signupdomain.Request{
-		OrgName:   req.OrgName,
-		Username:  req.Username,
-		Email:     req.Email,
-		Password:  req.Password,
-		UserAgent: c.Request.UserAgent(),
-		IPAddress: c.ClientIP(),
-	})
-	if err != nil {
-		AbortWithError(c, err)
-		return
-	}
-
-	if result.Session != nil && result.RawToken != "" {
-		s.sessions.Set(c, result.RawToken, result.ExpiresAt)
-		s.enrichSessionFromToken(c, result.Session, result.RawToken)
-	}
-
-	c.JSON(http.StatusOK, result.Session)
+	AbortWithError(c, ErrNotFound)
 }
 
 func (s *Server) enrichSessionFromToken(c *gin.Context, view *authdomain.SessionView, rawToken string) {

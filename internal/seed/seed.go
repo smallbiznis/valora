@@ -36,11 +36,48 @@ func EnsureMainOrg(db *gorm.DB) error {
 
 	ctx := context.Background()
 	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		org, err := ensureMainOrgTx(ctx, tx, node)
-		_, err = ensureInvoiceSequenceTx(ctx, tx, node, org.ID)
-		_, err = ensureInvoiceTemplateTx(ctx, tx, node, org.ID)
-		err = ensureLedgerAccounts(ctx, tx, node, org.ID)
+		org, err := ensureMainOrgTx(ctx, tx, node, nil)
+		if err != nil {
+			return err
+		}
+		if _, err := ensureInvoiceSequenceTx(ctx, tx, node, org.ID); err != nil {
+			return err
+		}
+		if _, err := ensureInvoiceTemplateTx(ctx, tx, node, org.ID); err != nil {
+			return err
+		}
+		return ensureLedgerAccounts(ctx, tx, node, org.ID)
+	})
+}
+
+// EnsureMainOrgWithID seeds the default organization using a fixed ID.
+func EnsureMainOrgWithID(db *gorm.DB, orgID int64) error {
+	if db == nil {
+		return errors.New("seed database handle is required")
+	}
+	if orgID == 0 {
+		return errors.New("seed org id is required")
+	}
+
+	node, err := snowflake.NewNode(1)
+	if err != nil {
 		return err
+	}
+
+	targetID := snowflake.ID(orgID)
+	ctx := context.Background()
+	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		org, err := ensureMainOrgTx(ctx, tx, node, &targetID)
+		if err != nil {
+			return err
+		}
+		if _, err := ensureInvoiceSequenceTx(ctx, tx, node, org.ID); err != nil {
+			return err
+		}
+		if _, err := ensureInvoiceTemplateTx(ctx, tx, node, org.ID); err != nil {
+			return err
+		}
+		return ensureLedgerAccounts(ctx, tx, node, org.ID)
 	})
 }
 
@@ -57,7 +94,7 @@ func EnsureMainOrgAndAdmin(db *gorm.DB) error {
 
 	ctx := context.Background()
 	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		org, err := ensureMainOrgTx(ctx, tx, node)
+		org, err := ensureMainOrgTx(ctx, tx, node, nil)
 		if err != nil {
 			return err
 		}
@@ -113,26 +150,42 @@ func EnsureMainOrgAndAdmin(db *gorm.DB) error {
 			}
 		}
 
-		_, err = ensureInvoiceSequenceTx(ctx, tx, node, org.ID)
-		_, err = ensureInvoiceTemplateTx(ctx, tx, node, org.ID)
-		err = ensureLedgerAccounts(ctx, tx, node, org.ID)
-
-		return nil
+		if _, err := ensureInvoiceSequenceTx(ctx, tx, node, org.ID); err != nil {
+			return err
+		}
+		if _, err := ensureInvoiceTemplateTx(ctx, tx, node, org.ID); err != nil {
+			return err
+		}
+		return ensureLedgerAccounts(ctx, tx, node, org.ID)
 	})
 }
 
-func ensureMainOrgTx(ctx context.Context, tx *gorm.DB, node *snowflake.Node) (organizationdomain.Organization, error) {
+func ensureMainOrgTx(ctx context.Context, tx *gorm.DB, node *snowflake.Node, orgID *snowflake.ID) (organizationdomain.Organization, error) {
 	var org organizationdomain.Organization
+	if orgID != nil && *orgID != 0 {
+		if err := tx.WithContext(ctx).First(&org, "id = ?", *orgID).Error; err == nil {
+			return org, nil
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return org, err
+		}
+	}
 	err := tx.WithContext(ctx).Where("slug = ?", defaultOrgSlug).First(&org).Error
 	if err == nil {
+		if orgID != nil && *orgID != 0 && org.ID != *orgID {
+			return org, errors.New("default org id does not match existing org")
+		}
 		return org, nil
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return org, err
 	}
 	now := time.Now().UTC()
+	id := node.Generate()
+	if orgID != nil && *orgID != 0 {
+		id = *orgID
+	}
 	org = organizationdomain.Organization{
-		ID:        node.Generate(),
+		ID:        id,
 		Name:      defaultOrgName,
 		Slug:      defaultOrgSlug,
 		IsDefault: true,
