@@ -218,8 +218,15 @@ func appendAuthCode(rawRedirectURI, code, state string) (string, error) {
 }
 
 func (h *Handler) ensureAutoOrgMembership(ctx context.Context, userID snowflake.ID) error {
-	if !h.cfg.IsCloud() || userID == 0 {
+	if userID == 0 {
 		return nil
+	}
+	if h.cfg.IsCloud() {
+		if h.cfg.DefaultOrgID == 0 {
+			return nil
+		}
+		orgID := snowflake.ID(h.cfg.DefaultOrgID)
+		return h.ensureOrgMembership(ctx, userID, orgID, orgdomain.RoleOwner)
 	}
 	cfg := h.cfg.Bootstrap
 	if !cfg.AllowAssignOrg {
@@ -237,6 +244,13 @@ func (h *Handler) ensureAutoOrgMembership(ctx context.Context, userID snowflake.
 	orgID, err := snowflake.ParseString(orgIDRaw)
 	if err != nil {
 		return err
+	}
+	return h.ensureOrgMembership(ctx, userID, orgID, role)
+}
+
+func (h *Handler) ensureOrgMembership(ctx context.Context, userID snowflake.ID, orgID snowflake.ID, role string) error {
+	if userID == 0 || orgID == 0 || strings.TrimSpace(role) == "" {
+		return nil
 	}
 
 	var org orgdomain.Organization
@@ -262,10 +276,7 @@ func (h *Handler) ensureAutoOrgMembership(ctx context.Context, userID snowflake.
 		Role:      role,
 		CreatedAt: time.Now().UTC(),
 	}
-	if err := h.db.WithContext(ctx).Create(&member).Error; err != nil {
-		return err
-	}
-	return nil
+	return h.db.WithContext(ctx).Create(&member).Error
 }
 
 func roleAllowed(allowedRaw string, role string) bool {

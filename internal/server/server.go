@@ -330,6 +330,7 @@ func (s *Server) Engine() *gin.Engine {
 func (s *Server) RegisterAuthRoutes() {
 	auth := s.engine.Group("/auth")
 
+	auth.GET("/providers", s.AuthProviders)
 	auth.POST("/login", s.Login)
 	auth.POST("/logout", s.Logout)
 	auth.POST("/change-password", s.WebAuthRequired(), s.ChangePassword)

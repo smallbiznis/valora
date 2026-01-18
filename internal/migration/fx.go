@@ -18,8 +18,14 @@ var Module = fx.Module("migrations",
 			return err
 		}
 
-		if err := seed.EnsureMainOrg(conn); err != nil {
-			return err
+		if cfg.DefaultOrgID != 0 {
+			if err := seed.EnsureMainOrgWithID(conn, cfg.DefaultOrgID); err != nil {
+				return err
+			}
+		} else {
+			if err := seed.EnsureMainOrg(conn); err != nil {
+				return err
+			}
 		}
 		if !cfg.IsCloud() && cfg.Bootstrap.EnsureDefaultOrgAndUser {
 			return seed.EnsureMainOrgAndAdmin(conn)

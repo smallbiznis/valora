@@ -12,7 +12,6 @@ import (
 	authdomain "github.com/smallbiznis/railzway/internal/auth/domain"
 	"github.com/smallbiznis/railzway/internal/config"
 	orgdomain "github.com/smallbiznis/railzway/internal/organization/domain"
-	"github.com/smallbiznis/railzway/internal/signup"
 	signupdomain "github.com/smallbiznis/railzway/internal/signup/domain"
 )
 
@@ -25,18 +24,6 @@ func (f *fakeSignupService) Signup(ctx context.Context, req signupdomain.Request
 	_ = ctx
 	_ = req
 	return &signupdomain.Result{}, nil
-}
-
-type fakeProvisioner struct {
-	calls              int
-	lastOrganizationID string
-}
-
-func (f *fakeProvisioner) Provision(ctx context.Context, organizationID string) error {
-	f.calls++
-	f.lastOrganizationID = organizationID
-	_ = ctx
-	return nil
 }
 
 type fakeAuthService struct {
@@ -186,17 +173,12 @@ func TestSignupHandlerOSSModeReturns404(t *testing.T) {
 	}
 }
 
-func TestSignupHandlerCloudModeDelegatesProvisioner(t *testing.T) {
+func TestSignupHandlerCloudModeReturns404(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-
-	authSvc := &fakeAuthService{}
-	orgSvc := newFakeOrgService()
-	provisioner := &fakeProvisioner{}
-	signupSvc := signup.NewService(authSvc, orgSvc, provisioner)
 
 	srv := &Server{
 		cfg:       config.Config{Mode: config.ModeCloud},
-		signupsvc: signupSvc,
+		signupsvc: &fakeSignupService{},
 	}
 
 	router := gin.New()
@@ -208,13 +190,7 @@ func TestSignupHandlerCloudModeDelegatesProvisioner(t *testing.T) {
 	resp := httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
 
-	if resp.Code != http.StatusOK && resp.Code != http.StatusCreated {
-		t.Fatalf("expected status 200 or 201, got %d", resp.Code)
-	}
-	if provisioner.calls != 1 {
-		t.Fatalf("expected provisioner to be called once, got %d", provisioner.calls)
-	}
-	if provisioner.lastOrganizationID != orgSvc.org.ID {
-		t.Fatalf("expected provisioner organization ID %s, got %s", orgSvc.org.ID, provisioner.lastOrganizationID)
+	if resp.Code != http.StatusNotFound {
+		t.Fatalf("expected status 404, got %d", resp.Code)
 	}
 }

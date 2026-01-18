@@ -65,74 +65,15 @@ type userResponse struct {
 }
 
 func (h *Handler) Signup(c *gin.Context) {
-	if h.cfg.IsCloud() || !h.cfg.Bootstrap.AllowSignUp {
-		writeLocalError(c, http.StatusForbidden, "signup_disabled")
-		return
-	}
-
-	var req signupRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		writeLocalError(c, http.StatusBadRequest, "invalid_request")
-		return
-	}
-
-	email, err := normalizeEmail(req.Email)
-	if err != nil {
-		writeLocalError(c, http.StatusBadRequest, "invalid_email")
-		return
-	}
-	if len(strings.TrimSpace(req.Password)) < 8 {
-		writeLocalError(c, http.StatusBadRequest, "weak_password")
-		return
-	}
-
-	user, err := h.authsvc.CreateUser(c.Request.Context(), authdomain.CreateUserRequest{
-		Email:       email,
-		Password:    req.Password,
-		DisplayName: strings.TrimSpace(req.DisplayName),
-	})
-	if err != nil {
-		if err == authdomain.ErrUserExists {
-			writeLocalError(c, http.StatusConflict, "user_exists")
-			return
-		}
-		writeLocalError(c, http.StatusBadRequest, "invalid_request")
-		return
-	}
-
-	if err := h.ensureAutoOrgMembership(c.Request.Context(), user.ID); err != nil {
-		writeLocalError(c, http.StatusBadRequest, "invalid_request")
-		return
-	}
-
-	sessionResult, err := h.authsvc.Login(c.Request.Context(), authdomain.LoginRequest{
-		Email:     email,
-		Password:  req.Password,
-		UserAgent: c.Request.UserAgent(),
-		IPAddress: c.ClientIP(),
-	})
-	if err != nil {
-		writeLocalError(c, http.StatusUnauthorized, "invalid_credentials")
-		return
-	}
-
-	h.sessions.Set(c, sessionResult.RawToken, sessionResult.ExpiresAt)
-
-	h.log.Info("local signup created session",
-		zap.String("request_id", requestID(c)),
-		zap.String("user_id", user.ID.String()),
-	)
-
-	c.JSON(http.StatusCreated, userResponse{
-		ID:          user.ID.String(),
-		Email:       user.Email,
-		DisplayName: user.DisplayName,
-		Provider:    user.Provider,
-		ExternalID:  user.ExternalID,
-	})
+	writeLocalError(c, http.StatusForbidden, "signup_disabled")
 }
 
 func (h *Handler) Login(c *gin.Context) {
+	if h.cfg.IsCloud() {
+		writeLocalError(c, http.StatusForbidden, "login_disabled")
+		return
+	}
+
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		writeLocalError(c, http.StatusBadRequest, "invalid_request")
@@ -206,8 +147,15 @@ func requestID(c *gin.Context) string {
 }
 
 func (h *Handler) ensureAutoOrgMembership(ctx context.Context, userID snowflake.ID) error {
-	if h.cfg.IsCloud() {
+	if userID == 0 {
 		return nil
+	}
+	if h.cfg.IsCloud() {
+		if h.cfg.DefaultOrgID == 0 {
+			return nil
+		}
+		orgID := snowflake.ID(h.cfg.DefaultOrgID)
+		return h.ensureOrgMembership(ctx, userID, orgID, orgdomain.RoleOwner)
 	}
 	cfg := h.cfg.Bootstrap
 	if !cfg.AllowSignUp || !cfg.AllowAssignOrg {
@@ -225,6 +173,14 @@ func (h *Handler) ensureAutoOrgMembership(ctx context.Context, userID snowflake.
 	orgID, err := snowflake.ParseString(orgIDRaw)
 	if err != nil {
 		return err
+	}
+
+	return h.ensureOrgMembership(ctx, userID, orgID, role)
+}
+
+func (h *Handler) ensureOrgMembership(ctx context.Context, userID snowflake.ID, orgID snowflake.ID, role string) error {
+	if userID == 0 || orgID == 0 || strings.TrimSpace(role) == "" {
+		return nil
 	}
 
 	var org orgdomain.Organization
@@ -250,10 +206,7 @@ func (h *Handler) ensureAutoOrgMembership(ctx context.Context, userID snowflake.
 		Role:      role,
 		CreatedAt: time.Now().UTC(),
 	}
-	if err := h.db.WithContext(ctx).Create(&member).Error; err != nil {
-		return err
-	}
-	return nil
+	return h.db.WithContext(ctx).Create(&member).Error
 }
 
 func roleAllowed(allowedRaw string, role string) bool {
