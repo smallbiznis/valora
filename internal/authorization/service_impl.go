@@ -215,6 +215,17 @@ func (s *ServiceImpl) resolveActor(ctx context.Context, actor string, orgID stri
 		roleName := "role:system"
 		return actor, roleName, "system", nil, nil
 	}
+	if strings.HasPrefix(actor, "api_key:") {
+		// API keys use system role for full CRUD permissions
+		apiKeyIDRaw := strings.TrimPrefix(actor, "api_key:")
+		apiKeyID, err := snowflake.ParseString(apiKeyIDRaw)
+		if err != nil || apiKeyID == 0 {
+			return "", "", "", nil, ErrInvalidActor
+		}
+		apiKeyIDStr := apiKeyID.String()
+		roleName := "role:system"
+		return actor, roleName, "api_key", &apiKeyIDStr, nil
+	}
 	if strings.HasPrefix(actor, "user:") {
 		userIDRaw := strings.TrimPrefix(actor, "user:")
 		userID, err := snowflake.ParseString(userIDRaw)
